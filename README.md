@@ -216,7 +216,7 @@ Configure the following values in `.env`:
 * MAIL_FROM_EMAIL
 * MAIL_FROM_NAME
 
-
+---
 
 # Security
 
@@ -230,7 +230,7 @@ should never be committed to Git.
 
 Configure them only inside `.env`.
 
-
+---
 
 # Database
 
@@ -243,12 +243,13 @@ database/
 * `schema.sql`
 * `seeds.sql`
 
+---
 
 # Screenshots
 
 Screenshots can be added here later.
 
-
+---
 
 # Future Improvements
 
@@ -260,11 +261,13 @@ Some ideas for future versions include:
 * Mobile application
 * Improved analytics and reporting
 
+---
 
 # License
 
 This project is provided for learning, portfolio, and demonstration purposes.
 
+---
 
 # Author
 
@@ -273,5 +276,6 @@ This project is provided for learning, portfolio, and demonstration purposes.
 GitHub:
 https://github.com/ambroseochieng03-hash
 
+---
 
 If you encounter any issues while setting up the project, create an issue in the repository or review the project configuration and environment variables before running the application.
