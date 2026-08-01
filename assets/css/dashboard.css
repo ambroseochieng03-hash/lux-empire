@@ -1,0 +1,239 @@
+/* =========================================
+   LUX EMPIRE DASHBOARD SYSTEM
+========================================= */
+
+.lux-sidebar {
+
+    width: 280px;
+    height: calc(100vh - 90px);
+
+    position: fixed;
+
+    left: 0;
+    top: 90px;
+
+    background: rgba(10, 10, 20, 0.82);
+
+    backdrop-filter: blur(18px);
+
+    border-right: 1px solid rgba(255, 215, 0, 0.15);
+
+    padding: 20px;
+
+    color: white;
+
+    transition: 0.3s ease;
+
+    overflow-y: auto;
+
+    z-index: 998;
+}
+
+/* =========================================
+   SIDEBAR BRAND
+========================================= */
+
+.sidebar-brand {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.brand-icon {
+    font-size: 2rem;
+}
+
+.sidebar-brand h2 {
+    color: gold;
+    margin: 5px 0;
+}
+
+/* =========================================
+   USER CARD
+========================================= */
+
+.sidebar-user {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    padding: 15px;
+
+    background: rgba(255,255,255,0.05);
+
+    border-radius: 15px;
+
+    margin-bottom: 25px;
+}
+
+.user-avatar {
+    font-size: 1.8rem;
+}
+
+/* =========================================
+   NAVIGATION
+========================================= */
+
+.sidebar-nav {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 10px;
+}
+
+.sidebar-nav a {
+
+    display: block;
+
+    padding: 14px 15px;
+
+    color: #ddd;
+
+    text-decoration: none;
+
+    border-radius: 12px;
+
+    transition: 0.25s ease;
+}
+
+.sidebar-nav a:hover {
+
+    background: rgba(255, 215, 0, 0.1);
+
+    color: gold;
+
+    transform: translateX(5px);
+}
+
+.sidebar-nav a.active {
+
+    background: rgba(255, 215, 0, 0.2);
+
+    color: gold;
+
+    border-left: 3px solid gold;
+}
+
+.logout-link {
+
+    margin-top: 20px;
+
+    color: #ff6b6b !important;
+}
+
+/* =========================================
+   EMERGENCY BUTTON
+========================================= */
+
+.sidebar-nav form button {
+
+    width: 100%;
+
+    border: none;
+
+    cursor: pointer;
+
+    margin-top: 10px;
+}
+
+/* =========================================
+   MOBILE TOGGLE
+========================================= */
+
+.lux-sidebar-toggle {
+
+    display: none;
+
+    position: fixed;
+
+    top: 18px;
+
+    left: 18px;
+
+    width: 50px;
+
+    height: 50px;
+
+    border-radius: 14px;
+
+    background: linear-gradient(135deg, gold, #8f6b00);
+
+    border: none;
+
+    color: black;
+
+    font-size: 1.2rem;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+    z-index: 1001;
+
+    box-shadow: 0 0 20px rgba(212,175,55,0.4);
+}
+
+/* =========================================
+   MAIN CONTENT RESPONSIVE
+========================================= */
+
+.lux-main-content {
+
+    margin-left: 280px;
+
+    padding: 40px;
+
+    margin-top: 20px;
+
+    width: calc(100% - 280px);
+
+    min-height: 100vh;
+}
+
+/* =========================================
+   MOBILE RESPONSIVENESS
+========================================= */
+
+@media (max-width: 768px) {
+
+    .lux-sidebar {
+
+        transform: translateX(-100%);
+
+        top: 80px;
+
+        height: calc(100vh - 80px);
+
+        width: 280px;
+
+        z-index: 1000;
+    }
+
+    .lux-sidebar.active {
+
+        transform: translateX(0);
+    }
+
+    .lux-sidebar-toggle {
+
+        display: flex;
+
+        align-items: center;
+
+        justify-content: center;
+    }
+
+    .lux-main-content {
+
+        margin-left: 0;
+
+        width: 100%;
+
+        padding: 90px 18px 30px 18px;
+    }
+
+}

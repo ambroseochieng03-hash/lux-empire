@@ -1,0 +1,17 @@
+Options -Indexes
+
+<FilesMatch "\.(env|log|sql|md)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+RewriteEngine On
+
+# Prevent direct access to config
+RewriteRule ^config/ - [F,L]
+
+# Prevent direct access to classes
+RewriteRule ^classes/ - [F,L]
+
+# Prevent direct access to includes
+RewriteRule ^includes/ - [F,L]

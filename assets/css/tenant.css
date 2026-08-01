@@ -1,0 +1,286 @@
+/* =========================================
+   TENANT DASHBOARD LAYOUT
+========================================= */
+
+.lux-tenant-layout{
+    display:flex;
+    min-height:100vh;
+}
+
+.lux-tenant-main{
+    flex:1;
+    padding:40px;
+    margin-left:280px;
+    min-width:0;
+}
+
+/* =========================================
+   PAGE HEADER
+========================================= */
+
+.lux-tenant-hero{
+    margin-bottom:40px;
+}
+
+.lux-tenant-title{
+    font-family:'Cinzel', serif;
+    color:var(--gold);
+    font-size:3rem;
+}
+
+.lux-tenant-subtitle{
+    color:var(--gray);
+    margin-top:10px;
+    max-width:700px;
+    line-height:1.8;
+}
+
+/* =========================================
+   STATS GRID
+========================================= */
+
+.lux-tenant-stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:25px;
+    margin-bottom:40px;
+}
+
+/* =========================================
+   ACTION GRID
+========================================= */
+
+.lux-tenant-actions{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:25px;
+    margin-bottom:40px;
+}
+
+.lux-tenant-action-card{
+    padding:30px;
+    text-decoration:none;
+    display:block;
+    transition:0.3s;
+}
+
+.lux-tenant-action-card:hover{
+    transform:translateY(-4px);
+}
+
+/* =========================================
+   TRACK DRIVER BUTTON
+========================================= */
+
+.lux-track-driver-btn{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:14px 18px;
+    border-radius:14px;
+    text-decoration:none;
+    color:white;
+    margin-bottom:10px;
+    background:rgba(255,255,255,0.04);
+    transition:0.3s;
+}
+
+.lux-track-driver-btn:hover{
+    background:rgba(255,215,0,0.15);
+}
+
+/* =========================================
+   RECENT ACTIVITY
+========================================= */
+
+.lux-activity-card{
+    padding:30px;
+    border-radius:25px;
+}
+
+.lux-activity-item{
+    padding:15px;
+    border-bottom:1px solid rgba(255,255,255,0.05);
+    color:var(--gray);
+}
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width:992px){
+
+    .lux-tenant-main{
+        padding:30px;
+    }
+
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width:768px){
+
+    .lux-tenant-main{
+        margin-left:0;
+        padding:20px;
+    }
+
+    .lux-tenant-title{
+        font-size:2rem;
+        line-height:1.3;
+    }
+
+    .lux-tenant-stats{
+        grid-template-columns:1fr;
+        gap:18px;
+    }
+
+    .lux-tenant-actions{
+        grid-template-columns:1fr;
+        gap:18px;
+    }
+
+    .lux-tenant-action-card{
+        padding:22px;
+    }
+
+    .lux-activity-card{
+        padding:22px;
+    }
+
+    .lux-track-driver-btn{
+        width:100%;
+        justify-content:center;
+    }
+
+}
+
+/* =========================================
+   TENANT STAT CARDS
+========================================= */
+
+.lux-tenant-stat-card{
+    padding:25px;
+    text-align:center;
+}
+
+.lux-tenant-stat-number{
+    color:var(--gold);
+    font-size:2rem;
+}
+
+.lux-tenant-stat-label{
+    color:var(--gray);
+}
+
+/* =========================================
+   ACTION CARDS
+========================================= */
+
+.lux-tenant-action-title{
+    color:white;
+    margin-bottom:10px;
+}
+
+.lux-tenant-action-text{
+    color:var(--gray);
+}
+
+/* =========================================
+   ACTIVITY
+========================================= */
+
+.lux-activity-title{
+    color:white;
+    margin-bottom:20px;
+}
+
+/* =========================================
+   TENANT RESPONSIVE SYSTEM
+========================================= */
+
+@media (max-width: 992px){
+
+    /* MAIN CONTENT */
+    .tenant-main{
+        margin-left:0 !important;
+        padding:20px !important;
+        width:100%;
+    }
+
+    /* PAGE TITLES */
+    .tenant-title{
+        font-size:2rem !important;
+        line-height:1.3;
+    }
+
+    /* GRID LAYOUTS */
+    .tenant-grid{
+        grid-template-columns:1fr !important;
+        gap:20px !important;
+    }
+
+    /* CARDS */
+    .tenant-card{
+        border-radius:22px !important;
+    }
+
+    /* IMAGE */
+    .tenant-image{
+        height:200px !important;
+    }
+
+    /* FLEX ROWS */
+    .tenant-flex{
+        flex-direction:column !important;
+        align-items:flex-start !important;
+    }
+
+    /* ACTION BUTTONS */
+    .tenant-actions{
+        width:100%;
+    }
+
+    .tenant-actions a,
+    .tenant-actions button{
+        width:100%;
+        text-align:center;
+        justify-content:center;
+    }
+
+    .tenant-actions form{
+        width:100%;
+    }
+
+    /* META */
+    .tenant-meta{
+        flex-direction:column !important;
+        gap:10px;
+    }
+
+}
+
+
+/* EXTRA SMALL DEVICES */
+
+@media (max-width: 576px){
+
+    .tenant-main{
+        padding:16px !important;
+    }
+
+    .tenant-title{
+        font-size:1.7rem !important;
+    }
+
+    .tenant-card-padding{
+        padding:20px !important;
+    }
+
+    .tenant-image{
+        height:180px !important;
+    }
+
+}

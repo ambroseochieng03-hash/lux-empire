@@ -1,0 +1,23 @@
+# Environment variables
+.env
+
+# Composer
+/vendor/
+
+# Logs
+logs/*.log
+
+# Uploads
+assets/uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# Misc
+*.swp
+*.swo

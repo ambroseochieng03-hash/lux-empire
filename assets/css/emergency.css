@@ -1,0 +1,100 @@
+/* =========================================
+   DESKTOP (UNCHANGED LOOK)
+========================================= */
+
+.emergency-layout{
+    display:flex;
+    min-height:100vh;
+}
+
+.emergency-main{
+    flex:1;
+    margin-left:280px;
+    padding:40px;
+    background:#0a0f1c;
+}
+
+.emergency-stats-bar{
+    display:flex;
+    gap:15px;
+    flex-wrap:wrap;
+    margin-bottom:30px;
+}
+
+.emergency-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+    gap:20px;
+}
+
+.emergency-card{
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:20px;
+    padding:20px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.3);
+}
+
+.emergency-intelligence-box{
+    margin-top:15px;
+    padding:15px;
+    background:rgba(255,255,255,0.03);
+    border-radius:14px;
+}
+
+.emergency-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:15px;
+}
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width:992px){
+
+    .emergency-main{
+        margin-left:0;
+        padding:30px;
+    }
+
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width:768px){
+
+    .emergency-main{
+        padding:20px;
+    }
+
+    .emergency-grid{
+        grid-template-columns:1fr;
+    }
+
+    .emergency-card{
+        padding:18px;
+        border-radius:18px;
+    }
+
+    .emergency-actions{
+        flex-direction:column;
+    }
+
+    .emergency-actions form{
+        width:100%;
+    }
+
+    .emergency-actions button{
+        width:100%;
+    }
+
+    .emergency-stats-bar{
+        flex-direction:column;
+    }
+
+}

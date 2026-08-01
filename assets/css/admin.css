@@ -1,0 +1,316 @@
+/* =========================================
+   SHARED ADMIN LAYOUT
+========================================= */
+
+.lux-dashboard-layout{
+    display:flex;
+    min-height:100vh;
+}
+
+.lux-dashboard-main{
+    flex:1;
+    margin-left:280px;
+    padding:40px;
+    width:calc(100% - 280px);
+    overflow-x:hidden;
+}
+
+.lux-page-header{
+    margin-bottom:40px;
+}
+
+.lux-page-title{
+    font-size:3rem;
+    color:var(--gold);
+    font-family:'Cinzel', serif;
+    margin-bottom:15px;
+    line-height:1.2;
+}
+
+.lux-page-subtitle{
+    color:var(--gray);
+    line-height:1.9;
+    max-width:800px;
+}
+
+/* =========================================
+   TABLE SYSTEM
+========================================= */
+
+.lux-table-wrapper{
+    padding:30px;
+    border-radius:30px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    width:100%;
+    -webkit-overflow-scrolling:touch;
+}
+
+.lux-table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:1100px;
+}
+
+.lux-table th{
+    padding:18px;
+    color:gold;
+    text-align:left;
+    border-bottom:1px solid rgba(255,255,255,0.1);
+}
+
+.lux-table td{
+    padding:20px;
+    border-bottom:1px solid rgba(255,255,255,0.05);
+}
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width: 992px){
+
+    .lux-dashboard-main{
+        margin-left:0;
+        width:100%;
+        padding:30px;
+    }
+
+    .lux-page-title{
+        font-size:2.3rem;
+    }
+
+}
+
+/* =========================================
+   MOBILE TABLE CARDS
+========================================= */
+
+@media (max-width:768px){
+
+    .lux-dashboard-main{
+        padding:20px;
+    }
+
+    .lux-page-title{
+        font-size:1.8rem;
+    }
+
+    .lux-page-subtitle{
+        font-size:0.95rem;
+    }
+
+    .lux-table{
+        min-width:100%;
+    }
+
+    .lux-table thead{
+        display:none;
+    }
+
+    .lux-table,
+    .lux-table tbody,
+    .lux-table tr,
+    .lux-table td{
+        display:block;
+        width:100%;
+    }
+
+    .lux-table tr{
+        margin-bottom:20px;
+        background:rgba(255,255,255,0.03);
+        border-radius:20px;
+        padding:15px;
+    }
+
+    .lux-table td{
+        text-align:right;
+        padding:14px 12px;
+        position:relative;
+        border:none;
+        border-bottom:1px solid rgba(255,255,255,0.05);
+    }
+
+    .lux-table td:last-child{
+        border-bottom:none;
+    }
+
+    .lux-table td::before{
+        content:attr(data-label);
+        position:absolute;
+        left:12px;
+        font-weight:bold;
+        color:gold;
+        text-align:left;
+    }
+
+}
+
+/* =========================================
+   SMALL DEVICES
+========================================= */
+
+@media (max-width:480px){
+
+    .lux-dashboard-main{
+        padding:15px;
+    }
+
+    .lux-page-title{
+        font-size:1.5rem;
+    }
+
+}
+
+/* Logistics long text fix */
+
+.lux-table td{
+    word-break:break-word;
+}
+
+/* =========================================
+   ANALYTICS / REPORTS
+========================================= */
+
+.lux-stats-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:20px;
+    margin-bottom:40px;
+}
+
+.lux-analytics-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:30px;
+}
+
+.lux-logistics-card{
+    margin-top:30px;
+    padding:30px;
+    border-radius:30px;
+}
+
+.lux-logistics-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:20px;
+}
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width:992px){
+
+    .lux-analytics-grid{
+        grid-template-columns:1fr;
+    }
+
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width:768px){
+
+    .lux-stats-grid{
+        grid-template-columns:1fr;
+    }
+
+    .lux-analytics-grid{
+        gap:20px;
+    }
+
+    .lux-logistics-grid{
+        grid-template-columns:1fr;
+    }
+
+    .lux-logistics-card{
+        padding:22px;
+    }
+
+    .lux-card{
+        border-radius:24px !important;
+    }
+
+}
+
+/* =========================================
+   EMERGENCY CENTER
+========================================= */
+
+.lux-emergency-main{
+    background:#0a0f1c;
+}
+
+.lux-emergency-stats{
+    display:flex;
+    gap:15px;
+    flex-wrap:wrap;
+    margin-bottom:30px;
+}
+
+.lux-emergency-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+    gap:20px;
+}
+
+.lux-emergency-card{
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:20px;
+    padding:20px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.3);
+    overflow:hidden;
+}
+
+.lux-intelligence-box{
+    margin-top:15px;
+    padding:15px;
+    background:rgba(255,255,255,0.03);
+    border-radius:14px;
+    overflow-wrap:anywhere;
+}
+
+.lux-emergency-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:15px;
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width:768px){
+
+    .lux-emergency-grid{
+        grid-template-columns:1fr;
+    }
+
+    .lux-emergency-card{
+        padding:18px;
+        border-radius:18px;
+    }
+
+    .lux-emergency-actions{
+        flex-direction:column;
+    }
+
+    .lux-emergency-actions form{
+        width:100%;
+    }
+
+    .lux-emergency-actions button{
+        width:100%;
+    }
+
+    .lux-emergency-stats{
+        flex-direction:column;
+    }
+
+}

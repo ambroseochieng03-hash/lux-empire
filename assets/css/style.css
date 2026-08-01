@@ -1,0 +1,226 @@
+/* ==========================================
+   LUX EMPIRE - MASTER LUXURY STYLESHEET
+   Theme: Royal Gold + Imperial Black
+========================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Poppins:wght@300;400;500;600&display=swap');
+
+:root {
+    --gold: #D4AF37;
+    --black: #0A0A0A;
+    --dark: #121212;
+    --white: #FFFFFF;
+    --gray: #B8B8B8;
+    --glass: rgba(255, 255, 255, 0.08);
+    --shadow-gold: 0 0 25px rgba(212, 175, 55, 0.35);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background:
+        radial-gradient(circle at top right, rgba(212,175,55,0.08), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(212,175,55,0.06), transparent 25%),
+        linear-gradient(135deg, #000000, #0A0A0A, #121212);
+    color: var(--white);
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Luxury Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--black);
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(var(--gold), #8f6b00);
+    border-radius: 10px;
+}
+
+/* HEADER */
+.lux-header {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    backdrop-filter: blur(14px);
+    background: rgba(10,10,10,0.75);
+    border-bottom: 1px solid rgba(212,175,55,0.25);
+    box-shadow: var(--shadow-gold);
+}
+
+/* NAVBAR */
+.lux-navbar {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding: 18px 8%;
+
+    min-height: 90px;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-family: 'Cinzel', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--gold);
+    text-shadow: 0 0 10px rgba(212,175,55,0.35);
+}
+
+.logo img {
+    width: 55px;
+    height: 55px;
+}
+
+.nav-links {
+    display: flex;
+    gap: 30px;
+}
+
+.nav-links a {
+    color: var(--white);
+    text-decoration: none;
+    font-weight: 500;
+    position: relative;
+    transition: 0.4s ease;
+}
+
+.nav-links a::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: -6px;
+    width: 0%;
+    height: 2px;
+    background: var(--gold);
+    transition: 0.4s ease;
+}
+
+.nav-links a:hover {
+    color: var(--gold);
+}
+
+.nav-links a:hover::after {
+    width: 100%;
+}
+
+/* PREMIUM BUTTONS */
+.lux-btn {
+    background: linear-gradient(135deg, var(--gold), #8f6b00);
+    color: var(--black);
+    padding: 12px 26px;
+    border: none;
+    border-radius: 30px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: var(--shadow-gold);
+    transition: 0.4s ease;
+}
+
+.lux-btn:hover {
+    transform: translateY(-3px) scale(1.03);
+}
+
+/* HERO */
+.hero {
+    min-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px;
+}
+
+.hero-content h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 4.5rem;
+    color: var(--gold);
+    text-shadow: 0 0 25px rgba(212,175,55,0.3);
+}
+
+.hero-content p {
+    margin-top: 20px;
+    font-size: 1.3rem;
+    color: var(--gray);
+}
+
+/* LUXURY CARDS */
+.lux-card {
+    background: var(--glass);
+    border: 1px solid rgba(212,175,55,0.18);
+    backdrop-filter: blur(12px);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: var(--shadow-gold);
+}
+
+/* FOOTER */
+.lux-footer {
+    margin-top: 60px;
+    padding: 50px 8%;
+    background: linear-gradient(to top, #000000, #0A0A0A);
+    border-top: 1px solid rgba(212,175,55,0.2);
+    text-align: center;
+}
+
+.lux-footer h3 {
+    font-family: 'Cinzel', serif;
+    color: var(--gold);
+    font-size: 2rem;
+}
+
+.lux-footer p {
+    margin-top: 12px;
+    color: var(--gray);
+    font-size: 0.95rem;
+}
+
+.gold-line {
+    width: 120px;
+    height: 3px;
+    margin: 18px auto;
+    background: linear-gradient(to right, transparent, var(--gold), transparent);
+}
+
+/* =========================================
+   MOBILE NAVBAR
+========================================= */
+
+@media (max-width: 768px) {
+
+    .lux-navbar {
+
+        padding: 14px 18px;
+    }
+
+    .logo {
+
+        font-size: 1.2rem;
+    }
+
+    .nav-links {
+
+        display: none;
+    }
+
+    .lux-navbar .lux-btn {
+
+        display: none;
+    }
+
+}

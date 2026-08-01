@@ -1,0 +1,106 @@
+/* =========================================
+   DASHBOARD RESPONSIVE
+========================================= */
+
+.lux-dashboard-layout{
+    display:flex;
+    min-height:100vh;
+}
+
+.lux-dashboard-main{
+    flex:1;
+    margin-left:280px;
+    padding:40px;
+    width:calc(100% - 280px);
+    overflow-x:hidden;
+}
+
+/* HERO */
+
+.lux-hero{
+    margin-bottom:45px;
+}
+
+.lux-title{
+    font-size:3rem;
+    color:var(--gold);
+    font-family:'Cinzel', serif;
+    margin-bottom:15px;
+    line-height:1.2;
+}
+
+.lux-subtitle{
+    color:var(--gray);
+    max-width:850px;
+    line-height:1.9;
+}
+
+/* RECENT SECTION */
+
+.lux-recent-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:30px;
+}
+
+/* =========================================
+   TABLET
+========================================= */
+
+@media (max-width: 992px){
+
+    .lux-dashboard-main{
+        margin-left:0;
+        width:100%;
+        padding:30px;
+    }
+
+    .lux-title{
+        font-size:2.4rem;
+    }
+
+    .lux-recent-grid{
+        grid-template-columns:1fr;
+    }
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 768px){
+
+    .lux-dashboard-main{
+        padding:20px;
+    }
+
+    .lux-title{
+        font-size:1.8rem;
+    }
+
+    .lux-subtitle{
+        font-size:0.95rem;
+        line-height:1.7;
+    }
+
+    .lux-card{
+        border-radius:22px !important;
+    }
+
+}
+
+/* =========================================
+   SMALL PHONES
+========================================= */
+
+@media (max-width:480px){
+
+    .lux-dashboard-main{
+        padding:15px;
+    }
+
+    .lux-title{
+        font-size:1.5rem;
+    }
+
+}
