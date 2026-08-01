@@ -2,7 +2,7 @@
 
 **LUX EMPIRE** is a PHP and MariaDB web application that combines rental housing management with moving logistics in a single platform. It provides separate dashboards for tenants, landlords, drivers, and administrators, allowing each user role to access features relevant to them.
 
-The project was built to explore full-stack web development, authentication, role-based access control, database design, Google Maps integration, and real-world application architecture using PHP.
+The project was built as a practical full-stack application for managing rental housing and moving logistics while exploring authentication, role-based access control, database design, Google Maps integration, and scalable PHP application architecture.
 
 > **Project Status:** Production-ready. The application is complete and ready for deployment. It is currently maintained as a personal portfolio project.
 
@@ -17,6 +17,8 @@ The project was built to explore full-stack web development, authentication, rol
 * Password reset via email
 * Session management
 * Role-based authentication
+* CSRF protection
+* Prepared statements using PDO
 
 ### Tenant
 
