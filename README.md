@@ -272,7 +272,8 @@ This project is provided for learning, portfolio, and demonstration purposes.
 ---
 
 # Author
-#**Ambitious**
+# **Ambitious**
+
 **Ambrose Onyango**
 
 GitHub:
