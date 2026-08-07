@@ -272,8 +272,8 @@ This project is provided for learning, portfolio, and demonstration purposes.
 ---
 
 # Author
-
-**Ambrose Ochieng**
+#**Ambitious**
+**Ambrose Onyango**
 
 GitHub:
 https://github.com/ambroseochieng03-hash
