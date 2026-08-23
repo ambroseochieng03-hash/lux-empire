@@ -1,22 +1,12 @@
 <?php
-require_once '../../config/session.php';
+
+require_once '../../includes/auth_check.php';
+requireRoleAccess('tenant');
 
 require_once '../../classes/House.php';
 require_once '../../classes/Booking.php';
 
-/**
- * Must be logged in
- */
-requireLogin();
-
-/**
- * Tenants only
- */
-if ($_SESSION['role'] !== 'tenant') {
-
-    header("Location: ../../index.php?error=Unauthorized access");
-    exit();
-}
+$tenant_id = (int) Session::user()['id'];
 
 /**
  * Validate house ID
@@ -28,8 +18,6 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 }
 
 $house_id = (int) $_GET['id'];
-
-$tenant_id = $_SESSION['user_id'];
 
 /**
  * Get house
@@ -77,4 +65,3 @@ if ($result === true) {
     header("Location: ../../dashboard/tenant/search_houses.php?error=" . urlencode($result));
     exit();
 }
-?>

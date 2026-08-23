@@ -1,15 +1,19 @@
 <?php
+
+require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
 requireRoleAccess('tenant');
 
 require_once '../../classes/Booking.php';
+require_once '../../classes/House.php';
 require_once '../../config/db.php';
 
-$bookingModel = new Booking();
+$tenantId = (int) Session::user()['id'];
 
-$bookings = $bookingModel->getBookingsByTenant(
-    $_SESSION['user_id']
-);
+$bookingModel = new Booking();
+$houseModel = new House();
+
+$bookings = $bookingModel->getBookingsByTenant($tenantId);
 
 $db = new Database();
 $pdo = $db->connect();
@@ -37,7 +41,7 @@ $truckStmt = $pdo->prepare("
 ");
 
 $truckStmt->execute([
-    $_SESSION['user_id']
+    $tenantId
 ]);
 
 $truckRequests = $truckStmt->fetchAll();
@@ -46,6 +50,9 @@ require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
 ?>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
 
 <div style="
     display:flex;
@@ -68,7 +75,7 @@ require_once '../../includes/sidebar.php';
                 color:var(--gold);
                 font-size:3rem;
             ">
-                👑 My Luxury Bookings
+                <i class="fa-solid fa-crown"></i> My Luxury Bookings
             </h1>
 
             <p style="
@@ -108,28 +115,102 @@ require_once '../../includes/sidebar.php';
 
                 <?php foreach ($bookings as $booking): ?>
 
+                    <?php
+                        /*
+                         * Bookings don't carry media directly — Booking::getBookingsByTenant()
+                         * only returns one image_path via a LIMIT 1 subquery. But the row
+                         * does include house_id (from bookings.house_id), so we pull ALL
+                         * media for that house the same way the listing pages do, via the
+                         * existing House::getHouseMedia() method.
+                         */
+                        $mediaItems = $houseModel->getHouseMedia((int) $booking['house_id']);
+
+                        $imageUrls = [];
+                        $videoUrl  = null;
+
+                        foreach ($mediaItems as $mediaItem) {
+
+                            $path = BASE_URL . '/assets/uploads/house_images/' . $mediaItem['image_path'];
+
+                            if (preg_match('/\.mp4$/i', $mediaItem['image_path'])) {
+                                $videoUrl = $path;
+                            } else {
+                                $imageUrls[] = $path;
+                            }
+                        }
+                    ?>
+
                     <div class="lux-card tenant-card" style="
                         border-radius:24px;
                         overflow:hidden;
                     ">
 
-                        <!-- IMAGE -->
+                        <!-- MEDIA -->
                         <div class="tenant-image" style="
                             height:220px;
                             overflow:hidden;
+                            position:relative;
                         ">
 
-                            <?php if (!empty($booking['image'])): ?>
+                            <?php if ($videoUrl !== null): ?>
 
-                                <img
-                                    src="../../assets/uploads/house_images/<?php echo htmlspecialchars($booking['image']); ?>"
-                                    style="
-                                        width:100%;
-                                        height:100%;
-                                        object-fit:cover;
-                                        display:block;
-                                    "
-                                >
+                                <div class="media-frame"
+                                     data-video="<?php echo htmlspecialchars($videoUrl); ?>"
+                                     data-caption="<?php echo htmlspecialchars($booking['title']); ?>">
+
+                                    <video class="media-video"
+                                           src="<?php echo htmlspecialchars($videoUrl); ?>"
+                                           controls
+                                           preload="metadata"
+                                           playsinline>
+                                    </video>
+
+                                    <button type="button" class="media-enlarge-btn" aria-label="Enlarge video">⤢</button>
+
+                                </div>
+
+                            <?php elseif (!empty($imageUrls)): ?>
+
+                                <?php $mediaImagesJson = json_encode($imageUrls); ?>
+
+                                <div class="media-frame"
+                                     data-images='<?php echo htmlspecialchars($mediaImagesJson, ENT_QUOTES); ?>'
+                                     data-caption="<?php echo htmlspecialchars($booking['title']); ?>"
+                                     data-current-index="0">
+
+                                    <div class="media-carousel">
+
+                                        <div class="media-carousel-track">
+
+                                            <?php foreach ($imageUrls as $index => $url): ?>
+
+                                                <img class="media-slide<?php echo $index === 0 ? ' is-active' : ''; ?>"
+                                                     src="<?php echo htmlspecialchars($url); ?>"
+                                                     data-index="<?php echo $index; ?>"
+                                                     alt="<?php echo htmlspecialchars($booking['title']); ?> image <?php echo $index + 1; ?>">
+
+                                            <?php endforeach; ?>
+
+                                        </div>
+
+                                    </div>
+
+                                    <?php if (count($imageUrls) > 1): ?>
+
+                                        <button type="button" class="media-carousel-btn media-carousel-prev" aria-label="Previous image">‹</button>
+                                        <button type="button" class="media-carousel-btn media-carousel-next" aria-label="Next image">›</button>
+
+                                        <div class="media-carousel-dots">
+                                            <?php foreach ($imageUrls as $index => $url): ?>
+                                                <span class="media-dot<?php echo $index === 0 ? ' is-active' : ''; ?>" data-index="<?php echo $index; ?>"></span>
+                                            <?php endforeach; ?>
+                                        </div>
+
+                                    <?php endif; ?>
+
+                                    <button type="button" class="media-enlarge-btn" aria-label="Enlarge image">⤢</button>
+
+                                </div>
 
                             <?php else: ?>
 
@@ -140,9 +221,12 @@ require_once '../../includes/sidebar.php';
                                     align-items:center;
                                     justify-content:center;
                                     color:var(--gold);
-                                    font-size:2rem;
+                                    font-size:1rem;
+                                    letter-spacing:0.5px;
+                                    text-transform:uppercase;
+                                    opacity:0.6;
                                 ">
-                                    🏛
+                                    No Image
                                 </div>
 
                             <?php endif; ?>
@@ -264,7 +348,7 @@ require_once '../../includes/sidebar.php';
                                 <?php if ($booking['status'] === 'pending'): ?>
 
                                     <form
-                                        action="../../api/bookings/cancel_booking.php"
+                                        action="<?php echo BASE_URL; ?>/api/bookings/cancel_booking.php"
                                         method="POST"
                                     >
 
@@ -296,7 +380,7 @@ require_once '../../includes/sidebar.php';
 
                                 <!-- DELETE -->
                                 <form
-                                    action="../../api/bookings/delete_booking.php"
+                                    action="<?php echo BASE_URL; ?>/api/bookings/delete_booking.php"
                                     method="POST"
                                     onsubmit="return confirm('Delete this booking permanently?');"
                                 >
@@ -380,7 +464,7 @@ require_once '../../includes/sidebar.php';
                     </p>
 
                     <a
-                        href="search_houses.php"
+                        href="<?php echo BASE_URL; ?>/dashboard/tenant/search_houses.php"
                         class="lux-btn"
                         style="text-decoration:none;"
                     >
@@ -578,6 +662,31 @@ require_once '../../includes/sidebar.php';
                                         Assigned Driver
                                     </div>
 
+                                    <!-- MESSAGE DRIVER (only once a driver is actually assigned) -->
+                                    <?php if ($trip['driver_id'] && in_array($trip['status'], ['accepted', 'in_transit'], true)): ?>
+
+                                        <button type="button"
+                                                class="lux-btn chat-starter-btn"
+                                                data-other-user-id="<?php echo (int) $trip['driver_id']; ?>"
+                                                data-other-role="driver"
+                                                data-truck-request-id="<?php echo (int) $trip['id']; ?>"
+                                                data-other-name="<?php echo htmlspecialchars($trip['driver_name']); ?>"
+                                                style="
+                                                    text-decoration:none;
+                                                    background:rgba(255,255,255,0.08);
+                                                    color:var(--gold);
+                                                    border:1px solid var(--gold);
+                                                    padding:14px 20px;
+                                                    border-radius:16px;
+                                                    font-weight:bold;
+                                                    text-align:center;
+                                                    cursor:pointer;
+                                                ">
+                                            <i class="fa-solid fa-comment-dots"></i> Message Driver
+                                        </button>
+
+                                    <?php endif; ?>
+
                                     <div style="
                                         color:white;
                                         margin-bottom:6px;
@@ -613,7 +722,7 @@ require_once '../../includes/sidebar.php';
                                 ): ?>
 
                                     <a
-                                        href="track_driver.php?trip_id=<?php echo $trip['id']; ?>"
+                                        href="<?php echo BASE_URL; ?>/dashboard/tenant/track_driver.php?trip_id=<?php echo $trip['id']; ?>"
                                         style="
                                             text-decoration:none;
                                             background:#42a5f5;
@@ -633,7 +742,7 @@ require_once '../../includes/sidebar.php';
                                 <?php if ($trip['status'] === 'pending'): ?>
 
                                     <a
-                                        href="edit_truck_request.php?id=<?php echo $trip['id']; ?>"
+                                        href="<?php echo BASE_URL; ?>/dashboard/tenant/edit_truck_request.php?id=<?php echo $trip['id']; ?>"
                                         style="
                                             text-decoration:none;
                                             background:rgba(255,255,255,0.08);
@@ -656,7 +765,7 @@ require_once '../../includes/sidebar.php';
                                 ): ?>
 
                                     <form
-                                        action="../../api/trucks/cancel_trip.php"
+                                        action="<?php echo BASE_URL; ?>/api/trucks/cancel_trip.php"
                                         method="POST"
                                     >
 
@@ -688,7 +797,7 @@ require_once '../../includes/sidebar.php';
 
                                 <!-- DELETE -->
                                 <form
-                                    action="../../api/trucks/delete_trip_tenant.php"
+                                    action="<?php echo BASE_URL; ?>/api/trucks/delete_trip_tenant.php"
                                     method="POST"
                                     onsubmit="return confirm('Delete this truck request permanently?');"
                                 >
@@ -748,7 +857,7 @@ require_once '../../includes/sidebar.php';
                         </p>
 
                         <a
-                            href="request_truck.php"
+                            href="<?php echo BASE_URL; ?>/dashboard/tenant/request_truck.php"
                             class="lux-btn"
                             style="text-decoration:none;"
                         >
@@ -766,5 +875,23 @@ require_once '../../includes/sidebar.php';
     </main>
 
 </div>
+
+<!-- MEDIA LIGHTBOX (shared, single instance) -->
+<div class="media-lightbox" id="mediaLightbox" aria-hidden="true">
+    <div class="media-lightbox-overlay" data-media-close></div>
+    <div class="media-lightbox-content">
+        <button type="button" class="media-lightbox-close" data-media-close aria-label="Close">×</button>
+        <button type="button" class="media-lightbox-nav media-lightbox-prev" aria-label="Previous image">‹</button>
+        <div class="media-lightbox-stage">
+            <img class="media-lightbox-image" src="" alt="">
+        </div>
+        <button type="button" class="media-lightbox-nav media-lightbox-next" aria-label="Next image">›</button>
+        <div class="media-lightbox-counter"></div>
+    </div>
+</div>
+
+<script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
+
+<?php require_once '../../includes/chat_starter_modal.php'; ?>
 
 <?php require_once '../../includes/footer.php'; ?>

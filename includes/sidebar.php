@@ -1,9 +1,17 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
-$userRole = $_SESSION['role'] ?? 'guest';
-$userName = $_SESSION['full_name'] ?? 'Empire Member';
+declare(strict_types=1);
+
+$user = Session::user();
+
+if ($user === null) {
+    $userRole = 'guest';
+    $userName = 'Empire Member';
+} else {
+    $userRole = $user['role'] ?? 'guest';
+    $userName = $user['full_name'] ?? 'Empire Member';
+}
+
 $currentPage = basename($_SERVER['PHP_SELF']);
 ?>
 
@@ -11,14 +19,14 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
     <!-- BRAND HEADER -->
     <div class="sidebar-brand">
-        <div class="brand-icon">👑</div>
+        <div class="brand-icon"><i class="fa-solid fa-crown"></i></div>
         <h2>LUX EMPIRE</h2>
         <p><?php echo htmlspecialchars(strtoupper($userRole)); ?> PORTAL</p>
     </div>
 
     <!-- USER BLOCK -->
     <div class="sidebar-user">
-        <div class="user-avatar">👑</div>
+        <div class="user-avatar"><i class="fa-solid fa-user"></i></div>
         <div>
             <h3><?php echo htmlspecialchars($userName); ?></h3>
             <small>Welcome back</small>
@@ -30,29 +38,36 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
         <?php if ($userRole === 'tenant'): ?>
 
-            <a href="<?php echo BASE_URL; ?>/dashboard/tenant/dashboard.php"
+            <a href="<?php echo BASE_URL; ?>/tenant"
                class="<?= $currentPage == 'dashboard.php' ? 'active' : '' ?>">
-                Dashboard
+                <i class="fa-solid fa-gauge-high"></i> Dashboard
             </a>
 
-            <a href="<?php echo BASE_URL; ?>/dashboard/tenant/search_houses.php"
+            <a href="<?php echo BASE_URL; ?>/tenant/search-houses"
                class="<?= $currentPage == 'search_houses.php' ? 'active' : '' ?>">
-                Find Homes
+                <i class="fa-solid fa-house"></i> Find Homes
             </a>
 
-            <a href="<?php echo BASE_URL; ?>/dashboard/tenant/my_bookings.php"
+            <a href="<?php echo BASE_URL; ?>/tenant/my-bookings"
                class="<?= $currentPage == 'my_bookings.php' ? 'active' : '' ?>">
-                My Bookings
+                <i class="fa-solid fa-calendar-check"></i> My Bookings
             </a>
 
-            <a href="<?php echo BASE_URL; ?>/dashboard/tenant/request_truck.php"
+            <a href="<?php echo BASE_URL; ?>/tenant/request-truck"
                class="<?= $currentPage == 'request_truck.php' ? 'active' : '' ?>">
-                Request Move
+                <i class="fa-solid fa-truck"></i> Request Move
             </a>
 
-            <a href="<?php echo BASE_URL; ?>/dashboard/tenant/track_driver.php"
+            <a href="<?php echo BASE_URL; ?>/tenant/track-driver"
                class="<?= $currentPage == 'track_driver.php' ? 'active' : '' ?>">
-                Track Driver
+                <i class="fa-solid fa-location-dot"></i> Track Driver
+            </a>
+
+            <!-- inside the tenant block, after "Track Driver" -->
+            <a href="<?php echo BASE_URL; ?>/tenant/messages"
+            class="<?= $currentPage == 'messages.php' ? 'active' : '' ?>">
+                <i class="fa-solid fa-comments"></i> Chats
+                <span class="sidebar-badge" id="sidebarChatBadge" style="display:none;"></span>
             </a>
 
             <form method="POST" action="../../api/emergency/trigger_alert.php">
@@ -73,32 +88,42 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
         <?php elseif ($userRole === 'landlord'): ?>
 
-            <a href="<?php echo BASE_URL; ?>/dashboard/landlord/dashboard.php"> Dashboard</a>
-            <a href="<?php echo BASE_URL; ?>/dashboard/landlord/add_house.php">Add Property</a>
-            <a href="<?php echo BASE_URL; ?>/dashboard/landlord/manage_houses.php"> Manage Estates</a>
-            <a href="<?php echo BASE_URL; ?>/dashboard/landlord/booking_requests.php">Booking Requests</a>
+            <a href="<?php echo BASE_URL; ?>/landlord"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+            <a href="<?php echo BASE_URL; ?>/add-property"><i class="fa-solid fa-house"></i> Add Property</a>
+            <a href="<?php echo BASE_URL; ?>/manage-houses"><i class="fa-solid fa-building"></i> Manage Estates</a>
+            <a href="<?php echo BASE_URL; ?>/booking-requests"><i class="fa-solid fa-calendar-check"></i> Booking Requests</a>
+            <!-- inside the landlord block -->
+            <a href="<?php echo BASE_URL; ?>/landlord/messages">
+                <i class="fa-solid fa-comments"></i> Chats
+                <span class="sidebar-badge" id="sidebarChatBadge" style="display:none;"></span>
+            </a>
 
         <?php elseif ($userRole === 'driver'): ?>
 
-            <a href="<?php echo BASE_URL; ?>/dashboard/driver/dashboard.php">Dashboard</a>
-            <a href="<?php echo BASE_URL; ?>/dashboard/driver/available_requests.php">Available Jobs</a>
-            <a href="<?php echo BASE_URL; ?>/dashboard/driver/active_trip.php">Active Trip</a>
-            <a href="<?php echo BASE_URL; ?>/dashboard/driver/location_tracker.php">Live Tracker</a>
+            <a href="<?php echo BASE_URL; ?>/driver"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+            <a href="<?php echo BASE_URL; ?>/driver/available-requests"><i class="fa-solid fa-truck"></i> Available Jobs</a>
+            <!-- inside the driver block -->
+            <a href="<?php echo BASE_URL; ?>/driver/messages">
+                <i class="fa-solid fa-comments"></i> Chats
+                <span class="sidebar-badge" id="sidebarChatBadge" style="display:none;"></span>
+            </a>
+            <a href="<?php echo BASE_URL; ?>/driver/active-trip"><i class="fa-solid fa-truck-fast"></i> Active Trip</a>
+            <a href="<?php echo BASE_URL; ?>/driver/location-tracker"><i class="fa-solid fa-location-dot"></i> Live Tracker</a>
             
 
         <?php elseif ($userRole === 'admin'): ?>
 
-            <a href="<?php echo BASE_URL; ?>/dashboard/admin/dashboard.php">Empire HQ</a>
-            <a href="<?php echo BASE_URL; ?>/dashboard/admin/users.php">Users</a>
-            <a href="<?php echo BASE_URL; ?>/dashboard/admin/houses.php">Estates</a>
-            <a href="<?php echo BASE_URL; ?>/dashboard/admin/truck_requests.php">Logistics</a>
-            <a href="<?php echo BASE_URL; ?>/dashboard/admin/reports.php">Reports</a>
-            <a href="<?php echo BASE_URL; ?>/dashboard/admin/emergency.php">Emergencies</a>
+            <a href="<?php echo BASE_URL; ?>/admin"><i class="fa-solid fa-gauge-high"></i> Empire HQ</a>
+            <a href="<?php echo BASE_URL; ?>/admin/users"><i class="fa-solid fa-users"></i> Users</a>
+            <a href="<?php echo BASE_URL; ?>/admin/houses"><i class="fa-solid fa-building"></i> Estates</a>
+            <a href="<?php echo BASE_URL; ?>/admin/truck-requests"><i class="fa-solid fa-truck-fast"></i> Logistics</a>
+            <a href="<?php echo BASE_URL; ?>/admin/reports"><i class="fa-solid fa-chart-column"></i> Reports</a>
+            <a href="<?php echo BASE_URL; ?>/admin/emergency"><i class="fa-solid fa-triangle-exclamation"></i> Emergencies</a>
 
         <?php endif; ?>
 
-        <a href="<?php echo BASE_URL; ?>/auth/logout.php" class="logout-link">
-            Exit Empire
+        <a href="<?php echo BASE_URL; ?>/logout" class="logout-link">
+            <i class="fa-solid fa-right-from-bracket"></i> Exit Empire
         </a>
 
     </nav>
@@ -108,5 +133,5 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 <!-- MOBILE TOGGLE -->
 <button class="lux-sidebar-toggle"
         onclick="document.getElementById('luxSidebar').classList.toggle('active')">
-    👑
+    <i class="fa-solid fa-bars"></i>
 </button>

@@ -62,7 +62,7 @@ require_once '../includes/navbar.php';
         <?php endif; ?>
 
         <!-- Login Form -->
-        <form action="../api/auth/login_handler.php" method="POST">
+        <form action="<?php echo BASE_URL; ?>/login-handler" method="POST">
 
             <!-- Email -->
             <div style="margin-bottom:18px;">
@@ -87,7 +87,7 @@ require_once '../includes/navbar.php';
                 font-size:1.1rem;
                 border-radius:16px;
             ">
-                👑 Enter Now
+                <i class="fa-solid fa-right-to-bracket"></i> Enter Now
             </button>
 
         </form>

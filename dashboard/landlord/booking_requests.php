@@ -1,4 +1,5 @@
 <?php
+require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
 requireRoleAccess('landlord');
 
@@ -307,7 +308,7 @@ require_once '../../includes/sidebar.php';
         <div class="landlord-header">
 
             <h1 class="landlord-title">
-                👑 Booking Requests
+                Booking Requests
             </h1>
 
             <p class="landlord-subtitle">

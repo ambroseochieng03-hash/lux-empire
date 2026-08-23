@@ -1,19 +1,39 @@
 <?php
+
+require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
 requireRoleAccess('landlord');
 
 require_once '../../classes/House.php';
 require_once '../../classes/Booking.php';
 
-$landlord_id = $_SESSION['user_id'];
-$user_name = $_SESSION['user_name'] ?? 'Landlord';
+if (!Session::isAuthenticated()) {
+    header(
+        'Location: ' . BASE_URL . '/login?error='
+        . urlencode('Authentication required.')
+    );
+    exit();
+}
+
+$user = Session::user();
+
+if ($user === null) {
+    header(
+        'Location: ' . BASE_URL . '/login?error='
+        . urlencode('Authentication required.')
+    );
+    exit();
+}
+
+$landlordId = (int) $user['id'];
+$user_name = $user['full_name'] ?? 'Landlord';
 
 $houseModel = new House();
 $bookingModel = new Booking();
 
 // Fetch data
-$houses = $houseModel->getHousesByLandlord($landlord_id);
-$bookings = $bookingModel->getBookingsByLandlord($landlord_id);
+$houses = $houseModel->getHousesByLandlord($landlordId);
+$bookings = $bookingModel->getBookingsByLandlord($landlordId);
 
 // Stats
 $totalProperties = count($houses);
@@ -59,7 +79,7 @@ require_once '../../includes/sidebar.php';
             font-size:3rem;
             margin-bottom:15px;
         ">
-            👑 Welcome, <?php echo htmlspecialchars($user_name); ?>
+            Welcome, <?php echo htmlspecialchars($user_name); ?>
         </h1>
 
         <p style="

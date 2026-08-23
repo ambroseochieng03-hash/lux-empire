@@ -129,7 +129,7 @@ if ((int)$reset['used'] === 1) {
         
 
         <!-- Form -->
-        <form action="../api/auth/reset_handler.php" method="POST">
+        <form action="<?php echo BASE_URL; ?>/reset-handler" method="POST">
 
             <!-- New Password -->
             <div style="margin-bottom:18px;">

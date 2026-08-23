@@ -1,4 +1,6 @@
 <?php
+
+require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
 requireRoleAccess('driver');
 
@@ -7,7 +9,7 @@ require_once '../../config/db.php';
 $db = new Database();
 $pdo = $db->connect();
 
-$driver_id = $_SESSION['user_id'];
+$driver_id = (int) Session::user()['id'];
 
 // Fetch pending requests
 $stmt = $pdo->prepare("
@@ -219,6 +221,26 @@ require_once '../../includes/sidebar.php';
                         </span>
                     </div>
 
+                    <!-- MESSAGE TENANT -->
+                    <button type="button"
+                            class="lux-btn chat-starter-btn"
+                            data-tenant-id="<?php echo (int) $request['tenant_id']; ?>"
+                            data-truck-request-id="<?php echo (int) $request['id']; ?>"
+                            data-other-name="<?php echo htmlspecialchars($request['full_name']); ?>"
+                            style="
+                                width:100%;
+                                border:1px solid var(--gold);
+                                background:rgba(255,255,255,0.06);
+                                color:var(--gold);
+                                padding:14px;
+                                border-radius:16px;
+                                font-weight:bold;
+                                cursor:pointer;
+                                margin-bottom:12px;
+                            ">
+                        <i class="fa-solid fa-comment-dots"></i> Message Tenant
+                    </button>
+
                     <!-- ACTION -->
                     <form action="../../api/trucks/accept_request.php" method="POST">
 
@@ -273,5 +295,7 @@ require_once '../../includes/sidebar.php';
 </main>
 
 </div>
+
+<?php require_once '../../includes/chat_starter_modal.php'; ?>
 
 <?php require_once '../../includes/footer.php'; ?>

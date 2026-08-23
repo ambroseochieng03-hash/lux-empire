@@ -1,186 +1,369 @@
 <?php
 
-ini_set('display_errors', 0);
+declare(strict_types=1);
+
+ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
-require_once '../../classes/House.php';
 require_once '../../config/session.php';
+require_once '../../classes/House.php';
 
 /**
- * Must be logged in
+ * ============================================================
+ * AUTHENTICATION
+ * ============================================================
  */
-requireLogin();
 
-/**
- * Only landlords allowed
- */
-if ($_SESSION['role'] !== 'landlord') {
-    header("Location: ../../index.php?error=Unauthorized access");
-    exit();
-}
+Session::start();
 
-/**
- * Only POST allowed
- */
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header("Location: ../../dashboard/landlord/add_house.php");
-    exit();
-}
+if (!Session::isAuthenticated()) {
 
-/**
- * Collect data
- */
-$title = trim($_POST['title'] ?? '');
-$description = trim($_POST['description'] ?? '');
-$price = trim($_POST['price'] ?? '');
-$location = trim($_POST['location'] ?? '');
-$bedrooms = trim($_POST['bedrooms'] ?? 0);
-$bathrooms = trim($_POST['bathrooms'] ?? 0);
-$landlord_id = $_SESSION['user_id'];
-$rating = (int) ($_POST['rating'] ?? 0);
-
-/**
- * Basic validation
- */
-if (empty($title) || empty($price) || empty($location)) {
-    header("Location: ../../dashboard/landlord/add_house.php?error=Missing required fields");
-    exit();
-}
-
-/**
- * IMAGE UPLOAD WITH COMPRESSION
- */
-$imageName = null;
-
-if (isset($_FILES['image']) && $_FILES['image']['error'] === 0) {
-
-    /**
-     * FILE SIZE LIMIT
-     */
-    $maxSize = 10 * 1024 * 1024; // 10MB
-
-    if ($_FILES['image']['size'] > $maxSize) {
-        header("Location: ../../dashboard/landlord/add_house.php?error=Image must be below 10MB");
-        exit();
-    }
-
-    /**
-     * STRICT IMAGE VALIDATION (reject pdf, videos, docs, etc.)
-     */
-    $tmpFile = $_FILES['image']['tmp_name'];
-
-    $imageInfo = getimagesize($tmpFile);
-
-    if ($imageInfo === false) {
-        header("Location: ../../dashboard/landlord/add_house.php?error=Only image files are allowed");
-        exit();
-    }
-
-    $uploadDir = "../../assets/uploads/house_images/";
-
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0755, true);
-    }
-
-    $tmpFile = $_FILES['image']['tmp_name'];
-
-    $imageInfo = getimagesize($tmpFile);
-
-    if (!$imageInfo) {
-        header("Location: ../../dashboard/landlord/add_house.php?error=Invalid image");
-        exit();
-    }
-
-    $mime = $imageInfo['mime'];
-
-    switch ($mime) {
-
-        case 'image/jpeg':
-            $source = imagecreatefromjpeg($tmpFile);
-            break;
-
-        case 'image/png':
-            $source = imagecreatefrompng($tmpFile);
-            break;
-
-        case 'image/webp':
-            $source = imagecreatefromwebp($tmpFile);
-            break;
-
-        default:
-            header("Location: ../../dashboard/landlord/add_house.php?error=Unsupported image format");
-            exit();
-    }
-
-    $originalWidth = imagesx($source);
-    $originalHeight = imagesy($source);
-
-    $maxWidth = 1600;
-
-    if ($originalWidth > $maxWidth) {
-
-        $newWidth = $maxWidth;
-        $newHeight = floor(($originalHeight * $newWidth) / $originalWidth);
-
-    } else {
-
-        $newWidth = $originalWidth;
-        $newHeight = $originalHeight;
-    }
-
-    $compressed = imagecreatetruecolor($newWidth, $newHeight);
-
-    imagecopyresampled(
-        $compressed,
-        $source,
-        0,
-        0,
-        0,
-        0,
-        $newWidth,
-        $newHeight,
-        $originalWidth,
-        $originalHeight
+    header(
+        'Location: ' . BASE_URL . '/login?error='
+        . urlencode('Authentication required.')
     );
 
-    $imageName = uniqid('house_', true) . '.webp';
+    exit();
+}
 
-    $targetFile = $uploadDir . $imageName;
+$user = Session::user();
 
-    if (!imagewebp($compressed, $targetFile, 82)) {
-        header("Location: ../../dashboard/landlord/add_house.php?error=Failed to save image");
+if (
+    $user === null ||
+    ($user['role'] ?? '') !== 'landlord'
+) {
+
+    header(
+        'Location: ' . BASE_URL . '/?error='
+        . urlencode('Unauthorized access.')
+    );
+
+    exit();
+}
+
+$landlordId = (int) $user['id'];
+
+/**
+ * ============================================================
+ * REQUEST METHOD
+ * ============================================================
+ */
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+
+    header(
+        "Location: ../../dashboard/landlord/add_house.php"
+    );
+
+    exit();
+}
+
+/**
+ * ============================================================
+ * COLLECT INPUT
+ * ============================================================
+ */
+
+$title = trim($_POST['title'] ?? '');
+
+$description = trim(
+    $_POST['description'] ?? ''
+);
+
+$price = trim(
+    $_POST['price'] ?? ''
+);
+
+$location = trim(
+    $_POST['location'] ?? ''
+);
+
+$bedrooms = trim(
+    $_POST['bedrooms'] ?? ''
+);
+
+$bathrooms = trim(
+    $_POST['bathrooms'] ?? ''
+);
+
+$houseType = trim(
+    $_POST['house_type'] ?? ''
+);
+
+$rating = (int) (
+    $_POST['rating'] ?? 0
+);
+
+$latitude = ($_POST['latitude'] ?? '') !== ''
+    ? (float) $_POST['latitude']
+    : null;
+
+$longitude = ($_POST['longitude'] ?? '') !== ''
+    ? (float) $_POST['longitude']
+    : null;
+
+$landlordId = (int) $landlordId;
+
+
+/**
+ * ============================================================
+ * BASIC VALIDATION
+ * ============================================================
+ */
+
+if (
+    $title === '' ||
+    $price === '' ||
+    $location === ''
+) {
+
+    header(
+        "Location: ../../dashboard/landlord/add_house.php?error="
+        . urlencode('Title, price and location are required.')
+    );
+
+    exit();
+}
+
+if (!is_numeric($price) || (float) $price <= 0) {
+
+    header(
+        "Location: ../../dashboard/landlord/add_house.php?error="
+        . urlencode('Invalid property price.')
+    );
+
+    exit();
+}
+
+$price = (float) $price;
+
+
+/**
+ * ============================================================
+ * NORMALIZE NUMERIC VALUES
+ * ============================================================
+ */
+
+$bedrooms = $bedrooms !== ''
+    ? (int) $bedrooms
+    : 1;
+
+$bathrooms = $bathrooms !== ''
+    ? (int) $bathrooms
+    : 1;
+
+
+/**
+ * ============================================================
+ * VALIDATE RATING
+ * ============================================================
+ */
+
+if ($rating < 1 || $rating > 5) {
+    $rating = 5;
+}
+
+
+/**
+ * ============================================================
+ * NORMALIZE MEDIA INPUT
+ *
+ * The API does not process media.
+ *
+ * House.php + MediaService.php handle:
+ *
+ * - MIME validation
+ * - Image processing
+ * - Video processing
+ * - File naming
+ * - Database media records
+ * - Transaction handling
+ * ============================================================
+ */
+
+$images = [];
+
+$video = null;
+
+
+/**
+ * ------------------------------------------------------------
+ * MULTIPLE IMAGES
+ *
+ * Expected frontend field:
+ *
+ * images[]
+ * ------------------------------------------------------------
+ */
+
+if (
+    isset($_FILES['images']) &&
+    is_array($_FILES['images']['name'] ?? null)
+) {
+
+    $imageFiles = $_FILES['images'];
+
+    foreach ($imageFiles['name'] as $index => $name) {
+
+        if (
+            !isset(
+                $imageFiles['tmp_name'][$index],
+                $imageFiles['error'][$index],
+                $imageFiles['size'][$index]
+            )
+        ) {
+            continue;
+        }
+
+        $images[] = [
+            'name' => $imageFiles['name'][$index],
+            'type' => $imageFiles['type'][$index] ?? '',
+            'tmp_name' => $imageFiles['tmp_name'][$index],
+            'error' => $imageFiles['error'][$index],
+            'size' => $imageFiles['size'][$index]
+        ];
+    }
+}
+
+
+/**
+ * ------------------------------------------------------------
+ * SINGLE VIDEO
+ *
+ * Expected frontend field:
+ *
+ * video
+ * ------------------------------------------------------------
+ */
+
+if (
+    isset($_FILES['video']) &&
+    is_array($_FILES['video']) &&
+    ($_FILES['video']['error'] ?? UPLOAD_ERR_NO_FILE)
+        !== UPLOAD_ERR_NO_FILE
+) {
+
+    $video = [
+        'name' => $_FILES['video']['name'] ?? '',
+        'type' => $_FILES['video']['type'] ?? '',
+        'tmp_name' => $_FILES['video']['tmp_name'] ?? '',
+        'error' => $_FILES['video']['error'] ?? UPLOAD_ERR_NO_FILE,
+        'size' => $_FILES['video']['size'] ?? 0
+    ];
+}
+
+
+/**
+ * ============================================================
+ * DEFENSIVE MEDIA RULE
+ *
+ * The backend refuses both media types even if somebody
+ * manually bypasses the frontend.
+ * ============================================================
+ */
+
+if (!empty($images) && $video !== null) {
+
+    header(
+        "Location: ../../dashboard/landlord/add_house.php?error="
+        . urlencode(
+            'A property can contain multiple images or one video, not both.'
+        )
+    );
+
+    exit();
+}
+
+
+/**
+ * ============================================================
+ * CREATE HOUSE
+ * ============================================================
+ */
+
+try {
+
+    $house = new House();
+
+    $houseId = $house->createHouse([
+
+        'title' => $title,
+
+        'description' => $description,
+
+        'price' => $price,
+
+        'location' => $location,
+
+        'bedrooms' => $bedrooms,
+
+        'bathrooms' => $bathrooms,
+
+        'house_type' => $houseType,
+
+        'rating' => $rating,
+
+        'latitude' => $latitude,
+
+        'longitude' => $longitude,
+
+        'landlord_id' => $landlordId,
+
+        'images' => $images,
+
+        'video' => $video
+
+    ]);
+
+
+    /**
+     * ========================================================
+     * SUCCESS
+     * ========================================================
+     */
+
+    if ($houseId > 0) {
+
+        header(
+            "Location: ../../dashboard/landlord/manage_houses.php?success="
+            . urlencode(
+                'Luxury property published successfully.'
+            )
+        );
+
         exit();
     }
 
-    imagedestroy($source);
-    imagedestroy($compressed);
-}
 
-/**
- * Create house
- */
-$house = new House();
+    /**
+     * ========================================================
+     * CREATION FAILED
+     * ========================================================
+     */
 
-$result = $house->createHouse([
-    'title' => $title,
-    'description' => $description,
-    'price' => $price,
-    'location' => $location,
-    'bedrooms' => $bedrooms,
-    'bathrooms' => $bathrooms,
-    'image' => $imageName,
-    'landlord_id' => $landlord_id,
-    'rating' => $rating
-]);
+    header(
+        "Location: ../../dashboard/landlord/add_house.php?error="
+        . urlencode(
+            'Failed to publish property.'
+        )
+    );
 
-/**
- * Response
- */
-if ($result) {
-    header("Location: ../../dashboard/landlord/manage_houses.php?success=House added successfully");
     exit();
-} else {
-    header("Location: ../../dashboard/landlord/add_house.php?error=Failed to add house");
+
+} catch (Throwable $e) {
+
+    error_log(
+        '[' . date('Y-m-d H:i:s') . '] '
+        . 'House creation error: '
+        . $e->getMessage()
+    );
+
+    header(
+        "Location: ../../dashboard/landlord/add_house.php?error="
+        . urlencode(
+            $e->getMessage()
+        )
+    );
+
     exit();
 }
-?>

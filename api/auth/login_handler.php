@@ -1,129 +1,213 @@
 <?php
-require_once '../../classes/User.php';
-require_once '../../config/session.php';
 
-/**
- * Only POST requests
- */
+declare(strict_types=1);
+
+require_once '../../config/db.php';
+require_once '../../config/session.php';
+require_once '../../classes/Auth.php';
+
+Session::start();
+
+
+/*
+|--------------------------------------------------------------------------
+| Only POST requests
+|--------------------------------------------------------------------------
+*/
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header("Location: ../../auth/login.php");
-    exit();
+    header('Location: ' . BASE_URL . '/login');
+    exit;
 }
 
-/**
- * Collect inputs
- */
+
+/*
+|--------------------------------------------------------------------------
+| Collect inputs
+|--------------------------------------------------------------------------
+*/
+
 $email = trim($_POST['email'] ?? '');
 $password = $_POST['password'] ?? '';
 
-/**
- * Validation
- */
-if (empty($email) || empty($password)) {
-    header("Location: ../../auth/login.php?error=" . urlencode("Email and password are required."));
-    exit();
+
+/*
+|--------------------------------------------------------------------------
+| Validate input
+|--------------------------------------------------------------------------
+*/
+
+if ($email === '' || $password === '') {
+    header(
+        'Location: ' . BASE_URL . '/login?error='
+        . urlencode('Email and password are required.')
+    );
+
+    exit;
 }
+
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    header("Location: ../../auth/login.php?error=" . urlencode("Invalid email format."));
-    exit();
-}
+    header(
+        'Location: ' . BASE_URL . '/login?error='
+        . urlencode('Invalid email format.')
+    );
 
-/**
- * User lookup
- */
-$userModel = new User();
-$user = $userModel->getUserByEmail($email);
-
-/**
- * User exists?
- */
-if (!$user) {
-    header("Location: ../../auth/login.php?error=" . urlencode("Empire member not found."));
-    exit();
-}
-
-/**
- * Verify password (Argon2id compatible)
- */
-if (!password_verify($password, $user['password'])) {
-    header("Location: ../../auth/login.php?error=" . urlencode("Incorrect empire credentials."));
-    exit();
+    exit;
 }
 
 
-/**
- * Account status protection
- */
+/*
+|--------------------------------------------------------------------------
+| Database
+|--------------------------------------------------------------------------
+*/
+
+$database = new Database();
+$pdo = $database->connect();
+
+
+/*
+|--------------------------------------------------------------------------
+| Authentication
+|--------------------------------------------------------------------------
+*/
+
+$auth = new Auth($pdo);
+
+$user = $auth->login(
+    $email,
+    $password
+);
+
+
+/*
+|--------------------------------------------------------------------------
+| Authentication failed
+|--------------------------------------------------------------------------
+*/
+
+if ($user === null) {
+    header(
+        'Location: ' . BASE_URL . '/login?error='
+        . urlencode('Incorrect empire credentials.')
+    );
+
+    exit;
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Account status
+|--------------------------------------------------------------------------
+*/
+
 if (isset($user['status'])) {
 
     if ($user['status'] === 'suspended') {
 
         header(
-            "Location: ../../auth/login.php?error="
-            . urlencode("Kindly contact Empire support for assistance.")
+            'Location: ' . BASE_URL . '/login?error='
+            . urlencode(
+                'Kindly contact Empire support for assistance.'
+            )
         );
 
-        exit();
+        exit;
     }
 
     if ($user['status'] === 'blocked') {
 
         header(
-            "Location: ../../auth/login.php?error="
-            . urlencode("Account blocked from platform access.")
+            'Location: ' . BASE_URL . '/login?error='
+            . urlencode(
+                'Account blocked from platform access.'
+            )
         );
 
-        exit();
+        exit;
     }
 
     if ($user['status'] !== 'active') {
 
         header(
-            "Location: ../../auth/login.php?error="
-            . urlencode("Account inactive.")
+            'Location: ' . BASE_URL . '/login?error='
+            . urlencode(
+                'Account inactive.'
+            )
         );
 
-        exit();
+        exit;
     }
 }
 
-/**
- * Secure session
- */
-session_regenerate_id(true);
 
-$_SESSION['user_id'] = $user['id'];
-$_SESSION['full_name'] = $user['full_name'];
-$_SESSION['email'] = $user['email'];
-$_SESSION['role'] = $user['role'];
-$_SESSION['last_activity'] = time();
+/*
+|--------------------------------------------------------------------------
+| Regenerate session after authentication
+|--------------------------------------------------------------------------
+*/
 
-/**
- * Role-based redirect
- */
+Session::regenerateAfterLogin();
+
+
+/*
+|--------------------------------------------------------------------------
+| Store authenticated user
+|--------------------------------------------------------------------------
+*/
+
+$_SESSION['user'] = [
+    'id'        => $user['id'],
+    'full_name' => $user['full_name'],
+    'email'     => $user['email'],
+    'role'      => $user['role'],
+];
+
+
+/*
+|--------------------------------------------------------------------------
+| Role-based redirect
+|--------------------------------------------------------------------------
+*/
+
 switch ($user['role']) {
 
     case 'tenant':
-        header("Location: ../../dashboard/tenant/dashboard.php");
+        header(
+            'Location: ' . BASE_URL . '/tenant'
+        );
         break;
 
     case 'landlord':
-        header("Location: ../../dashboard/landlord/dashboard.php");
+        header(
+            'Location: ' . BASE_URL . '/landlord'
+        );
         break;
 
     case 'driver':
-        header("Location: ../../dashboard/driver/dashboard.php");
+        header(
+            'Location: ' . BASE_URL . '/driver'
+        );
         break;
 
     case 'admin':
-        header("Location: ../../dashboard/admin/dashboard.php");
+        header(
+            'Location: ' . BASE_URL . '/admin'
+        );
         break;
 
     default:
-        header("Location: ../../auth/login.php?error=" . urlencode("Unknown empire role."));
+
+        Session::destroy();
+
+        header(
+            'Location: ' . BASE_URL . '/login?error='
+            . urlencode('Unknown empire role.')
+        );
+
         break;
 }
 
-exit();
-?>
+exit;

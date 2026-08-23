@@ -49,5 +49,5 @@ $stmt->execute([$status, $id]);
 |--------------------------------------------------------------------------
 */
 
-header("Location: ../../dashboard/admin/emergency.php?success=updated");
+header('Location: ' . BASE_URL . '/admin/emergency?success=updated');
 exit();

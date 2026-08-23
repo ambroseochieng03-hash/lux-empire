@@ -1,17 +1,126 @@
-Options -Indexes
-
-<FilesMatch "\.(env|log|sql|md)$">
-    Order allow,deny
-    Deny from all
-</FilesMatch>
-
 RewriteEngine On
 
-# Prevent direct access to config
-RewriteRule ^config/ - [F,L]
+# ================================================================
+# LUX EMPIRE
+# PUBLIC URL ROUTING
+#
+# Browser:
+#   /luxempire/login
+#   /luxempire/register
+#   /luxempire/manage-houses
+#
+# Physical PHP files remain unchanged on disk.
+# ================================================================
 
-# Prevent direct access to classes
-RewriteRule ^classes/ - [F,L]
 
-# Prevent direct access to includes
-RewriteRule ^includes/ - [F,L]
+# ================================================================
+# BLOCK PHYSICAL PROJECT URL
+#
+# The real directory is /srv/http/house_truck_platform
+# but the browser must NEVER use:
+#
+#   /house_truck_platform/...
+#
+# Only /luxempire/... is public.
+# ================================================================
+
+RewriteCond %{REQUEST_URI} ^/house_truck_platform(?:/|$) [NC]
+RewriteRule ^ - [F,L]
+
+
+# ================================================================
+# AUTHENTICATION ROUTES
+# ================================================================
+
+RewriteRule ^login/?$ auth/login.php [END]
+RewriteRule ^register/?$ auth/register.php [END]
+RewriteRule ^logout/?$ auth/logout.php [END]
+
+RewriteRule ^forgot-password/?$ auth/forgot_password.php [END]
+RewriteRule ^reset-password/?$ auth/reset_password.php [END]
+
+RewriteRule ^login-handler/?$ api/auth/login_handler.php [END]
+RewriteRule ^register-handler/?$ api/auth/register_handler.php [END]
+RewriteRule ^logout-handler/?$ api/auth/logout_handler.php [END]
+
+RewriteRule ^forgot-handler/?$ api/auth/forgot_handler.php [END]
+RewriteRule ^reset-handler/?$ api/auth/reset_handler.php [END]
+
+
+RewriteRule ^tenant/messages/?$ dashboard/tenant/messages.php [END]
+RewriteRule ^landlord/messages/?$ dashboard/landlord/messages.php [END]
+RewriteRule ^driver/messages/?$ dashboard/driver/messages.php [END]
+
+# ================================================================
+# ROLE DASHBOARD ROUTES
+# ================================================================
+
+RewriteRule ^tenant/?$ dashboard/tenant/dashboard.php [END]
+RewriteRule ^landlord/?$ dashboard/landlord/dashboard.php [END]
+RewriteRule ^driver/?$ dashboard/driver/dashboard.php [END]
+RewriteRule ^admin/?$ dashboard/admin/dashboard.php [END]
+
+
+# ================================================================
+# LANDLORD / PROPERTY ROUTES
+#
+# Public URLs do NOT expose the role or PHP filename.
+# ================================================================
+
+RewriteRule ^manage-houses/?$ dashboard/landlord/manage_houses.php [END]
+RewriteRule ^add-property/?$ dashboard/landlord/add_house.php [END]
+RewriteRule ^edit-property/?$ dashboard/landlord/edit_house.php [END]
+RewriteRule ^booking-requests/?$ dashboard/landlord/booking_requests.php [END]
+
+
+# ================================================================
+# TENANT ROUTES
+# ================================================================
+
+RewriteRule ^tenant/search-houses/?$ dashboard/tenant/search_houses.php [END]
+RewriteRule ^tenant/my-bookings/?$ dashboard/tenant/my_bookings.php [END]
+RewriteRule ^tenant/request-truck/?$ dashboard/tenant/request_truck.php [END]
+RewriteRule ^tenant/track-driver/?$ dashboard/tenant/track_driver.php [END]
+RewriteRule ^tenant/edit-truck-request/?$ dashboard/tenant/edit_truck_request.php [END]
+RewriteRule ^tenant/view-house/?$ dashboard/tenant/view_house.php [END]
+
+
+# ================================================================
+# DRIVER ROUTES
+# ================================================================
+
+RewriteRule ^driver/available-requests/?$ dashboard/driver/available_requests.php [END]
+RewriteRule ^driver/active-trip/?$ dashboard/driver/active_trip.php [END]
+RewriteRule ^driver/location-tracker/?$ dashboard/driver/location_tracker.php [END]
+
+
+# ================================================================
+# ADMIN ROUTES
+# ================================================================
+
+RewriteRule ^admin/users/?$ dashboard/admin/users.php [END]
+RewriteRule ^admin/houses/?$ dashboard/admin/houses.php [END]
+RewriteRule ^admin/truck-requests/?$ dashboard/admin/truck_requests.php [END]
+RewriteRule ^admin/reports/?$ dashboard/admin/reports.php [END]
+RewriteRule ^admin/emergency/?$ dashboard/admin/emergency.php [END]
+
+
+# ================================================================
+# SECURITY
+# ================================================================
+
+# Block sensitive files
+RewriteRule \.(env|log|sql|md)$ - [F,END]
+
+# Prevent direct access to application internals
+RewriteRule ^config(?:/|$) - [F,END]
+RewriteRule ^classes(?:/|$) - [F,END]
+RewriteRule ^includes(?:/|$) - [F,END]
+
+
+# ================================================================
+# EXISTING PHP FILES
+#
+# These remain physically accessible for now so we can migrate
+# internal links/redirects safely. We will tighten this later.
+# ================================================================

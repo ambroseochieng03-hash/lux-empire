@@ -1,4 +1,6 @@
 <?php
+
+require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
 requireRoleAccess('tenant');
 
@@ -21,6 +23,8 @@ require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
 ?>
+
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
 
 <style>
     .booking-lanlord-details{
@@ -59,7 +63,7 @@ require_once '../../includes/sidebar.php';
                 color:var(--gold);
                 margin-bottom:10px;
             ">
-                🏛 Discover Luxury Living
+                Discover Luxury Living
             </h1>
 
             <p style="
@@ -107,7 +111,7 @@ require_once '../../includes/sidebar.php';
                             padding:16px 28px;
                             border-radius:16px;
                         ">
-                    🔍 Search Empire
+                    Search Empire
                 </button>
 
             </form>
@@ -125,42 +129,104 @@ require_once '../../includes/sidebar.php';
 
                 <?php foreach ($houses as $house): ?>
 
+                    <?php
+                        /*
+                         * Pull ALL media for this house via the existing
+                         * House::getHouseMedia() method (no LIMIT 1),
+                         * then split image vs video using the same
+                         * ".mp4" rule House::hasVideo()/hasImages()
+                         * already use internally.
+                         */
+                        $mediaItems = $houseModel->getHouseMedia((int) $house['id']);
+
+                        $imageUrls = [];
+                        $videoUrl  = null;
+
+                        foreach ($mediaItems as $mediaItem) {
+
+                            $path = BASE_URL . '/assets/uploads/house_images/' . $mediaItem['image_path'];
+
+                            if (preg_match('/\.mp4$/i', $mediaItem['image_path'])) {
+                                $videoUrl = $path;
+                            } else {
+                                $imageUrls[] = $path;
+                            }
+                        }
+                    ?>
+
                     <div class="lux-card tenant-card" style="
                         overflow:hidden;
                         border-radius:24px;
                         transition:0.4s;
                     ">
 
-                        <!-- IMAGE -->
-                        <div class="tenant-image" style="
-                            height:250px;
-                            overflow:hidden;
-                            position:relative;
-                        ">
+                        <!-- MEDIA -->
+                        <div class="tenant-image" style="position:relative;">
 
-                            <?php if (!empty($house['image'])): ?>
+                            <?php if ($videoUrl !== null): ?>
 
-                                <img src="../../assets/uploads/house_images/<?php echo htmlspecialchars($house['image']); ?>"
-                                     alt="Luxury House"
-                                     style="
-                                        width:100%;
-                                        height:100%;
-                                        object-fit:cover;
-                                     ">
+                                <div class="media-frame"
+                                     data-video="<?php echo htmlspecialchars($videoUrl); ?>"
+                                     data-caption="<?php echo htmlspecialchars($house['title']); ?>">
+
+                                    <video class="media-video"
+                                           src="<?php echo htmlspecialchars($videoUrl); ?>"
+                                           controls
+                                           preload="metadata"
+                                           playsinline>
+                                    </video>
+
+                                    <button type="button" class="media-enlarge-btn" aria-label="Enlarge video">⤢</button>
+
+                                </div>
+
+                            <?php elseif (!empty($imageUrls)): ?>
+
+                                <?php $mediaImagesJson = json_encode($imageUrls); ?>
+
+                                <div class="media-frame"
+                                     data-images='<?php echo htmlspecialchars($mediaImagesJson, ENT_QUOTES); ?>'
+                                     data-caption="<?php echo htmlspecialchars($house['title']); ?>"
+                                     data-current-index="0">
+
+                                    <div class="media-carousel">
+
+                                        <div class="media-carousel-track">
+
+                                            <?php foreach ($imageUrls as $index => $url): ?>
+
+                                                <img class="media-slide<?php echo $index === 0 ? ' is-active' : ''; ?>"
+                                                     src="<?php echo htmlspecialchars($url); ?>"
+                                                     data-index="<?php echo $index; ?>"
+                                                     alt="Luxury House <?php echo $index + 1; ?>">
+
+                                            <?php endforeach; ?>
+
+                                        </div>
+
+                                    </div>
+
+                                    <?php if (count($imageUrls) > 1): ?>
+
+                                        <button type="button" class="media-carousel-btn media-carousel-prev" aria-label="Previous image">‹</button>
+                                        <button type="button" class="media-carousel-btn media-carousel-next" aria-label="Next image">›</button>
+
+                                        <div class="media-carousel-dots">
+                                            <?php foreach ($imageUrls as $index => $url): ?>
+                                                <span class="media-dot<?php echo $index === 0 ? ' is-active' : ''; ?>" data-index="<?php echo $index; ?>"></span>
+                                            <?php endforeach; ?>
+                                        </div>
+
+                                    <?php endif; ?>
+
+                                    <button type="button" class="media-enlarge-btn" aria-label="Enlarge image">⤢</button>
+
+                                </div>
 
                             <?php else: ?>
 
-                                <div style="
-                                    width:100%;
-                                    height:100%;
-                                    display:flex;
-                                    align-items:center;
-                                    justify-content:center;
-                                    background:rgba(255,255,255,0.05);
-                                    color:var(--gold);
-                                    font-size:2rem;
-                                ">
-                                    🏛
+                                <div class="tenant-image-placeholder">
+                                    No Image
                                 </div>
 
                             <?php endif; ?>
@@ -176,6 +242,8 @@ require_once '../../includes/sidebar.php';
                                 color:var(--gold);
                                 font-weight:bold;
                                 backdrop-filter:blur(10px);
+                                pointer-events:none;
+                                z-index:3;
                             ">
                                 KES <?php echo number_format($house['price']); ?>
                             </div>
@@ -284,7 +352,7 @@ require_once '../../includes/sidebar.php';
                                 flex-wrap:wrap;
                             ">
 
-                                <a href="view_house.php?id=<?php echo $house['id']; ?>"
+                                <a href="<?php echo BASE_URL; ?>/dashboard/tenant/view_house.php?id=<?php echo $house['id']; ?>"
                                    class="lux-btn"
                                    style="
                                         flex:1;
@@ -294,7 +362,7 @@ require_once '../../includes/sidebar.php';
                                     View Details
                                 </a>
 
-                                <a href="../../api/houses/book_house.php?id=<?php echo $house['id']; ?>"
+                                <a href="<?php echo BASE_URL; ?>/api/houses/book_house.php?id=<?php echo $house['id']; ?>"
                                    style="
                                         flex:1;
                                         text-align:center;
@@ -307,6 +375,26 @@ require_once '../../includes/sidebar.php';
                                    ">
                                     Book Now
                                 </a>
+
+                                <button type="button"
+                                        class="lux-btn chat-starter-btn"
+                                        data-other-user-id="<?php echo (int) $house['landlord_id']; ?>"
+                                        data-other-role="landlord"
+                                        data-house-id="<?php echo (int) $house['id']; ?>"
+                                        data-other-name="<?php echo htmlspecialchars($house['landlord_name']); ?>"
+                                        style="
+                                            flex:1;
+                                            text-align:center;
+                                            padding:14px;
+                                            border-radius:14px;
+                                            background:rgba(255,255,255,0.08);
+                                            color:var(--gold);
+                                            border:1px solid var(--gold);
+                                            font-weight:bold;
+                                            cursor:pointer;
+                                        ">
+                                    <i class="fa-solid fa-comment-dots"></i> Message Landlord
+                                </button>
 
                             </div>
 
@@ -349,5 +437,23 @@ require_once '../../includes/sidebar.php';
     </main>
 
 </div>
+
+<!-- MEDIA LIGHTBOX (shared, single instance) -->
+<div class="media-lightbox" id="mediaLightbox" aria-hidden="true">
+    <div class="media-lightbox-overlay" data-media-close></div>
+    <div class="media-lightbox-content">
+        <button type="button" class="media-lightbox-close" data-media-close aria-label="Close">×</button>
+        <button type="button" class="media-lightbox-nav media-lightbox-prev" aria-label="Previous image">‹</button>
+        <div class="media-lightbox-stage">
+            <img class="media-lightbox-image" src="" alt="">
+        </div>
+        <button type="button" class="media-lightbox-nav media-lightbox-next" aria-label="Next image">›</button>
+        <div class="media-lightbox-counter"></div>
+    </div>
+</div>
+
+<script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
+
+<?php require_once '../../includes/chat_starter_modal.php'; ?>
 
 <?php require_once '../../includes/footer.php'; ?>

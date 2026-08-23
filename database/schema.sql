@@ -222,6 +222,49 @@ CREATE TABLE tenant_locations (
         ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Run against house_truck_platform
+
+CREATE TABLE conversations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id INT NOT NULL,
+    other_user_id INT NOT NULL,
+    other_role ENUM('landlord','driver') NOT NULL,
+    house_id INT NULL,
+    truck_request_id INT NULL,
+    last_message_at TIMESTAMP NULL,
+    tenant_last_read_at TIMESTAMP NULL,
+    other_last_read_at TIMESTAMP NULL,
+    ai_notice_sent TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_pair (tenant_id, other_user_id),
+    FOREIGN KEY (tenant_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (other_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE SET NULL,
+    FOREIGN KEY (truck_request_id) REFERENCES truck_requests(id) ON DELETE SET NULL
+);
+
+CREATE TABLE messages (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    conversation_id INT NOT NULL,
+    sender_id INT NULL,
+    sender_type ENUM('user','ai') NOT NULL DEFAULT 'user',
+    message TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE chat_typing (
+    conversation_id INT NOT NULL,
+    user_id INT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (conversation_id, user_id),
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+ALTER TABLE users ADD COLUMN last_seen_at TIMESTAMP NULL;
+
 ALTER TABLE truck_requests
 ADD updated_at TIMESTAMP
 DEFAULT CURRENT_TIMESTAMP

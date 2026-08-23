@@ -2,22 +2,32 @@
 
 declare(strict_types=1);
 
+ini_set('display_errors', '0');
+error_reporting(E_ALL);
+
 header('Content-Type: application/json');
 
-
 require_once '../../config/session.php';
-require_once '../../config/db.php';
-
-$db = new Database();
-$pdo = $db->connect();
+require_once '../../config/csrf.php';
+require_once '../../classes/House.php';
 
 try {
 
-    // =====================================
-    // AUTH CHECK
-    // =====================================
+    /*
+     * ============================================================
+     * SESSION
+     * ============================================================
+     */
 
-    if (!isset($_SESSION['user_id'])) {
+    Session::start();
+
+    /*
+     * ============================================================
+     * AUTHENTICATION
+     * ============================================================
+     */
+
+    if (!Session::isAuthenticated()) {
 
         http_response_code(401);
 
@@ -28,6 +38,12 @@ try {
 
         exit;
     }
+
+    /*
+     * ============================================================
+     * REQUEST METHOD
+     * ============================================================
+     */
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
@@ -41,30 +57,116 @@ try {
         exit;
     }
 
-    // =====================================
-    // INPUTS
-    // =====================================
+    /*
+     * ============================================================
+     * CSRF
+     * ============================================================
+     */
 
-    $houseId = (int) ($_POST['house_id'] ?? 0);
+    if (
+        !Csrf::validate(
+            $_POST['csrf_token'] ?? null
+        )
+    ) {
 
-    $title = trim($_POST['title'] ?? '');
-    $description = trim($_POST['description'] ?? '');
-    $price = (float) ($_POST['price'] ?? 0);
+        http_response_code(403);
 
-    $location = trim($_POST['location'] ?? '');
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid or expired CSRF token.'
+        ]);
 
-    $bedrooms = (int) ($_POST['bedrooms'] ?? 1);
-    $bathrooms = (int) ($_POST['bathrooms'] ?? 1);
+        exit;
+    }
 
-    $houseType = trim($_POST['house_type'] ?? '');
-    $rating = (int) ($_POST['rating'] ?? 0);
+    /*
+     * ============================================================
+     * CURRENT USER
+     * ============================================================
+     */
 
-    $latitude = $_POST['latitude'] ?? null;
-    $longitude = $_POST['longitude'] ?? null;
+    $user = Session::user();
 
-    // =====================================
-    // VALIDATION
-    // =====================================
+    if ($user === null) {
+
+        http_response_code(401);
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Authentication required.'
+        ]);
+
+        exit;
+    }
+
+    $currentUser = (int) ($user['id'] ?? 0);
+    $role = $user['role'] ?? '';
+
+    if ($currentUser <= 0) {
+
+        http_response_code(401);
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid authenticated user.'
+        ]);
+
+        exit;
+    }
+
+    /*
+     * ============================================================
+     * INPUT
+     * ============================================================
+     */
+
+    $houseId = (int) (
+        $_POST['house_id'] ?? 0
+    );
+
+    $title = trim(
+        $_POST['title'] ?? ''
+    );
+
+    $description = trim(
+        $_POST['description'] ?? ''
+    );
+
+    $priceInput = trim(
+        $_POST['price'] ?? ''
+    );
+
+    $location = trim(
+        $_POST['location'] ?? ''
+    );
+
+    $bedrooms = (int) (
+        $_POST['bedrooms'] ?? 1
+    );
+
+    $bathrooms = (int) (
+        $_POST['bathrooms'] ?? 1
+    );
+
+    $houseType = trim(
+        $_POST['house_type'] ?? ''
+    );
+
+    $rating = (int) (
+        $_POST['rating'] ?? 5
+    );
+
+    $latitudeInput =
+        trim($_POST['latitude'] ?? '');
+
+    $longitudeInput =
+        trim($_POST['longitude'] ?? '');
+
+    /*
+     * ============================================================
+     * BASIC VALIDATION
+     * ============================================================
+     */
 
     if ($houseId <= 0) {
 
@@ -72,238 +174,257 @@ try {
 
         echo json_encode([
             'success' => false,
-            'message' => 'Invalid house ID.'
+            'message' => 'Invalid property ID.'
+        ]);
+
+        exit;
+    }
+
+    if ($title === '') {
+
+        http_response_code(400);
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Property title is required.'
         ]);
 
         exit;
     }
 
     if (
-        empty($title) ||
-        empty($location) ||
-        $price <= 0
+        $priceInput === '' ||
+        !is_numeric($priceInput) ||
+        (float) $priceInput <= 0
     ) {
 
         http_response_code(400);
 
         echo json_encode([
             'success' => false,
-            'message' => 'Required fields missing.'
+            'message' => 'Invalid property price.'
         ]);
 
         exit;
     }
 
-    // =====================================
-    // VERIFY OWNERSHIP
-    // =====================================
+    if ($location === '') {
 
-    $stmt = $pdo->prepare("
-        SELECT landlord_id
-        FROM houses
-        WHERE id = ?
-        LIMIT 1
-    ");
-
-    $stmt->execute([$houseId]);
-
-    $house = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$house) {
-
-        http_response_code(404);
+        http_response_code(400);
 
         echo json_encode([
             'success' => false,
-            'message' => 'House not found.'
+            'message' => 'Property location is required.'
         ]);
 
         exit;
     }
 
-    // =====================================
-    // CURRENT USER
-    // =====================================
+    if ($bedrooms < 1 || $bathrooms < 1) {
 
-    $currentUser = isset($_SESSION['user_id'])
-    ? (int) $_SESSION['user_id']
-    : (
-        isset($_SESSION['id'])
-            ? (int) $_SESSION['id']
-            : 0
-    );
-
-    $role = $_SESSION['role'] ?? '';
-
-    if ($currentUser === 0) {
+        http_response_code(400);
 
         echo json_encode([
             'success' => false,
-            'message' => 'Session user_id missing.',
-            'session' => $_SESSION
+            'message' => 'Bedrooms and bathrooms must be at least 1.'
         ]);
 
         exit;
     }
 
-    $isOwner =
-        ((int)$house['landlord_id'] === $currentUser);
+    if ($rating < 1 || $rating > 5) {
 
-    $isAdmin =
-        ($role === 'admin');
-
-    if (!$isOwner && !$isAdmin) {
-
-        http_response_code(403);
+        http_response_code(400);
 
         echo json_encode([
             'success' => false,
-            'message' => 'Permission denied.'
+            'message' => 'Rating must be between 1 and 5.'
         ]);
 
         exit;
     }
 
+    $price = (float) $priceInput;
 
-    // =====================================
-    // HANDLE IMAGE UPLOAD
-    // =====================================
+    $latitude =
+        $latitudeInput !== ''
+        ? (float) $latitudeInput
+        : null;
 
-    if (
-        isset($_FILES['image']) &&
-        $_FILES['image']['error'] === 0
-    ) {
+    $longitude =
+        $longitudeInput !== ''
+        ? (float) $longitudeInput
+        : null;
 
-        $uploadDir =
-            '../../assets/uploads/house_images/';
+    /*
+     * ============================================================
+     * HOUSE + AUTHORIZATION
+     * ============================================================
+     */
 
-        // CREATE FOLDER IF MISSING
-        if (!is_dir($uploadDir)) {
+    $house = new House();
 
-            mkdir($uploadDir, 0777, true);
+    if ($role !== 'admin') {
+
+        if ($role !== 'landlord') {
+
+            http_response_code(403);
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'Permission denied.'
+            ]);
+
+            exit;
         }
 
-        $extension = pathinfo(
-            $_FILES['image']['name'],
-            PATHINFO_EXTENSION
-        );
-
-        $newImageName =
-            'house_' .
-            time() .
-            '_' .
-            rand(1000,9999) .
-            '.' .
-            $extension;
-
-        $targetPath =
-            $uploadDir . $newImageName;
-
-        // MOVE FILE
         if (
-            move_uploaded_file(
-                $_FILES['image']['tmp_name'],
-                $targetPath
+            !$house->belongsToLandlord(
+                $houseId,
+                $currentUser
             )
         ) {
 
-            // CHECK IF IMAGE EXISTS
-            $checkImage = $pdo->prepare("
-                SELECT id
-                FROM house_images
-                WHERE house_id = ?
-                LIMIT 1
-            ");
+            http_response_code(403);
 
-            $checkImage->execute([$houseId]);
+            echo json_encode([
+                'success' => false,
+                'message' => 'You do not have permission to edit this property.'
+            ]);
 
-            $existingImage =
-                $checkImage->fetch(PDO::FETCH_ASSOC);
+            exit;
+        }
+    }
 
-            // UPDATE EXISTING IMAGE
-            if ($existingImage) {
+    /*
+     * ============================================================
+     * MEDIA CONTRACT
+     * ============================================================
+     *
+     * images[] OR video.
+     */
 
-                $updateImage = $pdo->prepare("
-                    UPDATE house_images
-                    SET image_path = ?
-                    WHERE house_id = ?
-                ");
+    $files = $_FILES;
 
-                $updateImage->execute([
-                    $newImageName,
-                    $houseId
-                ]);
+    $hasImages = false;
 
-            }
+    if (
+        isset($files['images']) &&
+        is_array($files['images']['name'] ?? null)
+    ) {
 
-            // INSERT NEW IMAGE
-            else {
+        foreach (
+            $files['images']['error']
+            as $error
+        ) {
 
-                $insertImage = $pdo->prepare("
-                    INSERT INTO house_images
-                    (
-                        house_id,
-                        image_path
-                    )
-                    VALUES (?, ?)
-                ");
-
-                $insertImage->execute([
-                    $houseId,
-                    $newImageName
-                ]);
+            if ($error !== UPLOAD_ERR_NO_FILE) {
+                $hasImages = true;
+                break;
             }
         }
     }
 
+    $hasVideo =
+        isset($files['video']) &&
+        is_array($files['video']) &&
+        (
+            $files['video']['error']
+            ?? UPLOAD_ERR_NO_FILE
+        ) !== UPLOAD_ERR_NO_FILE;
 
-    // =====================================
-    // UPDATE HOUSE
-    // =====================================
+    if ($hasImages && $hasVideo) {
 
-    $update = $pdo->prepare("
-        UPDATE houses
-        SET
-            title = ?,
-            description = ?,
-            price = ?,
-            location = ?,
-            bedrooms = ?,
-            bathrooms = ?,
-            house_type = ?,
-            rating = ?,
-            latitude = ?,
-            longitude = ?,
-            updated_at = NOW()
-        WHERE id = ?
-    ");
+        http_response_code(400);
 
-    $update->execute([
-        $title,
-        $description,
-        $price,
-        $location,
-        $bedrooms,
-        $bathrooms,
-        $houseType,
-        $rating,
-        $latitude,
-        $longitude,
-        $houseId
-    ]);
+        echo json_encode([
+            'success' => false,
+            'message' => 'A property can contain multiple images or one video, not both.'
+        ]);
+
+        exit;
+    }
+
+    /*
+     * ============================================================
+     * UPDATE
+     * ============================================================
+     */
+
+    $updated = $house->updateHouse(
+        $houseId,
+        [
+            'title' => $title,
+            'description' => $description,
+            'price' => $price,
+            'location' => $location,
+            'bedrooms' => $bedrooms,
+            'bathrooms' => $bathrooms,
+            'house_type' => $houseType,
+            'rating' => $rating,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'files' => $files
+        ]
+    );
+
+    if (!$updated) {
+
+        http_response_code(400);
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Failed to update property.'
+        ]);
+
+        exit;
+    }
+
+    /*
+     * ============================================================
+     * SUCCESS
+     * ============================================================
+     */
 
     echo json_encode([
         'success' => true,
         'message' => 'Property updated successfully.'
     ]);
 
-} catch (PDOException $e) {
+} catch (InvalidArgumentException $e) {
+
+    http_response_code(400);
+
+    echo json_encode([
+        'success' => false,
+        'message' => $e->getMessage()
+    ]);
+
+} catch (RuntimeException $e) {
+
+    error_log(
+        '[LUX EMPIRE] Update House Error: '
+        . $e->getMessage()
+    );
+
+    http_response_code(400);
+
+    echo json_encode([
+        'success' => false,
+        'message' => $e->getMessage()
+    ]);
+
+} catch (Throwable $e) {
+
+    error_log(
+        '[LUX EMPIRE] Unexpected Update House Error: '
+        . $e->getMessage()
+    );
 
     http_response_code(500);
 
     echo json_encode([
         'success' => false,
-        'message' => 'Database error.',
-        'error' => $e->getMessage()
+        'message' => 'An unexpected error occurred.'
     ]);
 }

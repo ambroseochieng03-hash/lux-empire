@@ -1,5 +1,6 @@
 <?php
 
+require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
 requireRoleAccess('tenant');
 

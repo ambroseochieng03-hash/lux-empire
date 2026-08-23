@@ -1,5 +1,5 @@
 <?php
-
+require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
 requireRoleAccess('admin');
 
@@ -189,40 +189,45 @@ $users = $stmt->fetchAll();
                         flex-wrap:wrap;
                     ">
 
-                        <!-- SUSPEND -->
-                        <form action="../../api/admin/suspend_user.php" method="POST">
-                            <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
-                            <button style="
-                                background:#ff4d4d;
-                                color:white;
-                                border:none;
-                                padding:8px 12px;
-                                border-radius:10px;
-                                cursor:pointer;
-                                font-size:0.85rem;
-                            ">
-                                Suspend
-                            </button>
-                        </form>
+                        <!-- SUSPEND / ACTIVATE TOGGLE -->
+                        <?php if ($user['status'] === 'active'): ?>
 
-                        <!-- ACTIVATE -->
-                        <form action="../../api/admin/activate_user.php" method="POST">
-                            <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
-                            <button style="
-                                background:#00cc66;
-                                color:white;
-                                border:none;
-                                padding:8px 12px;
-                                border-radius:10px;
-                                cursor:pointer;
-                                font-size:0.85rem;
-                            ">
-                                Activate
-                            </button>
-                        </form>
+                            <form action="<?php echo BASE_URL; ?>/api/admin/suspend_user.php" method="POST">
+                                <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
+                                <button style="
+                                    background:#ff4d4d;
+                                    color:white;
+                                    border:none;
+                                    padding:8px 12px;
+                                    border-radius:10px;
+                                    cursor:pointer;
+                                    font-size:0.85rem;
+                                ">
+                                    Suspend
+                                </button>
+                            </form>
+
+                        <?php else: ?>
+
+                            <form action="<?php echo BASE_URL; ?>/api/admin/activate_user.php" method="POST">
+                                <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
+                                <button style="
+                                    background:#00cc66;
+                                    color:white;
+                                    border:none;
+                                    padding:8px 12px;
+                                    border-radius:10px;
+                                    cursor:pointer;
+                                    font-size:0.85rem;
+                                ">
+                                    Activate
+                                </button>
+                            </form>
+
+                        <?php endif; ?>
 
                         <!-- DELETE -->
-                        <form action="../../api/admin/delete_user.php"
+                        <form action="<?php echo BASE_URL; ?>/api/admin/delete_user.php"
                             method="POST"
                             onsubmit="return confirm('Delete this user permanently?');">
 

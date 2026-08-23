@@ -1,0 +1,396 @@
+/* ==========================================================
+   PROPERTY MEDIA — card carousel, in-card video, + enlarge/lightbox
+   Extracted from inline <style> blocks in:
+     - dashboard/landlord/manage_houses.php (.house-image)
+     - dashboard/tenant/search_houses.php   (.tenant-image)
+   Colors reused as-is from the existing app: var(--gold), var(--gray),
+   plus the same rgba(255,255,255,*) / rgba(0,0,0,*) tones already
+   used throughout both files. No new colors introduced.
+   ========================================================== */
+
+/* ---------- Card media area (landlord: .house-image) ---------- */
+
+.house-image{
+    height:240px;
+    overflow:hidden;
+    background:rgba(255,255,255,0.04);
+    position:relative;
+}
+
+.house-placeholder{
+    width:100%;
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--gold);
+    font-size:1rem;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    opacity:0.6;
+}
+
+/* ---------- Card media area (tenant: .tenant-image) ---------- */
+
+.tenant-image{
+    height:250px;
+    overflow:hidden;
+}
+
+.tenant-image-placeholder{
+    width:100%;
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(255,255,255,0.05);
+    color:var(--gold);
+    font-size:1rem;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    opacity:0.6;
+}
+
+/* ==========================================================
+   MEDIA FRAME — wraps either the image carousel or the video
+   inside a card's fixed-height image area.
+   ========================================================== */
+
+.media-frame{
+    position:relative;
+    width:100%;
+    height:100%;
+}
+
+/* ---------- Image carousel (stacked slides, one active) ---------- */
+
+.media-carousel{
+    position:relative;
+    width:100%;
+    height:100%;
+    overflow:hidden;
+}
+
+.media-carousel-track{
+    display:flex;
+    width:100%;
+    height:100%;
+    transition:transform 0.5s ease;
+    touch-action:pan-y;
+}
+
+.media-slide{
+    flex:0 0 100%;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center;
+    display:block;
+}
+
+.media-carousel-btn{
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    background:rgba(0,0,0,0.5);
+    border:1px solid rgba(255,255,255,0.25);
+    color:white;
+    width:34px;
+    height:34px;
+    border-radius:50%;
+    font-size:1.3rem;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:0.3s;
+    z-index:2;
+}
+
+.media-carousel-btn:hover{
+    border-color:var(--gold);
+    color:var(--gold);
+}
+
+.media-carousel-prev{
+    left:10px;
+}
+
+.media-carousel-next{
+    right:10px;
+}
+
+.media-carousel-dots{
+    position:absolute;
+    bottom:12px;
+    left:0;
+    right:0;
+    display:flex;
+    justify-content:center;
+    gap:6px;
+    z-index:2;
+}
+
+.media-dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.4);
+    cursor:pointer;
+    transition:0.3s;
+}
+
+.media-dot.is-active{
+    background:var(--gold);
+    transform:scale(1.2);
+}
+
+/* ---------- In-card video ---------- */
+
+.media-video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    object-position:center;
+    display:block;
+    background:black;
+}
+
+/* ---------- Enlarge affordance (shared by images + video) ---------- */
+
+.media-enlarge-btn{
+    position:absolute;
+    top:12px;
+    left:12px;
+    background:rgba(0,0,0,0.55);
+    border:1px solid rgba(255,255,255,0.25);
+    color:white;
+    width:34px;
+    height:34px;
+    border-radius:50%;
+    font-size:1rem;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:0.3s;
+    z-index:2;
+}
+
+.media-enlarge-btn:hover{
+    border-color:var(--gold);
+    color:var(--gold);
+}
+
+/* ==========================================================
+   ENLARGED MEDIA VIEWER (LIGHTBOX)
+   ========================================================== */
+
+.media-lightbox{
+    position:fixed;
+    inset:0;
+    z-index:9999;
+    display:none;
+    align-items:center;
+    justify-content:center;
+}
+
+.media-lightbox.is-open{
+    display:flex;
+}
+
+.media-lightbox-overlay{
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,0.88);
+    backdrop-filter:blur(6px);
+}
+
+.media-lightbox-content{
+    position:relative;
+    z-index:1;
+    width:min(1100px, 92vw);
+    max-height:90vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.media-lightbox-stage{
+    width:100%;
+    height:90vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.media-lightbox-image,
+.media-lightbox-video{
+    max-width:100%;
+    max-height:90vh;
+    width:auto;
+    height:auto;
+    object-fit:contain;
+    border-radius:14px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.6);
+    background:rgba(255,255,255,0.03);
+}
+
+.media-lightbox-close{
+    position:absolute;
+    top:-46px;
+    right:0;
+    background:transparent;
+    border:1px solid rgba(255,255,255,0.25);
+    color:white;
+    font-size:1.6rem;
+    line-height:1;
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:0.3s;
+}
+
+.media-lightbox-close:hover{
+    border-color:var(--gold);
+    color:var(--gold);
+}
+
+.media-lightbox-nav{
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    background:rgba(0,0,0,0.55);
+    border:1px solid rgba(255,255,255,0.2);
+    color:white;
+    font-size:2rem;
+    width:50px;
+    height:50px;
+    border-radius:50%;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:0.3s;
+    z-index:2;
+}
+
+.media-lightbox-nav:hover{
+    border-color:var(--gold);
+    color:var(--gold);
+}
+
+.media-lightbox-prev{
+    left:-10px;
+}
+
+.media-lightbox-next{
+    right:-10px;
+}
+
+.media-lightbox-nav[hidden]{
+    display:none;
+}
+
+.media-lightbox-counter{
+    position:absolute;
+    bottom:-38px;
+    left:50%;
+    transform:translateX(-50%);
+    color:var(--gray);
+    font-size:0.9rem;
+    letter-spacing:0.5px;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 992px){
+
+    .house-image{
+        height:220px;
+    }
+
+}
+
+@media (max-width: 768px){
+
+    .house-image{
+        height:220px;
+    }
+
+    .media-carousel-btn{
+        width:30px;
+        height:30px;
+        font-size:1.1rem;
+    }
+
+    .media-enlarge-btn{
+        width:30px;
+        height:30px;
+        font-size:0.9rem;
+    }
+
+    .media-lightbox-content{
+        width:94vw;
+    }
+
+    .media-lightbox-stage{
+        height:70vh;
+    }
+
+    .media-lightbox-image,
+    .media-lightbox-video{
+        max-height:70vh;
+    }
+
+    .media-lightbox-close{
+        top:-42px;
+        width:38px;
+        height:38px;
+        font-size:1.4rem;
+    }
+
+    .media-lightbox-nav{
+        width:42px;
+        height:42px;
+        font-size:1.6rem;
+    }
+
+    .media-lightbox-prev{
+        left:2px;
+    }
+
+    .media-lightbox-next{
+        right:2px;
+    }
+
+    .media-lightbox-counter{
+        bottom:-32px;
+        font-size:0.8rem;
+    }
+
+}
+
+@media (max-width: 480px){
+
+    .media-lightbox-nav{
+        top:auto;
+        bottom:-70px;
+        transform:none;
+    }
+
+    .media-lightbox-prev{
+        left:35%;
+    }
+
+    .media-lightbox-next{
+        right:35%;
+    }
+
+}

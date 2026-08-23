@@ -1,15 +1,20 @@
 <?php
+
+require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
+
 requireRoleAccess('landlord');
 
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
+
 ?>
 
 <style>
+
 /* =========================================
-   LANDLORD ADD HOUSE RESPONSIVE STYLES
+   LANDLORD ADD HOUSE
 ========================================= */
 
 .landlord-layout{
@@ -113,10 +118,44 @@ require_once '../../includes/sidebar.php';
 }
 
 /* =========================================
+   MEDIA UPLOAD
+========================================= */
+
+.landlord-media-box{
+    position:relative;
+    border-radius:16px;
+    overflow:hidden;
+    background:rgba(255,255,255,0.06);
+    border:1px dashed rgba(212,175,55,0.4);
+    transition:0.3s;
+}
+
+.landlord-media-box:hover{
+    border-color:rgba(212,175,55,0.8);
+}
+
+.landlord-media-box input{
+    width:100%;
+    padding:18px;
+    color:var(--gray);
+    cursor:pointer;
+    background:transparent;
+    border:none;
+    box-sizing:border-box;
+}
+
+.landlord-media-help{
+    margin-top:9px;
+    color:var(--gray);
+    font-size:0.85rem;
+    line-height:1.6;
+}
+
+/* =========================================
    TABLET
 ========================================= */
 
-@media (max-width: 992px){
+@media (max-width:992px){
 
     .landlord-main{
         margin-left:0;
@@ -133,16 +172,13 @@ require_once '../../includes/sidebar.php';
         padding:28px;
     }
 
-    .landlord-grid{
-        grid-template-columns:1fr 1fr;
-    }
 }
 
 /* =========================================
    MOBILE
 ========================================= */
 
-@media (max-width: 768px){
+@media (max-width:768px){
 
     .landlord-main{
         padding:22px 16px 40px;
@@ -177,13 +213,14 @@ require_once '../../includes/sidebar.php';
         padding:16px;
         font-size:1rem;
     }
+
 }
 
 /* =========================================
    SMALL MOBILE
 ========================================= */
 
-@media (max-width: 480px){
+@media (max-width:480px){
 
     .landlord-main{
         padding:18px 12px 35px;
@@ -207,19 +244,46 @@ require_once '../../includes/sidebar.php';
     .landlord-submit-btn{
         border-radius:14px;
     }
+
 }
+
+.landlord-media-toggle {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.landlord-media-tab {
+    flex: 1;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(212,175,55,0.3);
+    background: rgba(255,255,255,0.04);
+    color: var(--gray);
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+.landlord-media-tab.active {
+    background: rgba(212,175,55,0.15);
+    color: var(--gold);
+    border-color: var(--gold);
+}
+
 </style>
+
 
 <div class="landlord-layout">
 
-    <!-- MAIN CONTENT -->
     <main class="landlord-main">
 
         <!-- PAGE HEADER -->
+
         <div class="landlord-page-header">
 
             <h1 class="landlord-page-title">
-                👑 Add Luxury Property
+                Add Luxury Property
             </h1>
 
             <p class="landlord-page-text">
@@ -228,25 +292,32 @@ require_once '../../includes/sidebar.php';
 
         </div>
 
-        <!-- ALERT -->
+
+        <!-- ERROR -->
+
         <?php if (isset($_GET['error'])): ?>
 
             <div class="landlord-alert">
-                <?php echo htmlspecialchars($_GET['error']); ?>
+                <?= htmlspecialchars(
+                    $_GET['error'],
+                    ENT_QUOTES,
+                    'UTF-8'
+                ); ?>
             </div>
 
         <?php endif; ?>
 
-        <!-- FORM CARD -->
+
+        <!-- FORM -->
+
         <div class="lux-card landlord-form-card">
 
-            <form
-                action="../../api/houses/create_house.php"
-                method="POST"
-                enctype="multipart/form-data"
-            >
+            <form action="<?php echo BASE_URL; ?>/api/houses/create_house.php" method="POST" enctype="multipart/form-data">
 
-                <!-- TITLE -->
+                <!-- =====================================
+                     PROPERTY TITLE
+                ====================================== -->
+
                 <div class="landlord-form-group">
 
                     <label class="landlord-label">
@@ -257,13 +328,18 @@ require_once '../../includes/sidebar.php';
                         type="text"
                         name="title"
                         required
+                        maxlength="255"
                         placeholder="Luxury Penthouse in Westlands"
                         class="landlord-input"
                     >
 
                 </div>
 
-                <!-- DESCRIPTION -->
+
+                <!-- =====================================
+                     DESCRIPTION
+                ====================================== -->
+
                 <div class="landlord-form-group">
 
                     <label class="landlord-label">
@@ -273,16 +349,22 @@ require_once '../../includes/sidebar.php';
                     <textarea
                         name="description"
                         rows="6"
-                        placeholder="Describe the elegance, features, and prestige..."
+                        maxlength="5000"
+                        placeholder="Describe the elegance, features, amenities, and prestige of the property..."
                         class="landlord-textarea"
                     ></textarea>
 
                 </div>
 
-                <!-- GRID -->
+
+                <!-- =====================================
+                     PROPERTY DETAILS
+                ====================================== -->
+
                 <div class="landlord-grid">
 
                     <!-- PRICE -->
+
                     <div class="landlord-form-group">
 
                         <label class="landlord-label">
@@ -293,13 +375,17 @@ require_once '../../includes/sidebar.php';
                             type="number"
                             name="price"
                             required
+                            min="1"
+                            step="0.01"
                             placeholder="85000"
                             class="landlord-input"
                         >
 
                     </div>
 
+
                     <!-- LOCATION -->
+
                     <div class="landlord-form-group">
 
                         <label class="landlord-label">
@@ -310,13 +396,16 @@ require_once '../../includes/sidebar.php';
                             type="text"
                             name="location"
                             required
+                            maxlength="255"
                             placeholder="Westlands, Nairobi"
                             class="landlord-input"
                         >
 
                     </div>
 
+
                     <!-- BEDROOMS -->
+
                     <div class="landlord-form-group">
 
                         <label class="landlord-label">
@@ -326,13 +415,16 @@ require_once '../../includes/sidebar.php';
                         <input
                             type="number"
                             name="bedrooms"
-                            placeholder="3"
+                            min="0"
+                            value="1"
                             class="landlord-input"
                         >
 
                     </div>
 
+
                     <!-- BATHROOMS -->
+
                     <div class="landlord-form-group">
 
                         <label class="landlord-label">
@@ -342,102 +434,235 @@ require_once '../../includes/sidebar.php';
                         <input
                             type="number"
                             name="bathrooms"
-                            placeholder="2"
+                            min="0"
+                            value="1"
                             class="landlord-input"
                         >
 
                     </div>
 
-                </div>
 
-                <!-- LUXURY RATING -->
-                <div class="landlord-form-group">
+                    <!-- HOUSE TYPE -->
 
-                    <label class="landlord-label">
-                        ⭐ Luxury Rating
-                    </label>
+                    <div class="landlord-form-group">
 
-                    <div style="
-                        position:relative;
-                    ">
+                        <label class="landlord-label">
+                            Property Type
+                        </label>
+
+                        <select
+                            name="house_type"
+                            class="landlord-input"
+                        >
+
+                            <option value="Apartment">
+                                Apartment
+                            </option>
+
+                            <option value="Penthouse">
+                                Penthouse
+                            </option>
+
+                            <option value="Villa">
+                                Villa
+                            </option>
+
+                            <option value="Maisonette">
+                                Maisonette
+                            </option>
+
+                            <option value="Townhouse">
+                                Townhouse
+                            </option>
+
+                            <option value="Bungalow">
+                                Bungalow
+                            </option>
+
+                            <option value="Studio">
+                                Studio
+                            </option>
+
+                            <option value="Bedsitter">
+                                Bedsitter
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <!-- RATING -->
+
+                    <div class="landlord-form-group">
+
+                        <label class="landlord-label">
+                            Luxury Rating
+                        </label>
 
                         <select
                             name="rating"
                             class="landlord-input"
-                            style="
-                                appearance:none;
-                                cursor:pointer;
-                                padding-right:45px;
-                                font-size:1rem;
-                            "
                         >
-                            <option value="5">⭐⭐⭐⭐⭐  |  Premium Luxury</option>
-                            <option value="4">⭐⭐⭐⭐☆   |  High-End</option>
-                            <option value="3">⭐⭐⭐☆☆    |  Standard Luxury</option>
-                            <option value="2">⭐⭐☆☆☆     |  Basic Comfort</option>
-                            <option value="1">⭐☆☆☆☆      |  Budget Tier</option>
-                        </select>
 
-                        <!-- dropdown arrow -->
-                        <div style="
-                            position:absolute;
-                            right:16px;
-                            top:50%;
-                            transform:translateY(-50%);
-                            pointer-events:none;
-                            color:var(--gold);
-                            font-size:1.2rem;
-                        ">
-                            ▾
-                        </div>
+                            <option value="5">
+                                ⭐⭐⭐⭐⭐ | Premium Luxury
+                            </option>
+
+                            <option value="4">
+                                ⭐⭐⭐⭐☆ | High-End
+                            </option>
+
+                            <option value="3">
+                                ⭐⭐⭐☆☆ | Standard Luxury
+                            </option>
+
+                            <option value="2">
+                                ⭐⭐☆☆☆ | Basic Comfort
+                            </option>
+
+                            <option value="1">
+                                ⭐☆☆☆☆ | Budget Tier
+                            </option>
+
+                        </select>
 
                     </div>
 
                 </div>
 
-                <!-- IMAGE UPLOAD -->
+
+                <!-- =====================================
+                     LOCATION COORDINATES
+                ====================================== -->
+
+                <div class="landlord-grid">
+
+                    <!-- LATITUDE -->
+
+                    <div class="landlord-form-group">
+
+                        <label class="landlord-label">
+                            Latitude
+                        </label>
+
+                        <input
+                            type="number"
+                            name="latitude"
+                            step="any"
+                            placeholder="-1.2676"
+                            class="landlord-input"
+                        >
+
+                    </div>
+
+
+                    <!-- LONGITUDE -->
+
+                    <div class="landlord-form-group">
+
+                        <label class="landlord-label">
+                            Longitude
+                        </label>
+
+                        <input
+                            type="number"
+                            name="longitude"
+                            step="any"
+                            placeholder="36.8108"
+                            class="landlord-input"
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <!-- =====================================
+                    MEDIA
+                ====================================== -->
+
                 <div class="landlord-form-group">
 
                     <label class="landlord-label">
-                        Property Image
+                        Property Media
                     </label>
 
-                    <div style="
-                        position:relative;
-                        border-radius:16px;
-                        overflow:hidden;
-                        background:rgba(255,255,255,0.06);
-                        border:1px dashed rgba(212,175,55,0.4);
-                        transition:0.3s;
-                    "
-                    onmouseover="this.style.borderColor='rgba(212,175,55,0.8)'"
-                    onmouseout="this.style.borderColor='rgba(212,175,55,0.4)'"
-                    >
+                    <div class="landlord-media-toggle">
+                        <button type="button" class="landlord-media-tab active" data-mode="images">
+                            Multiple Images
+                        </button>
+                        <button type="button" class="landlord-media-tab" data-mode="video">
+                            Single Video
+                        </button>
+                    </div>
 
+                    <div class="landlord-media-box" id="landlordImagesBox">
                         <input
                             type="file"
-                            name="image"
-                            accept="image/*"
-                            style="
-                                width:100%;
-                                padding:18px;
-                                color:var(--gray);
-                                cursor:pointer;
-                                background:transparent;
-                                border:none;
-                            "
+                            name="images[]"
+                            id="landlordImagesInput"
+                            multiple
+                            accept="image/jpeg,image/png,image/webp"
                         >
+                    </div>
 
+                    <div class="landlord-media-box" id="landlordVideoBox" style="display:none;">
+                        <input
+                            type="file"
+                            name="video"
+                            id="landlordVideoInput"
+                            accept="video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska"
+                        >
+                    </div>
+
+                    <div class="landlord-media-help">
+                        Choose either multiple images OR one video — a property
+                        cannot contain both. Images are automatically compressed
+                        and videos are normalized to MP4 by the backend.
                     </div>
 
                 </div>
 
-                <!-- SUBMIT -->
+                <script>
+                (function () {
+                    const tabs = document.querySelectorAll('.landlord-media-tab');
+                    const imagesBox = document.getElementById('landlordImagesBox');
+                    const videoBox = document.getElementById('landlordVideoBox');
+                    const imagesInput = document.getElementById('landlordImagesInput');
+                    const videoInput = document.getElementById('landlordVideoInput');
+
+                    tabs.forEach(tab => {
+                        tab.addEventListener('click', () => {
+                            tabs.forEach(t => t.classList.remove('active'));
+                            tab.classList.add('active');
+
+                            const mode = tab.dataset.mode;
+
+                            if (mode === 'images') {
+                                imagesBox.style.display = '';
+                                videoBox.style.display = 'none';
+                                videoInput.value = ''; // clear so it can never submit alongside images
+                            } else {
+                                imagesBox.style.display = 'none';
+                                videoBox.style.display = '';
+                                imagesInput.value = ''; // clear so it can never submit alongside video
+                            }
+                        });
+                    });
+                })();
+                </script>
+
+
+                <!-- =====================================
+                     SUBMIT
+                ====================================== -->
+
                 <button
                     type="submit"
                     class="lux-btn landlord-submit-btn"
                 >
-                    👑 Publish Luxury Property
+                    Publish Luxury Property
                 </button>
 
             </form>
@@ -447,5 +672,6 @@ require_once '../../includes/sidebar.php';
     </main>
 
 </div>
+
 
 <?php require_once '../../includes/footer.php'; ?>

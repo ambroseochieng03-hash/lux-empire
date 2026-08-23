@@ -1,0 +1,207 @@
+<?php
+
+declare(strict_types=1);
+
+header('Content-Type: application/json');
+
+require_once '../../config/session.php';
+require_once '../../classes/House.php';
+
+try {
+
+    // =====================================
+    // AUTH CHECK
+    // =====================================
+
+    if (!isset($_SESSION['user_id'])) {
+
+        http_response_code(401);
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Authentication required.'
+        ]);
+
+        exit;
+    }
+
+    // =====================================
+    // REQUEST METHOD
+    // =====================================
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+
+        http_response_code(405);
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid request method.'
+        ]);
+
+        exit;
+    }
+
+    // =====================================
+    // CURRENT USER
+    // =====================================
+
+    $currentUser = (int) $_SESSION['user_id'];
+
+    $role = $_SESSION['role'] ?? '';
+
+    // =====================================
+    // INPUTS
+    // =====================================
+
+    $houseId = (int) ($_POST['house_id'] ?? 0);
+
+    $title = trim($_POST['title'] ?? '');
+
+    $description = trim(
+        $_POST['description'] ?? ''
+    );
+
+    $price = (float) (
+        $_POST['price'] ?? 0
+    );
+
+    $location = trim(
+        $_POST['location'] ?? ''
+    );
+
+    $bedrooms = (int) (
+        $_POST['bedrooms'] ?? 1
+    );
+
+    $bathrooms = (int) (
+        $_POST['bathrooms'] ?? 1
+    );
+
+    $houseType = trim(
+        $_POST['house_type'] ?? ''
+    );
+
+    $rating = (int) (
+        $_POST['rating'] ?? 0
+    );
+
+    $latitude = $_POST['latitude'] ?? null;
+
+    $longitude = $_POST['longitude'] ?? null;
+
+    // =====================================
+    // BASIC VALIDATION
+    // =====================================
+
+    if ($houseId <= 0) {
+
+        http_response_code(400);
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Invalid house ID.'
+        ]);
+
+        exit;
+    }
+
+    if (
+        $title === '' ||
+        $location === '' ||
+        $price <= 0
+    ) {
+
+        http_response_code(400);
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Required fields missing.'
+        ]);
+
+        exit;
+    }
+
+    // =====================================
+    // HOUSE MODEL
+    // =====================================
+
+    $house = new House();
+
+    // =====================================
+    // PERMISSION CHECK
+    // =====================================
+
+    if (
+        $role !== 'admin' &&
+        !$house->belongsToLandlord(
+            $houseId,
+            $currentUser
+        )
+    ) {
+
+        http_response_code(403);
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Permission denied.'
+        ]);
+
+        exit;
+    }
+
+    // =====================================
+    // UPDATE HOUSE
+    // =====================================
+
+    $updated = $house->updateHouse(
+        $houseId,
+        [
+            'title' => $title,
+            'description' => $description,
+            'price' => $price,
+            'location' => $location,
+            'bedrooms' => $bedrooms,
+            'bathrooms' => $bathrooms,
+            'house_type' => $houseType,
+            'rating' => $rating,
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'files' => $_FILES
+        ]
+    );
+
+    // =====================================
+    // RESPONSE
+    // =====================================
+
+    if (!$updated) {
+
+        http_response_code(400);
+
+        echo json_encode([
+            'success' => false,
+            'message' => 'Failed to update property.'
+        ]);
+
+        exit;
+    }
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Property updated successfully.'
+    ]);
+
+} catch (Throwable $e) {
+
+    error_log(
+        '[LUX EMPIRE] Update House Error: '
+        . $e->getMessage()
+    );
+
+    http_response_code(500);
+
+    echo json_encode([
+        'success' => false,
+        'message' => 'An unexpected error occurred.'
+    ]);
+}

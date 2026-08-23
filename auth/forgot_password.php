@@ -47,7 +47,7 @@ require_once '../includes/navbar.php';
         <?php endif; ?>
 
         <!-- Form -->
-        <form action="../api/auth/forgot_handler.php" method="POST">
+        <form action="<?php echo BASE_URL; ?>/forgot-handler" method="POST">
 
             <div style="margin-bottom:25px;">
                 <label>Email Address</label>

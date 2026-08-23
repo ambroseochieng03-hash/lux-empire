@@ -1,112 +1,367 @@
 <?php
+
 /**
- * LUX EMPIRE Session & Security Manager
+ * LUX EMPIRE
+ * Session Management
+ *
+ * Responsible only for session lifecycle and security.
  */
+
+declare(strict_types=1);
 
 require_once __DIR__ . '/app.php';
 
-/**
- * SESSION SECURITY SETTINGS
- * MUST COME BEFORE session_start()
- */
-ini_set('session.use_strict_mode', 1);
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_only_cookies', 1);
 
-/**
- * HTTPS-only cookies in production
- * Keep OFF on localhost
- */
-if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
-    ini_set('session.cookie_secure', 1);
-}
+final class Session
+{
+    /**
+     * Start and validate the current session.
+     */
+    public static function start(): void
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | Already active
+        |--------------------------------------------------------------------------
+        */
 
-/**
- * Custom session name
- */
-session_name('LUXEMPIRESESSION');
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            return;
+        }
 
-/**
- * START SESSION
- */
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+        /*
+        |--------------------------------------------------------------------------
+        | Configure secure cookies
+        |--------------------------------------------------------------------------
+        */
 
-/**
- * Regenerate session ID once
- */
-if (!isset($_SESSION['initiated'])) {
+        self::configureCookies();
 
-    session_regenerate_id(true);
+        /*
+        |--------------------------------------------------------------------------
+        | Session name
+        |--------------------------------------------------------------------------
+        */
 
-    $_SESSION['initiated'] = true;
-}
+        session_name(SESSION_NAME);
 
-/**
- * SESSION TIMEOUT HANDLER
- */
-function checkSessionTimeout() {
+        /*
+        |--------------------------------------------------------------------------
+        | Start PHP session
+        |--------------------------------------------------------------------------
+        */
 
-    if (isset($_SESSION['last_activity'])) {
+        session_start();
 
-        if (
-            time() - $_SESSION['last_activity']
-            > SESSION_TIMEOUT
-        ) {
+        /*
+        |--------------------------------------------------------------------------
+        | Initialize metadata
+        |--------------------------------------------------------------------------
+        */
 
-            session_unset();
-            session_destroy();
+        self::initialize();
 
-            header(
-                "Location: "
-                . BASE_URL .
-                "/auth/login.php?timeout=1"
+        /*
+        |--------------------------------------------------------------------------
+        | Validate session
+        |--------------------------------------------------------------------------
+        */
+
+        self::validate();
+    }
+
+
+    /**
+     * Configure PHP session security.
+     */
+    private static function configureCookies(): void
+    {
+        $isHttps =
+            (
+                !empty($_SERVER['HTTPS'])
+                &&
+                $_SERVER['HTTPS'] !== 'off'
+            )
+            ||
+            (
+                isset($_SERVER['SERVER_PORT'])
+                &&
+                (int) $_SERVER['SERVER_PORT'] === 443
             );
 
-            exit();
+        session_set_cookie_params([
+            'lifetime' => SESSION_LIFETIME,
+            'path'     => SESSION_COOKIE_PATH,
+            'domain'   => '',
+            'secure'   => $isHttps,
+            'httponly' => true,
+            'samesite' => SESSION_COOKIE_SAMESITE,
+        ]);
+
+        ini_set(
+            'session.use_only_cookies',
+            '1'
+        );
+
+        ini_set(
+            'session.use_strict_mode',
+            '1'
+        );
+
+        ini_set(
+            'session.use_trans_sid',
+            '0'
+        );
+
+        ini_set(
+            'session.use_cookies',
+            '1'
+        );
+    }
+
+
+    /**
+     * Initialize session metadata.
+     */
+    private static function initialize(): void
+    {
+        $now = time();
+
+        if (!isset($_SESSION['_session'])) {
+
+            $_SESSION['_session'] = [
+                'created_at'       => $now,
+                'last_activity'   => $now,
+                'last_regeneration' => $now,
+            ];
         }
     }
 
-    $_SESSION['last_activity'] = time();
-}
 
-/**
- * REQUIRE LOGIN
- */
-function requireLogin() {
+    /**
+     * Validate the current session.
+     */
+    private static function validate(): void
+    {
+        self::validateIdleTimeout();
 
-    if (!isset($_SESSION['user_id'])) {
+        /*
+         * A timeout destroys the session.
+         * Do not continue validating the destroyed session.
+         */
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            return;
+        }
 
-        header(
-            "Location: "
-            . BASE_URL .
-            "/auth/login.php"
+        self::validateAbsoluteLifetime();
+
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            return;
+        }
+
+        self::rotateSessionIdIfNeeded();
+
+        /*
+         * Only update activity for a valid session.
+         */
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            $_SESSION['_session']['last_activity'] = time();
+        }
+    }
+
+
+    /**
+     * Validate inactivity timeout.
+     */
+    private static function validateIdleTimeout(): void
+    {
+        if (
+            !isset(
+                $_SESSION['_session']['last_activity']
+            )
+        ) {
+            return;
+        }
+
+        $lastActivity =
+            (int) $_SESSION['_session']['last_activity'];
+
+        if (
+            time() - $lastActivity
+            <= SESSION_IDLE_TIMEOUT
+        ) {
+            return;
+        }
+
+        self::expire();
+    }
+
+
+    /**
+     * Validate absolute session lifetime.
+     */
+    private static function validateAbsoluteLifetime(): void
+    {
+        if (
+            !isset(
+                $_SESSION['_session']['created_at']
+            )
+        ) {
+            return;
+        }
+
+        $createdAt =
+            (int) $_SESSION['_session']['created_at'];
+
+        if (
+            time() - $createdAt
+            <= SESSION_ABSOLUTE_TIMEOUT
+        ) {
+            return;
+        }
+
+        self::expire();
+    }
+
+
+    /**
+     * Periodically regenerate the session ID.
+     */
+    private static function rotateSessionIdIfNeeded(): void
+    {
+        if (
+            !isset(
+                $_SESSION['_session']['last_regeneration']
+            )
+        ) {
+            return;
+        }
+
+        $lastRegeneration =
+            (int) $_SESSION['_session']['last_regeneration'];
+
+        if (
+            time() - $lastRegeneration
+            < SESSION_REGENERATE_INTERVAL
+        ) {
+            return;
+        }
+
+        session_regenerate_id(true);
+
+        $_SESSION['_session']['last_regeneration'] =
+            time();
+    }
+
+
+    /**
+     * Regenerate session after successful authentication.
+     *
+     * This prevents session fixation during login.
+     */
+    public static function regenerateAfterLogin(): void
+    {
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            self::start();
+        }
+
+        session_regenerate_id(true);
+
+        $now = time();
+
+        $_SESSION['_session'] = [
+            'created_at'        => $now,
+            'last_activity'     => $now,
+            'last_regeneration' => $now,
+        ];
+    }
+
+
+    /**
+     * Completely destroy the current session.
+     */
+    public static function destroy(): void
+    {
+        $_SESSION = [];
+
+        if (
+            ini_get('session.use_cookies')
+            &&
+            session_status() === PHP_SESSION_ACTIVE
+        ) {
+
+            $params =
+                session_get_cookie_params();
+
+            setcookie(
+                session_name(),
+                '',
+                [
+                    'expires'  => time() - 42000,
+                    'path'     => $params['path'],
+                    'domain'   => $params['domain'],
+                    'secure'   => $params['secure'],
+                    'httponly' => $params['httponly'],
+                    'samesite' =>
+                        $params['samesite']
+                        ?? SESSION_COOKIE_SAMESITE,
+                ]
+            );
+        }
+
+        if (
+            session_status() === PHP_SESSION_ACTIVE
+        ) {
+            session_destroy();
+        }
+    }
+
+
+    /**
+     * Expire the current session.
+     */
+    private static function expire(): void
+    {
+        self::destroy();
+    }
+
+
+    /**
+     * Check whether a session is currently active.
+     */
+    public static function isActive(): bool
+    {
+        return session_status()
+            === PHP_SESSION_ACTIVE;
+    }
+
+
+    /**
+     * Check whether the user is authenticated.
+     *
+     * Authentication structure will be redesigned later.
+     */
+    public static function isAuthenticated(): bool
+    {
+        return isset(
+            $_SESSION['user']
         );
+    }
 
-        exit();
+
+    /**
+     * Get authenticated user data.
+     */
+    public static function user(): ?array
+    {
+        if (
+            !isset($_SESSION['user'])
+            ||
+            !is_array($_SESSION['user'])
+        ) {
+            return null;
+        }
+
+        return $_SESSION['user'];
     }
 }
-
-/**
- * ROLE PROTECTION
- */
-function requireRole($role) {
-
-    requireLogin();
-
-    if (
-        !isset($_SESSION['role']) ||
-        $_SESSION['role'] !== $role
-    ) {
-
-        header(
-            "Location: "
-            . BASE_URL .
-            "/index.php?unauthorized=1"
-        );
-
-        exit();
-    }
-}
-?>

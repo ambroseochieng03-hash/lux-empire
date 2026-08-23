@@ -31,6 +31,6 @@ session_destroy();
 /**
  * Redirect to login
  */
-header("Location: ../../auth/login.php?success=" . urlencode("You have securely exited LUX EMPIRE."));
+header("Location: " . BASE_URL . "/login?success=" . urlencode("You have securely exited LUX EMPIRE."));
 exit();
 ?>

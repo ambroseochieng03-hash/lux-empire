@@ -1,6 +1,7 @@
 <?php
-
+require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
+require_once '../../config/csrf.php';
 requireRoleAccess('landlord');
 
 require_once '../../config/db.php';
@@ -28,9 +29,15 @@ $stmt = $pdo->prepare("
     LIMIT 1
 ");
 
+$user = Session::user();
+
+if ($user === null || !isset($user['id'])) {
+    die("Unable to determine authenticated landlord.");
+}
+
 $stmt->execute([
     $id,
-    $_SESSION['user_id']
+    (int) $user['id']
 ]);
 
 $house = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -45,16 +52,19 @@ if (!$house) {
 |--------------------------------------------------------------------------
 */
 
-$imageStmt = $pdo->prepare("
-    SELECT image_path
+$mediaStmt = $pdo->prepare("
+    SELECT
+        id,
+        image_path,
+        created_at
     FROM house_images
     WHERE house_id = ?
-    LIMIT 1
+    ORDER BY id ASC
 ");
 
-$imageStmt->execute([$id]);
+$mediaStmt->execute([$id]);
 
-$image = $imageStmt->fetch(PDO::FETCH_ASSOC);
+$media = $mediaStmt->fetchAll(PDO::FETCH_ASSOC);
 
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
@@ -385,20 +395,92 @@ require_once '../../includes/sidebar.php';
 
                 </div>
 
-                <!-- IMAGE -->
+                <!-- MEDIA -->
 
                 <div class="input-group">
 
                     <label class="input-label">
-                        Replace Property Image
+                        Replace Property Media
+                    </label>
+
+                    <p style="
+                        color:var(--gray);
+                        line-height:1.7;
+                        margin-bottom:15px;
+                    ">
+                        Upload multiple images or one video.
+                        New media replaces the property's current media.
+                        Images and video cannot be uploaded together.
+                    </p>
+
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="<?= htmlspecialchars(
+                            Csrf::token(),
+                            ENT_QUOTES,
+                            'UTF-8'
+                        ) ?>"
+                    >
+
+                    <label style="
+                        display:block;
+                        margin-bottom:10px;
+                        color:white;
+                    ">
+                        Images
                     </label>
 
                     <input
                         type="file"
-                        name="image"
-                        accept="image/*"
+                        id="houseImages"
+                        name="images[]"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
                         class="lux-input"
                     >
+
+                    <div
+                        id="imageSelection"
+                        style="
+                            margin-top:12px;
+                            color:var(--gray);
+                            font-size:.9rem;
+                        "
+                    ></div>
+
+                    <div style="
+                        margin:22px 0;
+                        text-align:center;
+                        color:var(--gray);
+                    ">
+                        OR
+                    </div>
+
+                    <label style="
+                        display:block;
+                        margin-bottom:10px;
+                        color:white;
+                    ">
+                        Video
+                    </label>
+
+                    <input
+                        type="file"
+                        id="houseVideo"
+                        name="video"
+                        accept="video/mp4,video/webm,video/quicktime,video/x-msvideo,video/x-matroska"
+                        class="lux-input"
+                    >
+
+                    <div
+                        id="videoSelection"
+                        style="
+                            margin-top:12px;
+                            color:var(--gray);
+                            font-size:.9rem;
+                        "
+                    ></div>
 
                 </div>
 
@@ -444,14 +526,74 @@ require_once '../../includes/sidebar.php';
                 Property Preview
             </h2>
 
-            <?php if (!empty($image['image_path'])): ?>
+            <?php if (!empty($media)): ?>
 
-                <img
-                    src="../../assets/uploads/house_images/<?=
-                        htmlspecialchars($image['image_path'])
-                    ?>"
-                    class="preview-image"
-                >
+                <div style="
+                    display:grid;
+                    gap:18px;
+                ">
+
+                    <?php foreach ($media as $item): ?>
+
+                        <?php
+                        $mediaPath =
+                            $item['image_path'] ?? '';
+
+                        $mediaUrl =
+                            '../../assets/uploads/house_images/'
+                            . rawurlencode($mediaPath);
+
+                        $isVideo =
+                            strtolower(
+                                pathinfo(
+                                    $mediaPath,
+                                    PATHINFO_EXTENSION
+                                )
+                            ) === 'mp4';
+                        ?>
+
+                        <?php if ($isVideo): ?>
+
+                            <video
+                                controls
+                                preload="metadata"
+                                style="
+                                    width:100%;
+                                    max-height:320px;
+                                    border-radius:24px;
+                                    display:block;
+                                    background:#000;
+                                "
+                            >
+                                <source
+                                    src="<?= htmlspecialchars(
+                                        $mediaUrl,
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    ) ?>"
+                                    type="video/mp4"
+                                >
+                                Your browser does not support video playback.
+                            </video>
+
+                        <?php else: ?>
+
+                            <img
+                                src="<?= htmlspecialchars(
+                                    $mediaUrl,
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                ) ?>"
+                                class="preview-image"
+                                loading="lazy"
+                                alt="Property media"
+                            >
+
+                        <?php endif; ?>
+
+                    <?php endforeach; ?>
+
+                </div>
 
             <?php else: ?>
 
@@ -465,7 +607,7 @@ require_once '../../includes/sidebar.php';
                     color:var(--gold);
                     font-size:4rem;
                 ">
-                    🏛
+                    Property media
                 </div>
 
             <?php endif; ?>
@@ -480,42 +622,159 @@ require_once '../../includes/sidebar.php';
 
 <script>
 
-document
-.getElementById('editHouseForm')
+const editHouseForm =
+    document.getElementById('editHouseForm');
 
-.addEventListener('submit', async function(e){
+const houseImages =
+    document.getElementById('houseImages');
 
-    e.preventDefault();
+const houseVideo =
+    document.getElementById('houseVideo');
 
-    const formData = new FormData(this);
+const imageSelection =
+    document.getElementById('imageSelection');
 
-    const response = await fetch(
-        '../../api/houses/update_house.php',
-        {
-            method:'POST',
-            body:formData
+const videoSelection =
+    document.getElementById('videoSelection');
+
+
+/*
+ * ------------------------------------------------------------
+ * MEDIA SELECTION RULE
+ * ------------------------------------------------------------
+ *
+ * Images OR video.
+ */
+
+houseImages.addEventListener(
+    'change',
+    function()
+    {
+        if (this.files.length > 0) {
+
+            houseVideo.value = '';
+
+            imageSelection.textContent =
+                `${this.files.length} image(s) selected.`;
+
+            videoSelection.textContent = '';
+        } else {
+
+            imageSelection.textContent = '';
         }
-    );
+    }
+);
 
-    const result = await response.json();
 
-    if(result.success){
+houseVideo.addEventListener(
+    'change',
+    function()
+    {
+        if (this.files.length > 0) {
 
-        window.location.href =
-            'manage_houses.php?success='
-            + encodeURIComponent(result.message);
+            houseImages.value = '';
 
-    } else {
+            videoSelection.textContent =
+                `Video selected: ${this.files[0].name}`;
 
-        window.location.href =
-            'manage_houses.php?error='
-            + encodeURIComponent(
-                result.message || 'Update failed'
+            imageSelection.textContent = '';
+        } else {
+
+            videoSelection.textContent = '';
+        }
+    }
+);
+
+
+/*
+ * ------------------------------------------------------------
+ * SUBMIT
+ * ------------------------------------------------------------
+ */
+
+editHouseForm.addEventListener(
+    'submit',
+    async function(e)
+    {
+        e.preventDefault();
+
+        const formData =
+            new FormData(this);
+
+        const submitButton =
+            this.querySelector(
+                'button[type="submit"]'
             );
 
-    }
+        if (submitButton) {
 
-});
+            submitButton.disabled = true;
+
+            submitButton.dataset.originalText =
+                submitButton.textContent;
+
+            submitButton.textContent =
+                'Saving...';
+        }
+
+        try {
+
+            const response =
+                await fetch(
+                    '../../api/houses/update_house.php',
+                    {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'same-origin'
+                    }
+                );
+
+            let result;
+
+            try {
+
+                result =
+                    await response.json();
+
+            } catch (jsonError) {
+
+                throw new Error(
+                    'The server returned an invalid response.'
+                );
+            }
+
+            if (!response.ok || !result.success) {
+
+                throw new Error(
+                    result.message ||
+                    'Update failed.'
+                );
+            }
+
+            window.location.href =
+                'manage_houses.php?success='
+                + encodeURIComponent(
+                    result.message
+                );
+
+        } catch (error) {
+
+            alert(
+                error.message ||
+                'Unable to update property.'
+            );
+
+            if (submitButton) {
+
+                submitButton.disabled = false;
+
+                submitButton.textContent =
+                    submitButton.dataset.originalText
+                    || 'Save Changes';
+            }
+        }
+    }
+);
 
 </script>
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 class Auth
 {
     private PDO $pdo;
@@ -8,6 +10,7 @@ class Auth
     {
         $this->pdo = $pdo;
     }
+
 
     /**
      * Register User
@@ -20,7 +23,6 @@ class Auth
         string $role = 'tenant'
     ): bool {
 
-        // Check existing email
         $stmt = $this->pdo->prepare("
             SELECT id
             FROM users
@@ -34,7 +36,6 @@ class Auth
             return false;
         }
 
-        // Argon2ID Hash
         $hash = password_hash(
             $password,
             PASSWORD_ARGON2ID
@@ -62,13 +63,17 @@ class Auth
         ]);
     }
 
+
     /**
-     * Login User
+     * Authenticate User
+     *
+     * Returns the authenticated user record.
+     * Returns null when authentication fails.
      */
     public function login(
         string $email,
         string $password
-    ): bool {
+    ): ?array {
 
         $stmt = $this->pdo->prepare("
             SELECT *
@@ -82,7 +87,7 @@ class Auth
         $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$user) {
-            return false;
+            return null;
         }
 
         if (
@@ -91,10 +96,12 @@ class Auth
                 $user['password']
             )
         ) {
-            return false;
+            return null;
         }
 
-        // Upgrade old hashes if needed
+        /*
+         * Upgrade password hash when required.
+         */
         if (
             password_needs_rehash(
                 $user['password'],
@@ -119,125 +126,6 @@ class Auth
             ]);
         }
 
-        // Session
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['full_name'] = $user['full_name'];
-        $_SESSION['email'] = $user['email'];
-        $_SESSION['role'] = $user['role'];
-
-        return true;
-    }
-
-    /**
-     * Logout
-     */
-    public function logout(): void
-    {
-        $_SESSION = [];
-
-        if (ini_get("session.use_cookies")) {
-
-            $params = session_get_cookie_params();
-
-            setcookie(
-                session_name(),
-                '',
-                time() - 42000,
-                $params['path'],
-                $params['domain'],
-                $params['secure'],
-                $params['httponly']
-            );
-        }
-
-        session_destroy();
-    }
-
-    /**
-     * Check Login
-     */
-    public static function check(): bool
-    {
-        return isset($_SESSION['user_id']);
-    }
-
-    /**
-     * Get Current User ID
-     */
-    public static function userId(): ?int
-    {
-        return $_SESSION['user_id'] ?? null;
-    }
-
-    /**
-     * Get Current Role
-     */
-    public static function role(): ?string
-    {
-        return $_SESSION['role'] ?? null;
-    }
-
-    /**
-     * Check Role
-     */
-    public static function hasRole(
-        string $role
-    ): bool {
-
-        return (
-            isset($_SESSION['role'])
-            &&
-            $_SESSION['role'] === $role
-        );
-    }
-
-    /**
-     * Require Login
-     */
-    public static function requireLogin(): void
-    {
-        if (!self::check()) {
-
-            header(
-                "Location: /house_truck_platform/auth/login.php"
-            );
-
-            exit;
-        }
-    }
-
-    /**
-     * Require Role
-     */
-    public static function requireRole(
-        string $role
-    ): void {
-
-        self::requireLogin();
-
-        if (!self::hasRole($role)) {
-
-            http_response_code(403);
-
-            exit(
-                "Access denied."
-            );
-        }
-    }
-
-    /**
-     * Current User Name
-     */
-    public static function userName(): ?string
-    {
-        return $_SESSION['full_name'] ?? null;
-    }
-
-    /**
-     * Current User Email
-     */
-    public static function email(): ?string
-    {
-        return $_SESSION['email'] ?? null;
+        return $user;
     }
 }

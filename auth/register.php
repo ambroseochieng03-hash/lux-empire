@@ -46,7 +46,7 @@ require_once '../includes/navbar.php';
         <?php endif; ?>
 
         <!-- Registration Form -->
-        <form action="../api/auth/register_handler.php" method="POST" enctype="multipart/form-data">
+        <form action="<?php echo BASE_URL; ?>/register-handler" method="POST" enctype="multipart/form-data">
 
             <!-- Full Name -->
             <div style="margin-bottom:18px;">

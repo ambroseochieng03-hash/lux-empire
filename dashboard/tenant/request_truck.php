@@ -1,4 +1,6 @@
 <?php
+
+require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
 requireRoleAccess('tenant');
 
@@ -115,7 +117,7 @@ require_once '../../includes/sidebar.php';
                 font-size:3rem;
                 margin-bottom:15px;
             ">
-                🚚 Luxury Moving Service
+                Luxury Moving Service
             </h1>
 
             <p style="
@@ -233,7 +235,7 @@ require_once '../../includes/sidebar.php';
                             font-size:1rem;
                         "
                     >
-                        🚚 Request Luxury Truck
+                         Request Luxury Truck
                     </button>
 
                 </form>

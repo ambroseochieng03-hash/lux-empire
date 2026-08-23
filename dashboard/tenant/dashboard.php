@@ -1,4 +1,6 @@
 <?php
+
+require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
 requireRoleAccess('tenant');
 
@@ -33,7 +35,7 @@ require_once '../../includes/sidebar.php';
         <div class="lux-tenant-hero">
 
             <h1 class="lux-tenant-title">
-                👑 Welcome back,
+                Welcome back,
                 <?php echo htmlspecialchars($user_name); ?>
             </h1>
 
@@ -147,7 +149,7 @@ require_once '../../includes/sidebar.php';
             </a>
 
             <!-- TRACK DRIVER -->
-            <a href="<?php echo BASE_URL; ?>/dashboard/tenant/track_driver.php"
+            <a href="<?php echo BASE_URL; ?>/tenant/track-driver"
                class="lux-card lux-tenant-action-card">
 
                 <h3 class="lux-tenant-action-title">

@@ -1,0 +1,73 @@
+RewriteEngine On
+
+# ================================================================
+# LUX EMPIRE
+# PUBLIC URL ROUTING
+#
+# Browser:
+#   /luxempire/login
+#   /luxempire/register
+#   /luxempire/manage-houses
+#
+# Physical PHP files remain unchanged on disk.
+# ================================================================
+
+
+# ================================================================
+# BLOCK PHYSICAL PROJECT URL
+#
+# The real directory is /srv/http/house_truck_platform
+# but the browser must NEVER use:
+#
+#   /house_truck_platform/...
+#
+# Only /luxempire/... is public.
+# ================================================================
+
+RewriteCond %{REQUEST_URI} ^/house_truck_platform(?:/|$) [NC]
+RewriteRule ^ - [F,L]
+
+
+# ================================================================
+# AUTHENTICATION ROUTES
+# ================================================================
+
+RewriteRule ^login/?$ auth/login.php [END]
+RewriteRule ^register/?$ auth/register.php [END]
+RewriteRule ^logout/?$ auth/logout.php [END]
+
+RewriteRule ^forgot-password/?$ auth/forgot_password.php [END]
+RewriteRule ^reset-password/?$ auth/reset_password.php [END]
+
+
+# ================================================================
+# LANDLORD / PROPERTY ROUTES
+#
+# Public URLs do NOT expose the role or PHP filename.
+# ================================================================
+
+RewriteRule ^manage-houses/?$ dashboard/landlord/manage_houses.php [END]
+RewriteRule ^add-property/?$ dashboard/landlord/add_house.php [END]
+RewriteRule ^edit-property/?$ dashboard/landlord/edit_house.php [END]
+RewriteRule ^booking-requests/?$ dashboard/landlord/booking_requests.php [END]
+
+
+# ================================================================
+# SECURITY
+# ================================================================
+
+# Block sensitive files
+RewriteRule \.(env|log|sql|md)$ - [F,END]
+
+# Prevent direct access to application internals
+RewriteRule ^config(?:/|$) - [F,END]
+RewriteRule ^classes(?:/|$) - [F,END]
+RewriteRule ^includes(?:/|$) - [F,END]
+
+
+# ================================================================
+# EXISTING PHP FILES
+#
+# These remain physically accessible for now so we can migrate
+# internal links/redirects safely. We will tighten this later.
+# ================================================================

@@ -52,7 +52,7 @@ $delete = $pdo->prepare("
 $delete->execute([$user_id]);
 
 header(
-    "Location: ../../dashboard/admin/users.php"
+    'Location: ' . BASE_URL . '/admin/users'
 );
 
 exit();

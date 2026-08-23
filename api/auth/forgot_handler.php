@@ -1,10 +1,12 @@
 <?php
 
+require_once '../../config/app.php';
+
 require_once '../../config/db.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
-    header("Location: ../../auth/forgot_password.php");
+    header("Location: " . BASE_URL . "/forgot-password");
     exit();
 }
 
@@ -16,7 +18,7 @@ $email = trim($_POST['email'] ?? '');
 if (empty($email)) {
 
     header(
-        "Location: ../../auth/forgot_password.php?error=Email is required"
+        "Location: " . BASE_URL . "/forgot-password?error=Email is required"
     );
 
     exit();
@@ -42,7 +44,7 @@ $user = $stmt->fetch();
 if (!$user) {
 
     header(
-        "Location: ../../auth/forgot_password.php?error=Account not found"
+        "Location: '. BASE_URL . '/forgot-password?error=Account not found"
     );
 
     exit();
@@ -113,7 +115,8 @@ $insert->execute([
 */
 
 $resetLink =
-    "https://petallike-edith-undatable.ngrok-free.dev/house_truck_platform/auth/reset_password.php?token="
+    BASE_URL
+    . '/reset-password?token='
     . urlencode($rawToken);
 
 /*
@@ -210,7 +213,7 @@ try {
     $mail->send();
 
     header(
-        "Location: ../../auth/forgot_password.php?success="
+        "Location: '. BASE_URL . '/forgot-password?success="
         . urlencode(
             "Password reset link sent, if the email exists."
         )
@@ -221,7 +224,7 @@ try {
 } catch (Exception $e) {
 
     header(
-        "Location: ../../auth/forgot_password.php?error="
+        "Location: '. BASE_URL . '/forgot-password?error="
         . urlencode(
             "Failed to send recovery email."
         )

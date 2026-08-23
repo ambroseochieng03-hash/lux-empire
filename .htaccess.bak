@@ -1,0 +1,13 @@
+RewriteEngine On
+
+# Block sensitive files
+RewriteRule \.(env|log|sql|md)$ - [F,L]
+
+# Prevent direct access to config
+RewriteRule ^config/ - [F,L]
+
+# Prevent direct access to classes
+RewriteRule ^classes/ - [F,L]
+
+# Prevent direct access to includes
+RewriteRule ^includes/ - [F,L]

@@ -5,6 +5,19 @@ require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/navbar.php';
 ?>
 
+<style>
+
+    /* LUX EMPIRE — Metallic Gold Icons */
+.lux-gold-icon {
+    color: #d4af37;
+    text-shadow:
+        0 1px 0 #fff3b0,
+        0 2px 2px rgba(0, 0, 0, 0.45),
+        0 4px 8px rgba(212, 175, 55, 0.35);
+}
+
+</style>
+
 <!-- HERO SECTION -->
 <section style="
     min-height:100vh;
@@ -65,7 +78,7 @@ require_once __DIR__ . '/includes/navbar.php';
                 font-size:0.95rem;
                 backdrop-filter:blur(12px);
             ">
-                👑 Welcome to LUX EMPIRE
+                Welcome to LUX EMPIRE
             </span>
 
             <h1 style="
@@ -125,7 +138,7 @@ require_once __DIR__ . '/includes/navbar.php';
                         backdrop-filter:blur(12px);
                         transition:0.3s;
                    ">
-                    🔑 Login
+                    <i class="fa-solid fa-right-to-bracket"></i> Login
                 </a>
 
             </div>
@@ -359,10 +372,10 @@ require_once __DIR__ . '/includes/navbar.php';
 
             <?php
             $features = [
-                ['🏛', 'Luxury Properties', 'Premium homes and elite residences curated for excellence.'],
-                ['🚚', 'Smart Logistics', 'Uber-style moving truck system with live GPS tracking.'],
-                ['🔒', 'Secure Platform', 'Protected authentication and verified landlords.'],
-                ['⚡', 'Modern Experience', 'Fast, elegant, and mobile-first luxury platform.']
+                ['fa-building', 'Luxury Properties', 'Premium homes and elite residences curated for excellence.'],
+                ['fa-truck-fast', 'Smart Logistics', 'Uber-style moving truck system with live GPS tracking.'],
+                ['fa-shield-halved', 'Secure Platform', 'Protected authentication and verified landlords.'],
+                ['fa-bolt', 'Modern Experience', 'Fast, elegant, and mobile-first luxury platform.']
             ];
 
             foreach ($features as $feature):
@@ -377,7 +390,7 @@ require_once __DIR__ . '/includes/navbar.php';
                     font-size:3rem;
                     margin-bottom:20px;
                 ">
-                    <?php echo $feature[0]; ?>
+                    <i class="fa-solid <?php echo $feature[0]; ?> lux-gold-icon"></i>
                 </div>
 
                 <h3 style="
@@ -466,7 +479,7 @@ require_once __DIR__ . '/includes/navbar.php';
                         padding:18px 34px;
                         border-radius:18px;
                    ">
-                    👑 Create Account
+                    <i class="fa-solid fa-crown lux-gold-icon"></i> Create Account
                 </a>
 
                 <a href="auth/login.php"
@@ -479,7 +492,7 @@ require_once __DIR__ . '/includes/navbar.php';
                         color:white;
                         font-weight:600;
                    ">
-                    🔑 Access Platform
+                    <i class="fa-solid fa-right-from-bracket"></i> Access Platform
                 </a>
 
             </div>
@@ -490,4 +503,4 @@ require_once __DIR__ . '/includes/navbar.php';
 
 </section>
 
-<?php require_once 'includes/footer.php'; ?>
+<?php require_once __DIR__ . '/includes/footer.php'; ?>

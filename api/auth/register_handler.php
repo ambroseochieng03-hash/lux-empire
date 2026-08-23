@@ -1,11 +1,13 @@
 <?php
+
+require_once '../../config/app.php';
 require_once '../../classes/User.php';
 
 /**
  * Only allow POST requests
  */
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header("Location: ../../auth/register.php");
+    header("Location: '. BASE_URL . '/register");
     exit();
 }
 
@@ -32,7 +34,7 @@ if (
     empty($password) ||
     empty($confirm_password)
 ) {
-    header("Location: ../../auth/register.php?error=" . urlencode("All Empire fields are required."));
+    header("Location: '. BASE_URL . '/register?error=" . urlencode("All Empire fields are required."));
     exit();
 }
 
@@ -40,7 +42,7 @@ if (
  * Email validation
  */
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    header("Location: ../../auth/register.php?error=" . urlencode("Invalid email address."));
+    header("Location: '. BASE_URL . '/register?error=" . urlencode("Invalid email address."));
     exit();
 }
 
@@ -48,7 +50,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
  * Password match
  */
 if ($password !== $confirm_password) {
-    header("Location: ../../auth/register.php?error=" . urlencode("Passwords do not match."));
+    header("Location: '. BASE_URL . '/register?error=" . urlencode("Passwords do not match."));
     exit();
 }
 
@@ -56,7 +58,7 @@ if ($password !== $confirm_password) {
  * Password strength
  */
 if (strlen($password) < 8) {
-    header("Location: ../../auth/register.php?error=" . urlencode("Password must be at least 8 characters."));
+    header("Location: '. BASE_URL . '/register?error=" . urlencode("Password must be at least 8 characters."));
     exit();
 }
 
@@ -66,7 +68,7 @@ if (strlen($password) < 8) {
 $allowed_roles = ['tenant', 'landlord', 'driver'];
 
 if (!in_array($role, $allowed_roles)) {
-    header("Location: ../../auth/register.php?error=" . urlencode("Invalid Empire role selected."));
+    header("Location: '. BASE_URL . '/register?error=" . urlencode("Invalid Empire role selected."));
     exit();
 }
 
@@ -88,10 +90,10 @@ $result = $user->register(
  * Result handling
  */
 if ($result === true) {
-    header("Location: ../../auth/login.php?success=" . urlencode("Welcome to LUX EMPIRE. Your account has been created."));
+    header("Location: '. BASE_URL . '/login?success=" . urlencode("Welcome to LUX EMPIRE. Your account has been created."));
     exit();
 } else {
-    header("Location: ../../auth/register.php?error=" . urlencode($result));
+    header("Location: '. BASE_URL . '/register?error=" . urlencode($result));
     exit();
 }
 ?>```

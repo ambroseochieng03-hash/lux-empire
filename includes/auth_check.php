@@ -1,33 +1,54 @@
 <?php
 
-ini_set('display_errors', 0);
-ini_set('log_errors', 1);
-
 /**
- * LUX EMPIRE Access Protection Layer
+ * LUX EMPIRE
+ * Authentication Protection Layer
  */
+
+declare(strict_types=1);
 
 require_once __DIR__ . '/../config/session.php';
 
-/**
- * General login protection
- */
-requireLogin();
 
 /**
- * Optional role check:
- * Usage:
- * requireRoleAccess('admin');
+ * Start and validate session.
  */
-function requireRoleAccess($requiredRole) {
-    if (!isset($_SESSION['role']) || $_SESSION['role'] !== $requiredRole) {
-        header("Location: " . BASE_URL . "/auth/login.php?access_denied=1");
-        exit();
-    }
+Session::start();
+
+
+/**
+ * Require authenticated user.
+ */
+if (!Session::isAuthenticated()) {
+
+    header(
+        'Location: ' . BASE_URL . '/login?access_denied=1'
+    );
+
+    exit();
 }
 
+
 /**
- * Session timeout monitor
+ * Require a specific role.
  */
-checkSessionTimeout();
-?>
+function requireRoleAccess(string $requiredRole): void
+{
+    $user = Session::user();
+
+    if ($user === null) {
+
+        header(
+            'Location: ' . BASE_URL . '/login?access_denied=1'
+        );
+
+        exit();
+    }
+
+    if (($user['role'] ?? null) !== $requiredRole) {
+
+        http_response_code(403);
+
+        exit('Access denied.');
+    }
+}

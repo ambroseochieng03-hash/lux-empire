@@ -1,0 +1,359 @@
+.chat-shell {
+    display: flex;
+    margin-left: 280px;
+    border-radius: 24px;
+    overflow: hidden; /* nothing inside this shell should ever scroll the page */
+    background: rgba(255,255,255,0.03);
+    box-sizing: border-box;
+}
+
+.chat-list-pane {
+    width: 340px;
+    flex-shrink: 0;
+    border-right: 1px solid rgba(212,175,55,0.2);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.chat-list-header {
+    padding: 24px;
+    border-bottom: 1px solid rgba(212,175,55,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0; /* header never scrolls */
+}
+
+.chat-list-header h2 {
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    font-size: 1.4rem;
+}
+
+.chat-list-close-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--gray);
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.chat-list {
+    flex: 1;
+    min-height: 0; /* required so overflow-y:auto actually applies inside flex */
+    overflow-y: auto;
+}
+
+.chat-list-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    transition: 0.2s;
+}
+
+.chat-list-item:hover { background: rgba(212,175,55,0.06); }
+.chat-list-item.active { background: rgba(212,175,55,0.12); }
+
+.chat-list-item.unread {
+    background: rgba(212,175,55,0.08);
+    border-left: 3px solid var(--gold);
+}
+
+.chat-list-avatar {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: rgba(212,175,55,0.15);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold);
+    flex-shrink: 0;
+}
+
+.chat-list-meta { flex: 1; min-width: 0; }
+
+.chat-list-name {
+    color: white;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+}
+
+.chat-list-item.unread .chat-list-name { color: var(--gold); }
+
+.chat-list-preview {
+    color: var(--gray);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chat-unread-count {
+    background: var(--gold);
+    color: black;
+    font-size: 0.7rem;
+    font-weight: bold;
+    border-radius: 50%;
+    min-width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+}
+
+.chat-thread-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.chat-thread-placeholder {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: var(--gray);
+}
+.chat-thread-placeholder i { font-size: 3rem; margin-bottom: 12px; color: rgba(212,175,55,0.3); }
+
+.chat-thread-active {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Fixed top: name + online status. Never scrolls. */
+.chat-thread-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px 24px;
+    border-bottom: 1px solid rgba(212,175,55,0.15);
+    flex-shrink: 0;
+}
+
+.chat-back-btn {
+    display: none;
+    background: none; border: none; color: var(--gold);
+    font-size: 1.2rem; cursor: pointer;
+    flex-shrink: 0;
+}
+
+.chat-thread-user { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.chat-avatar {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(212,175,55,0.15);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--gold);
+    flex-shrink: 0;
+}
+.chat-thread-user h3 { color: white; font-size: 1.05rem; }
+.chat-thread-user small { color: var(--gray); }
+
+/* Only this area scrolls on the right side. */
+.chat-messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chat-bubble {
+    max-width: 65%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    line-height: 1.5;
+    font-size: 0.95rem;
+    word-break: break-word;
+}
+
+.chat-bubble.mine {
+    align-self: flex-end;
+    background: linear-gradient(135deg,#d4af37,#f5d76e);
+    color: black;
+    border-bottom-right-radius: 4px;
+}
+
+.chat-bubble.theirs {
+    align-self: flex-start;
+    background: rgba(255,255,255,0.08);
+    color: white;
+    border-bottom-left-radius: 4px;
+}
+
+.chat-bubble.ai {
+    align-self: center;
+    background: rgba(212,175,55,0.12);
+    color: var(--gold);
+    font-size: 0.85rem;
+    border-radius: 12px;
+    text-align: center;
+    max-width: 80%;
+}
+
+.chat-bubble small {
+    display: block;
+    margin-top: 4px;
+    opacity: 0.6;
+    font-size: 0.7rem;
+}
+
+.chat-typing-indicator {
+    padding: 6px 24px;
+    color: var(--gray);
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.chat-typing-indicator span {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--gold);
+    animation: chatTypingBounce 1s infinite ease-in-out;
+}
+.chat-typing-indicator span:nth-child(2) { animation-delay: 0.15s; }
+.chat-typing-indicator span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes chatTypingBounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-4px); }
+}
+
+/* Fixed bottom: message input. Never scrolls. */
+.chat-input-bar {
+    display: flex; gap: 10px;
+    padding: 16px 24px;
+    border-top: 1px solid rgba(212,175,55,0.15);
+    flex-shrink: 0;
+}
+.chat-input-bar input {
+    flex: 1;
+    padding: 14px 18px;
+    border-radius: 20px;
+    border: none;
+    background: rgba(255,255,255,0.06);
+    color: white;
+}
+.chat-input-bar button {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg,#d4af37,#f5d76e);
+    color: black;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.sidebar-badge {
+    background: var(--gold);
+    color: black;
+    font-size: 0.7rem;
+    font-weight: bold;
+    border-radius: 50%;
+    padding: 2px 7px;
+    margin-left: auto;
+}
+
+/* Chat starter modal (unchanged from before) */
+.chat-starter-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+}
+.chat-starter-overlay.active { display: flex; }
+
+.chat-starter-box {
+    background: #101010;
+    border: 1px solid rgba(212,175,55,0.25);
+    border-radius: 22px;
+    padding: 28px;
+    width: 90%;
+    max-width: 420px;
+    position: relative;
+}
+
+.chat-starter-box h3 {
+    color: var(--gold);
+    font-family: 'Cinzel', serif;
+    margin-bottom: 16px;
+    padding-right: 20px;
+}
+
+.chat-starter-box textarea {
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: none;
+    border-radius: 14px;
+    padding: 14px;
+    color: white;
+    resize: vertical;
+    margin-bottom: 16px;
+    font-family: inherit;
+}
+
+.chat-starter-close {
+    position: absolute;
+    top: 18px; right: 20px;
+    background: none;
+    border: none;
+    color: var(--gray);
+    font-size: 1.4rem;
+    cursor: pointer;
+}
+
+#chatStarterFeedback {
+    color: var(--gold);
+    margin-top: 12px;
+    line-height: 1.6;
+}
+
+/* ================================
+   MOBILE: sliding list pane
+================================= */
+@media (max-width: 900px) {
+
+    .chat-shell {
+        margin-left: 0 !important;
+        position: relative;
+        border-radius: 0;
+    }
+
+    .chat-list-pane {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 5;
+        background: #0a0a0a;
+        transform: translateX(0);
+        transition: transform 0.28s ease;
+    }
+
+    /* Once a conversation is open, the list slides fully off-screen. */
+    .chat-shell.thread-open .chat-list-pane {
+        transform: translateX(-100%);
+    }
+
+    .chat-thread-pane {
+        width: 100%;
+    }
+
+    .chat-list-close-btn { display: inline-block; }
+    .chat-back-btn { display: inline-block; }
+}
