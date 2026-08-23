@@ -102,7 +102,7 @@ class MediaService
 
         if ($file['size'] > $this->maxImageSize) {
             throw new RuntimeException(
-                'Image must be below 10MB.'
+                'Image must be below 40MB.'
             );
         }
 
