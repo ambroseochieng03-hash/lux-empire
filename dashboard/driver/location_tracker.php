@@ -119,7 +119,7 @@ require_once '../../includes/sidebar.php';
             font-size:3rem;
             margin-bottom:15px;
         ">
-            📍 Live Driver Tracker
+            <i class="fa-solid fa-location-dot"></i> Live Driver Tracker
         </h1>
 
         <p style="
@@ -153,7 +153,7 @@ require_once '../../includes/sidebar.php';
                 font-size:3rem;
                 margin-bottom:15px;
             ">
-                🛰️
+                <i class="fa-solid fa-satellite-dish"></i>
             </div>
 
             <h2 style="
@@ -187,7 +187,7 @@ require_once '../../includes/sidebar.php';
                 font-size:3rem;
                 margin-bottom:15px;
             ">
-                🌍
+                <i class="fa-solid fa-earth-africa"></i>
             </div>
 
             <h2 style="
@@ -221,7 +221,7 @@ require_once '../../includes/sidebar.php';
                 font-size:3rem;
                 margin-bottom:15px;
             ">
-                📡
+                <i class="fa-solid fa-tower-broadcast"></i>
             </div>
 
             <h2 style="
@@ -330,12 +330,12 @@ require_once '../../includes/sidebar.php';
 </div>
 
 <!-- MAPS JS -->
+<script src="../../assets/js/maps.js"></script>
+
 <script
     async
     defer
     src="https://maps.googleapis.com/maps/api/js?key=<?php echo GOOGLE_MAPS_API_KEY; ?>&callback=initializeTracker">
 </script>
-
-<script src="../../assets/js/maps.js"></script>
 
 <?php require_once '../../includes/footer.php'; ?>

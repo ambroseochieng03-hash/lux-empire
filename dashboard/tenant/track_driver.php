@@ -9,13 +9,8 @@ require_once '../../config/db.php';
 $db = new Database();
 $pdo = $db->connect();
 
-$tenant_id = $_SESSION['user_id'];
+$tenant_id = (int) Session::user()['id'];
 
-/*
-|--------------------------------------------------------------------------
-| FETCH ACTIVE TRIP
-|--------------------------------------------------------------------------
-*/
 $stmt = $pdo->prepare("
     SELECT
         tr.*,
@@ -30,6 +25,7 @@ $stmt = $pdo->prepare("
     WHERE tr.tenant_id = ?
     AND tr.status IN (
         'accepted',
+        'arrived_at_pickup',
         'in_transit'
     )
 
@@ -217,7 +213,7 @@ require_once '../../includes/sidebar.php';
             color:var(--gold);
             word-break:break-word;
         ">
-            📞 <?php echo htmlspecialchars($trip['driver_phone'] ?? 'N/A'); ?>
+            <?php echo htmlspecialchars($trip['driver_phone'] ?? 'N/A'); ?>
         </div>
 
     </div>
@@ -447,7 +443,11 @@ if (
 
 <script>
 
-const DRIVER_ID = <?php echo (int)$trip['driver_id']; ?>;
+
+const BASE_URL = "<?php echo BASE_URL; ?>";
+const DRIVER_ID = <?php echo (int) $trip['driver_id']; ?>;
+const TRIP_ID = <?php echo (int) $trip['id']; ?>;
+
 
 const PICKUP = {
     lat: <?php echo $trip['pickup_lat'] ?: '-1.286389'; ?>,
@@ -459,149 +459,135 @@ const DESTINATION = {
     lng: <?php echo $trip['destination_lng'] ?: '36.817223'; ?>
 };
 
-const TRIP_STATUS = "<?php echo $trip['status']; ?>";
+let currentTripStatus = "<?php echo $trip['status']; ?>";
 
-let map;
-let driverMarker;
-let directionsService;
-let directionsRenderer;
+let map, driverMarker, fullPathPolyline, remainingPolyline, directionsService;
+let lastRouteCallAt = 0;
 
-function initMap()
-{
-    map = new google.maps.Map(
-        document.getElementById("map"),
-        {
-            zoom: 14,
-            center: PICKUP,
-            mapTypeControl:false,
-            streetViewControl:false,
-            fullscreenControl:true
-        }
-    );
+function getCurrentTarget() {
+    return currentTripStatus === 'in_transit' ? DESTINATION : PICKUP;
+}
+
+function initMap() {
+    map = new google.maps.Map(document.getElementById("map"), {
+        zoom: 14,
+        center: PICKUP,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true
+    });
 
     directionsService = new google.maps.DirectionsService();
 
-    directionsRenderer = new google.maps.DirectionsRenderer({
-        suppressMarkers:false,
-        polylineOptions:{
-            strokeColor:"#4285F4",
-            strokeOpacity:1,
-            strokeWeight:6
-        }
+    fullPathPolyline = new google.maps.Polyline({
+        strokeColor: "#888888",
+        strokeOpacity: 0.6,
+        strokeWeight: 6,
+        map: map
     });
 
-    directionsRenderer.setMap(map);
+    remainingPolyline = new google.maps.Polyline({
+        strokeColor: "#4285F4",
+        strokeOpacity: 1,
+        strokeWeight: 6,
+        map: map
+    });
 
     driverMarker = new google.maps.Marker({
         map: map,
         title: "Driver",
-        icon: {
-            url: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png"
-        }
+        icon: { url: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png" }
     });
 
     fetchDriverLocation();
-
     setInterval(fetchDriverLocation, 1500);
+    setInterval(pollTripStatus, 5000);
 }
 
-/*
-|--------------------------------------------------------------------------
-| FETCH DRIVER LOCATION
-|--------------------------------------------------------------------------
-*/
-function fetchDriverLocation()
-{
-    fetch(
-        "../../api/maps/get_driver_location.php?driver_id="
-        + DRIVER_ID
-    )
+function fetchDriverLocation() {
+    fetch(`${BASE_URL}/api/maps/get_driver_location.php?driver_id=${DRIVER_ID}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) return;
 
-    .then(response => response.json())
+            const driverPos = {
+                lat: parseFloat(data.location.latitude),
+                lng: parseFloat(data.location.longitude)
+            };
 
-    .then(data => {
-
-        if (!data.success) return;
-
-        const lat = parseFloat(data.location.latitude);
-        const lng = parseFloat(data.location.longitude);
-
-        const driverPos = {
-            lat: lat,
-            lng: lng
-        };
-
-        driverMarker.setPosition(driverPos);
-
-        updateRoute(driverPos);
-
-    })
-
-    .catch(error => {
-        console.error(error);
-    });
+            driverMarker.setPosition(driverPos);
+            updateRoute(driverPos);
+        })
+        .catch(console.error);
 }
 
-/*
-|--------------------------------------------------------------------------
-| UPDATE ROUTE
-|--------------------------------------------------------------------------
-*/
-function updateRoute(driverPos)
-{
-    let destination;
+function updateRoute(driverPos) {
+    const now = Date.now();
+    if (now - lastRouteCallAt < 4000) return;
+    lastRouteCallAt = now;
 
-    if (TRIP_STATUS === "accepted") {
-
-        destination = PICKUP;
-
-    } else {
-
-        destination = DESTINATION;
-    }
+    const isFirstRoute = fullPathPolyline.getPath().getLength() === 0;
 
     directionsService.route({
-
         origin: driverPos,
-
-        destination: destination,
-
+        destination: getCurrentTarget(),
         travelMode: google.maps.TravelMode.DRIVING
+    }, function (result, status) {
+        if (status !== "OK") return;
 
-    },
+        const route = result.routes[0];
+        const leg = route.legs[0];
 
-    function(result, status) {
-
-        if (status === "OK") {
-
-            directionsRenderer.setDirections(result);
-
-            const leg = result.routes[0].legs[0];
-
-            document.getElementById("eta").innerHTML =
-                leg.duration.text;
-
-            document.getElementById("distance").innerHTML =
-                leg.distance.text;
-
-            autoZoom(driverPos, destination);
+        if (isFirstRoute) {
+            fullPathPolyline.setPath(route.overview_path);
         }
+
+        remainingPolyline.setPath(route.overview_path);
+
+        document.getElementById("eta").innerHTML = leg.duration.text;
+        document.getElementById("distance").innerHTML = leg.distance.text;
+
+        autoZoom(driverPos, getCurrentTarget());
     });
 }
 
-/*
-|--------------------------------------------------------------------------
-| AUTO ZOOM
-|--------------------------------------------------------------------------
-*/
-function autoZoom(driverPos, destination)
-{
+function autoZoom(driverPos, destination) {
     const bounds = new google.maps.LatLngBounds();
-
     bounds.extend(driverPos);
     bounds.extend(destination);
-
     map.fitBounds(bounds);
+}
+
+function showTripToast(message) {
+    const toast = document.createElement('div');
+    toast.textContent = message;
+    toast.style.cssText = "position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#101010; border:1px solid var(--gold); color:var(--gold); padding:14px 22px; border-radius:14px; z-index:9999; box-shadow:0 8px 20px rgba(0,0,0,0.4);";
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+}
+
+function pollTripStatus() {
+    fetch(`${BASE_URL}/api/trucks/get_trip_status.php?trip_id=${TRIP_ID}`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.status || data.status === currentTripStatus) return;
+
+            const previousStatus = currentTripStatus;
+            currentTripStatus = data.status;
+
+            document.getElementById("tripStatus").innerHTML = data.status.toUpperCase().replace('_', ' ');
+
+            if (data.status === 'arrived_at_pickup' && previousStatus === 'accepted') {
+                showTripToast("Your driver has arrived at the pickup location.");
+            } else if (data.status === 'in_transit') {
+                showTripToast("Your trip has started.");
+                // Fresh reference path toward the new destination.
+                fullPathPolyline.setPath([]);
+            } else if (data.status === 'completed') {
+                showTripToast("Trip completed.");
+            }
+        })
+        .catch(console.error);
 }
 
 window.initMap = initMap;

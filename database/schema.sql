@@ -291,3 +291,19 @@ ADD COLUMN notes TEXT NULL;
 
 ALTER TABLE houses
 ADD rating INT DEFAULT 0;
+
+ALTER TABLE truck_requests
+MODIFY status ENUM('pending','accepted','arrived_at_pickup','in_transit','completed','cancelled')
+DEFAULT 'pending';
+
+CREATE TABLE notifications (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    link VARCHAR(255) NULL,
+    is_read TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

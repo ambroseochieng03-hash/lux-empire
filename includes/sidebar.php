@@ -70,6 +70,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <span class="sidebar-badge" id="sidebarChatBadge" style="display:none;"></span>
             </a>
 
+            <a href="<?php echo BASE_URL; ?>/tenant/notifications">
+                <i class="fa-solid fa-bell"></i> Notifications
+                <span class="sidebar-badge" id="sidebarNotifBadge" style="display:none;"></span>
+            </a>
+
             <form method="POST" action="../../api/emergency/trigger_alert.php">
 
                 <input type="hidden" name="message" value="Tenant emergency alert">
@@ -98,6 +103,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <span class="sidebar-badge" id="sidebarChatBadge" style="display:none;"></span>
             </a>
 
+            <a href="<?php echo BASE_URL; ?>/landlord/notifications">
+                <i class="fa-solid fa-bell"></i> Notifications
+                <span class="sidebar-badge" id="sidebarNotifBadge" style="display:none;"></span>
+            </a>
+
         <?php elseif ($userRole === 'driver'): ?>
 
             <a href="<?php echo BASE_URL; ?>/driver"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
@@ -107,6 +117,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <i class="fa-solid fa-comments"></i> Chats
                 <span class="sidebar-badge" id="sidebarChatBadge" style="display:none;"></span>
             </a>
+
+            <a href="<?php echo BASE_URL; ?>/driver/notifications">
+                <i class="fa-solid fa-bell"></i> Notifications
+                <span class="sidebar-badge" id="sidebarNotifBadge" style="display:none;"></span>
+            </a>
+
             <a href="<?php echo BASE_URL; ?>/driver/active-trip"><i class="fa-solid fa-truck-fast"></i> Active Trip</a>
             <a href="<?php echo BASE_URL; ?>/driver/location-tracker"><i class="fa-solid fa-location-dot"></i> Live Tracker</a>
             

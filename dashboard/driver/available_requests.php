@@ -242,7 +242,7 @@ require_once '../../includes/sidebar.php';
                     </button>
 
                     <!-- ACTION -->
-                    <form action="../../api/trucks/accept_request.php" method="POST">
+                    <form action="<?php echo BASE_URL; ?>/api/trucks/accept_request.php" method="POST">
 
                         <input type="hidden" name="request_id"
                                value="<?php echo $request['id']; ?>">

@@ -95,14 +95,14 @@ require_once '../includes/navbar.php';
         <!-- Extra Links -->
         <div style="text-align:center; margin-top:25px;">
             <p style="margin-bottom:10px;">
-                <a href="forgot_password.php" style="color:var(--gold); text-decoration:none;">
+                <a href="<?php echo BASE_URL; ?>/forgot_password" style="color:var(--gold); text-decoration:none;">
                     Forgotten your Empire key?
                 </a>
             </p>
 
             <p style="color:var(--gray);">
                 New to the Empire?
-                <a href="register.php" style="color:var(--gold); text-decoration:none;">
+                <a href="<?php echo BASE_URL; ?>/register" style="color:var(--gold); text-decoration:none;">
                     Join Here
                 </a>
             </p>

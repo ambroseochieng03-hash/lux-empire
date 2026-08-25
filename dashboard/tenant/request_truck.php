@@ -146,30 +146,30 @@ require_once '../../includes/sidebar.php';
                 </h2>
 
                 <form
-                    action="../../api/trucks/request_truck.php"
+                    action="<?php echo BASE_URL; ?>/api/trucks/request_truck.php"
                     method="POST"
                 >
 
                     <!-- PICKUP -->
                     <div style="margin-bottom:22px;">
-
-                        <label style="
-                            display:block;
-                            margin-bottom:10px;
-                            color:var(--gold);
-                            font-weight:600;
-                        ">
+                        <label style="display:block; margin-bottom:10px; color:var(--gold); font-weight:600;">
                             Pickup Location
                         </label>
 
-                        <input
-                            type="text"
-                            name="pickup_location"
-                            placeholder="Enter pickup location"
-                            required
-                            class="request-input"
-                        >
+                        <div style="display:flex; gap:10px;">
+                            <input
+                                type="text"
+                                name="pickup_location"
+                                id="pickupLocationInput"
+                                placeholder="Enter pickup location"
+                                required
+                                class="request-input"
+                            >
 
+                            <button type="button" id="useMyLocationBtn" class="lux-btn" style="white-space:nowrap; padding:0 18px;">
+                                <i class="fa-solid fa-location-crosshairs"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- DESTINATION -->
@@ -187,6 +187,7 @@ require_once '../../includes/sidebar.php';
                         <input
                             type="text"
                             name="destination"
+                            id="destinationInput"
                             placeholder="Enter destination"
                             required
                             class="request-input"
@@ -217,25 +218,18 @@ require_once '../../includes/sidebar.php';
                     </div>
 
                     <!-- HIDDEN GPS -->
-                    <input type="hidden" name="pickup_lat">
-                    <input type="hidden" name="pickup_lng">
-                    <input type="hidden" name="destination_lat">
-                    <input type="hidden" name="destination_lng">
+                    <input type="hidden" name="pickup_lat" id="pickupLatInput">
+                    <input type="hidden" name="pickup_lng" id="pickupLngInput">
+                    <input type="hidden" name="destination_lat" id="destinationLatInput">
+                    <input type="hidden" name="destination_lng" id="destinationLngInput">
 
                     <!-- BUTTON -->
                     <button
                         type="submit"
                         class="lux-btn"
-                        style="
-                            width:100%;
-                            padding:18px;
-                            border:none;
-                            border-radius:18px;
-                            cursor:pointer;
-                            font-size:1rem;
-                        "
+                        style="width:100%; padding:18px; border:none; border-radius:18px; cursor:pointer; font-size:1rem;"
                     >
-                         Request Luxury Truck
+                        <i class="fa-solid fa-truck-fast"></i> Request Luxury Truck
                     </button>
 
                 </form>
@@ -318,5 +312,12 @@ require_once '../../includes/sidebar.php';
     </main>
 
 </div>
+
+<script src="<?php echo BASE_URL; ?>/assets/js/request-truck-location.js"></script>
+<script
+    async
+    defer
+    src="https://maps.googleapis.com/maps/api/js?key=<?php echo GOOGLE_MAPS_API_KEY; ?>&libraries=places&callback=initRequestTruckMap">
+</script>
 
 <?php require_once '../../includes/footer.php'; ?>

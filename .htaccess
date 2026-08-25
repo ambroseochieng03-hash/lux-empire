@@ -118,6 +118,11 @@ RewriteRule ^classes(?:/|$) - [F,END]
 RewriteRule ^includes(?:/|$) - [F,END]
 
 
+RewriteRule ^tenant/notifications/?$ dashboard/tenant/notifications.php [END]
+RewriteRule ^landlord/notifications/?$ dashboard/landlord/notifications.php [END]
+RewriteRule ^driver/notifications/?$ dashboard/driver/notifications.php [END]
+
+
 # ================================================================
 # EXISTING PHP FILES
 #

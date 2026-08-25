@@ -109,7 +109,7 @@ require_once '../includes/navbar.php';
                 font-size:1.1rem;
                 border-radius:16px;
             ">
-                👑 Claim Your Place
+                Claim Your Place
             </button>
 
         </form>
@@ -118,7 +118,7 @@ require_once '../includes/navbar.php';
         <div style="text-align:center; margin-top:25px;">
             <p style="color:var(--gray);">
                 Already part of the Empire?
-                <a href="login.php" style="color:var(--gold); text-decoration:none;">
+                <a href="<?php echo BASE_URL; ?>/login" style="color:var(--gold); text-decoration:none;">
                     Enter Here
                 </a>
             </p>
