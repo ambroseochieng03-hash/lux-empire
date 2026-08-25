@@ -1,10 +1,9 @@
 
-````markdown
 # LUX EMPIRE
 
 **LUX EMPIRE** is a custom PHP web application that combines **rental housing** and **moving logistics** into one platform.
 
-The platform provides dedicated workflows for **tenants, landlords, drivers, and administrators**, with functionality covering property discovery, bookings, moving requests, communication, geolocation, driver tracking, notifications, emergency handling, and administrative monitoring.
+The platform provides dedicated workflows for **tenants, landlords, drivers, and administrators**, covering property discovery, bookings, moving requests, communication, geolocation, driver tracking, notifications, emergency handling, and administrative monitoring.
 
 The project is intentionally implemented as a **custom PHP application** rather than relying on a large PHP framework.
 
@@ -89,7 +88,7 @@ Drivers can:
 - View trip-related information
 - Communicate with tenants
 - Receive notifications
-- Participate in emergency/trip workflows
+- Participate in emergency and trip workflows
 
 ---
 
@@ -102,7 +101,7 @@ Administrators have a dedicated management interface for:
 - Account suspension
 - User deletion
 - Property management
-- Truck/moving request monitoring
+- Truck and moving request monitoring
 - Reports
 - Emergency alerts
 - Emergency status management
@@ -140,7 +139,6 @@ The application contains an optional Groq API integration through:
 
 ```text
 classes/GroqClient.php
-````
 
 The current AI functionality is deliberately narrow.
 
@@ -835,43 +833,26 @@ GitHub:
 
 [https://github.com/ambroseochieng03-hash/lux-empire](https://github.com/ambroseochieng03-hash/lux-empire)
 
-`````
-
-
-
-````markdown
-```bash
+`````markdown
 composer install
 `````
 
 `````
-
-
-
-
-
-````markdown
-```php
 <?php
 
 $pdo = new PDO(...);
-```
 `````
 
 
 ````markdown
-```sql
 SELECT *
 FROM users
 WHERE email = :email;
-```
 ````
 
 
 ````markdown
-```env
 DB_HOST=localhost
 DB_NAME=house_truck_platform
-```
 ````
 
