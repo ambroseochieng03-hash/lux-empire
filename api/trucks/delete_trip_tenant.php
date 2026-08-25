@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 |--------------------------------------------------------------------------
 */
 
-$tenant_id = $_SESSION['user_id'];
+$tenant_id = (int) Session::user()['id'];
 
 $trip_id = $_POST['trip_id'] ?? null;
 

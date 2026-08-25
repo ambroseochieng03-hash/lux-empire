@@ -9,7 +9,7 @@ require_once '../../config/db.php';
 $db = new Database();
 $pdo = $db->connect();
 
-$driver_id = $_SESSION['user_id'];
+$driver_id = (int) Session::user()['id'];
 $user_name = $_SESSION['user_name'] ?? 'Driver';
 
 /* AVAILABLE REQUESTS */

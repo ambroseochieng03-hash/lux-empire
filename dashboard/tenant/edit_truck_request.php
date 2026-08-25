@@ -42,7 +42,7 @@ $stmt = $pdo->prepare("
 
 $stmt->execute([
     $id,
-    $_SESSION['user_id']
+    (int) Session::user()['id']
 ]);
 
 $request = $stmt->fetch();

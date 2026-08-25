@@ -23,7 +23,7 @@ $allowedStatuses = ['arrived_at_pickup', 'in_transit', 'completed'];
 
 if (!$trip_id || !$status || !in_array($status, $allowedStatuses)) {
     $_SESSION['error'] = "Invalid trip update request.";
-    header("Location: ../../dashboard/driver/active_trip.php");
+    header("Location: " . BASE_URL . "/dashboard/driver/active_trip.php");
     exit;
 }
 
@@ -39,19 +39,19 @@ $trip = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$trip) {
     $_SESSION['error'] = "Trip not found.";
-    header("Location: ../../dashboard/driver/active_trip.php");
+    header("Location: " . BASE_URL . "/dashboard/driver/active_trip.php");
     exit;
 }
 
 if ($trip['status'] === 'cancelled') {
     $_SESSION['error'] = "Tenant cancelled this trip.";
-    header("Location: ../../dashboard/driver/active_trip.php");
+    header("Location: " . BASE_URL . "/dashboard/driver/active_trip.php");
     exit;
 }
 
 if ($trip['status'] === 'completed') {
     $_SESSION['error'] = "Trip already completed.";
-    header("Location: ../../dashboard/driver/active_trip.php");
+    header("Location: " . BASE_URL . "/dashboard/driver/active_trip.php");
     exit;
 }
 
@@ -65,19 +65,19 @@ if ($trip['status'] === 'completed') {
 
 if ($status === 'arrived_at_pickup' && $trip['status'] !== 'accepted') {
     $_SESSION['error'] = "This trip has already moved past acceptance.";
-    header("Location: ../../dashboard/driver/active_trip.php");
+    header("Location: " . BASE_URL . "/dashboard/driver/active_trip.php");
     exit;
 }
 
 if ($status === 'in_transit' && $trip['status'] !== 'arrived_at_pickup') {
     $_SESSION['error'] = "You must confirm arrival at pickup before starting the trip.";
-    header("Location: ../../dashboard/driver/active_trip.php");
+    header("Location: " . BASE_URL . "/dashboard/driver/active_trip.php");
     exit;
 }
 
 if ($status === 'completed' && $trip['status'] !== 'in_transit') {
     $_SESSION['error'] = "Trip must first be started.";
-    header("Location: ../../dashboard/driver/active_trip.php");
+    header("Location: " . BASE_URL . "/dashboard/driver/active_trip.php");
     exit;
 }
 
@@ -91,7 +91,7 @@ if ($status === 'completed') {
 
     if ($emergencyCheck->fetch()) {
         $_SESSION['error'] = "Trip cannot be completed during an active emergency.";
-        header("Location: ../../dashboard/driver/active_trip.php");
+        header("Location: " . BASE_URL . "/dashboard/driver/active_trip.php");
         exit;
     }
 }
@@ -142,6 +142,14 @@ if ($success) {
 
     } elseif ($status === 'completed') {
 
+        $notification->create(
+            (int) $trip['tenant_id'],
+            'trip_completed',
+            'Trip Completed',
+            'Your driver has arrived and completed the move to ' . $trip['destination'] . '.',
+            BASE_URL . '/tenant/my-bookings'
+        );
+
         $_SESSION['success'] = "Trip completed successfully.";
     }
 
@@ -149,5 +157,5 @@ if ($success) {
     $_SESSION['error'] = "Failed to update trip.";
 }
 
-header("Location: ../../dashboard/driver/active_trip.php");
+header("Location: " . BASE_URL . "/dashboard/driver/active_trip.php");
 exit;

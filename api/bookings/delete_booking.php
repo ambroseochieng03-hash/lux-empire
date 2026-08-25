@@ -32,7 +32,7 @@ $booking = $bookingModel->getBookingById($booking_id);
 
 if (
     !$booking ||
-    $booking['tenant_id'] != $_SESSION['user_id']
+    $booking['tenant_id'] != (int) Session::user()['id']
 ) {
 
     $_SESSION['error'] =
@@ -50,7 +50,7 @@ if (
 
 $deleted = $bookingModel->deleteBooking(
     $booking_id,
-    $_SESSION['user_id']
+    (int) Session::user()['id']
 );
 
 if ($deleted) {

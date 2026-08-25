@@ -74,4 +74,14 @@ class Notification
         ");
         return $stmt->execute([':user_id' => $userId]);
     }
+
+    public function delete(int $id, int $userId): bool
+    {
+        $stmt = $this->conn->prepare("
+            DELETE FROM notifications
+            WHERE id = :id AND user_id = :user_id
+        ");
+
+        return $stmt->execute([':id' => $id, ':user_id' => $userId]);
+    }
 }

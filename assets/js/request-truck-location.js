@@ -4,11 +4,16 @@ window.initRequestTruckMap = function () {
     const destLatInput = document.getElementById('destinationLatInput');
     const destLngInput = document.getElementById('destinationLngInput');
 
-    if (destinationInput && window.google && google.maps.places) {
-        const autocomplete = new google.maps.places.Autocomplete(destinationInput);
+    const pickupLocationInput = document.getElementById('pickupLocationInput');
+    const pickupLatInput = document.getElementById('pickupLatInput');
+    const pickupLngInput = document.getElementById('pickupLngInput');
 
-        autocomplete.addListener('place_changed', () => {
-            const place = autocomplete.getPlace();
+    // Destination autocomplete (unchanged from before).
+    if (destinationInput && window.google && google.maps.places) {
+        const destAutocomplete = new google.maps.places.Autocomplete(destinationInput);
+
+        destAutocomplete.addListener('place_changed', () => {
+            const place = destAutocomplete.getPlace();
             if (place.geometry && place.geometry.location) {
                 destLatInput.value = place.geometry.location.lat();
                 destLngInput.value = place.geometry.location.lng();
@@ -16,10 +21,20 @@ window.initRequestTruckMap = function () {
         });
     }
 
+    // Pickup autocomplete — same suggest-as-you-type behavior as destination.
+    if (pickupLocationInput && window.google && google.maps.places) {
+        const pickupAutocomplete = new google.maps.places.Autocomplete(pickupLocationInput);
+
+        pickupAutocomplete.addListener('place_changed', () => {
+            const place = pickupAutocomplete.getPlace();
+            if (place.geometry && place.geometry.location) {
+                pickupLatInput.value = place.geometry.location.lat();
+                pickupLngInput.value = place.geometry.location.lng();
+            }
+        });
+    }
+
     const useMyLocationBtn = document.getElementById('useMyLocationBtn');
-    const pickupLocationInput = document.getElementById('pickupLocationInput');
-    const pickupLatInput = document.getElementById('pickupLatInput');
-    const pickupLngInput = document.getElementById('pickupLngInput');
 
     function fillPickupFromPosition(position) {
         const lat = position.coords.latitude;
@@ -36,21 +51,76 @@ window.initRequestTruckMap = function () {
         });
     }
 
-    function requestLocation() {
+    /**
+     * A single getCurrentPosition() call often returns a coarse,
+     * network-based fix before the device's GPS chip has locked on.
+     * This samples several readings over a few seconds via
+     * watchPosition and keeps only the most accurate one (smallest
+     * accuracy radius in meters) — giving a precise pickup pin
+     * instead of a rough neighborhood-level guess.
+     */
+    function requestPreciseLocation() {
         if (!navigator.geolocation) return;
 
-        navigator.geolocation.getCurrentPosition(
-            fillPickupFromPosition,
-            (err) => console.warn('Geolocation denied or failed', err),
-            { enableHighAccuracy: true, timeout: 10000 }
+        let bestPosition = null;
+        let readingsTaken = 0;
+        let finished = false;
+        const maxReadings = 5;
+        const maxWaitMs = 6000;
+
+        if (useMyLocationBtn) {
+            useMyLocationBtn.disabled = true;
+            useMyLocationBtn.dataset.originalHtml = useMyLocationBtn.innerHTML;
+            useMyLocationBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+        }
+
+        const watchId = navigator.geolocation.watchPosition(
+            (position) => {
+                readingsTaken++;
+
+                if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) {
+                    bestPosition = position;
+                }
+
+                if (readingsTaken >= maxReadings) {
+                    finish();
+                }
+            },
+            (err) => {
+                console.warn('Geolocation denied or failed', err);
+                finish();
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: maxWaitMs
+            }
         );
+
+        const timeoutId = setTimeout(finish, maxWaitMs);
+
+        function finish() {
+            if (finished) return;
+            finished = true;
+
+            clearTimeout(timeoutId);
+            navigator.geolocation.clearWatch(watchId);
+
+            if (bestPosition) {
+                fillPickupFromPosition(bestPosition);
+            }
+
+            if (useMyLocationBtn) {
+                useMyLocationBtn.disabled = false;
+                useMyLocationBtn.innerHTML = useMyLocationBtn.dataset.originalHtml;
+            }
+        }
     }
 
     if (useMyLocationBtn) {
-        useMyLocationBtn.addEventListener('click', requestLocation);
+        useMyLocationBtn.addEventListener('click', requestPreciseLocation);
     }
 
-    // Automatically prompt for location once on load. If the tenant denies
-    // it, both fields stay manually editable — nothing is blocked.
-    requestLocation();
+    // Prompt once automatically on load, using the same precise approach.
+    requestPreciseLocation();
 };

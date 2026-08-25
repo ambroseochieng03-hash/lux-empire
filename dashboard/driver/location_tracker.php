@@ -330,7 +330,7 @@ require_once '../../includes/sidebar.php';
 </div>
 
 <!-- MAPS JS -->
-<script src="../../assets/js/maps.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/maps.js"></script>
 
 <script
     async

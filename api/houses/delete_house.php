@@ -24,7 +24,7 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 }
 
 $house_id = (int) $_GET['id'];
-$landlord_id = $_SESSION['user_id'];
+$landlord_id = (int) Session::user()['id'];
 
 $houseModel = new House();
 

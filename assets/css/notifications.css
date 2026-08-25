@@ -52,3 +52,27 @@
 @media (max-width: 900px) {
     .notif-shell { margin-left: 0; padding: 20px; }
 }
+
+.notif-item {
+    position: relative;
+    padding-right: 50px;
+}
+
+.notif-clear-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: none;
+    border: none;
+    color: var(--gray);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: 0.2s;
+}
+
+.notif-clear-btn:hover {
+    color: #ff5252;
+    background: rgba(255,82,82,0.1);
+}

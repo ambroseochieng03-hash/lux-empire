@@ -354,7 +354,7 @@ if (
 ?>
 
 <form
-    action="../../api/trucks/cancel_trip.php"
+    action="<?php echo BASE_URL; ?>/api/trucks/cancel_trip.php"
     method="POST"
     onsubmit="
         return confirm(
@@ -443,11 +443,9 @@ if (
 
 <script>
 
-
 const BASE_URL = "<?php echo BASE_URL; ?>";
 const DRIVER_ID = <?php echo (int) $trip['driver_id']; ?>;
 const TRIP_ID = <?php echo (int) $trip['id']; ?>;
-
 
 const PICKUP = {
     lat: <?php echo $trip['pickup_lat'] ?: '-1.286389'; ?>,
@@ -466,6 +464,21 @@ let lastRouteCallAt = 0;
 
 function getCurrentTarget() {
     return currentTripStatus === 'in_transit' ? DESTINATION : PICKUP;
+}
+
+/**
+ * Same precision fix as the driver's navigator: overview_path is a
+ * simplified render path, so we flatten every step's full-resolution
+ * path instead for a line that hugs the actual road.
+ */
+function buildPrecisePath(route) {
+    const path = [];
+    route.legs.forEach(leg => {
+        leg.steps.forEach(step => {
+            step.path.forEach(point => path.push(point));
+        });
+    });
+    return path;
 }
 
 function initMap() {
@@ -505,7 +518,7 @@ function initMap() {
 }
 
 function fetchDriverLocation() {
-    fetch(`${BASE_URL}/api/maps/get_driver_location.php?driver_id=${DRIVER_ID}`)
+    fetch(BASE_URL + "/api/maps/get_driver_location.php?driver_id=" + DRIVER_ID)
         .then(response => response.json())
         .then(data => {
             if (!data.success) return;
@@ -523,7 +536,7 @@ function fetchDriverLocation() {
 
 function updateRoute(driverPos) {
     const now = Date.now();
-    if (now - lastRouteCallAt < 4000) return;
+    if (now - lastRouteCallAt < 3000) return;
     lastRouteCallAt = now;
 
     const isFirstRoute = fullPathPolyline.getPath().getLength() === 0;
@@ -537,12 +550,13 @@ function updateRoute(driverPos) {
 
         const route = result.routes[0];
         const leg = route.legs[0];
+        const precisePath = buildPrecisePath(route);
 
         if (isFirstRoute) {
-            fullPathPolyline.setPath(route.overview_path);
+            fullPathPolyline.setPath(precisePath);
         }
 
-        remainingPolyline.setPath(route.overview_path);
+        remainingPolyline.setPath(precisePath);
 
         document.getElementById("eta").innerHTML = leg.duration.text;
         document.getElementById("distance").innerHTML = leg.distance.text;
@@ -567,7 +581,7 @@ function showTripToast(message) {
 }
 
 function pollTripStatus() {
-    fetch(`${BASE_URL}/api/trucks/get_trip_status.php?trip_id=${TRIP_ID}`)
+    fetch(BASE_URL + "/api/trucks/get_trip_status.php?trip_id=" + TRIP_ID)
         .then(r => r.json())
         .then(data => {
             if (!data.status || data.status === currentTripStatus) return;
@@ -581,7 +595,6 @@ function pollTripStatus() {
                 showTripToast("Your driver has arrived at the pickup location.");
             } else if (data.status === 'in_transit') {
                 showTripToast("Your trip has started.");
-                // Fresh reference path toward the new destination.
                 fullPathPolyline.setPath([]);
             } else if (data.status === 'completed') {
                 showTripToast("Trip completed.");

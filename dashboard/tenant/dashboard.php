@@ -7,7 +7,7 @@ requireRoleAccess('tenant');
 require_once '../../config/db.php';
 
 $user_name = $_SESSION['user_name'] ?? 'Tenant';
-$tenant_id = $_SESSION['user_id'];
+$tenant_id = (int) Session::user()['id'];
 
 require_once '../../classes/Booking.php';
 require_once '../../classes/TruckRequest.php';

@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     die("Invalid request.");
 }
 
-$driver_id = $_SESSION['user_id'];
+$driver_id = (int) Session::user()['id'];
 $trip_id   = $_POST['trip_id'] ?? null;
 
 if (!$trip_id) {
@@ -87,7 +87,7 @@ $success = $delete->execute([
 if ($success) {
 
     $_SESSION['success'] =
-        "🗑 Cancelled trip removed.";
+        "Cancelled trip removed.";
 
 } else {
 

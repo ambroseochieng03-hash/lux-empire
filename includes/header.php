@@ -31,9 +31,6 @@ require_once __DIR__ . '/../config/app.php';
     <!-- Premium Meta -->
     <meta name="theme-color" content="#0A0A0A">
     <meta name="description" content="LUX EMPIRE - Luxury Living. Elite Movement. One Empire.">
-
-    <!-- Optional Future Google Maps -->
-    <script src='https://maps.googleapis.com/maps/api/js?key=<?php echo GOOGLE_MAPS_API_KEY; ?>'></script>
 </head>
 
 <body>

@@ -28,6 +28,16 @@
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
+    function buildPrecisePath(route) {
+        const path = [];
+        route.legs.forEach(leg => {
+            leg.steps.forEach(step => {
+                step.path.forEach(point => path.push(point));
+            });
+        });
+        return path;
+    }
+
     window.initActiveTripMap = function () {
         map = new google.maps.Map(document.getElementById('tripMap'), {
             zoom: 16,
@@ -59,8 +69,69 @@
             title: 'You'
         });
 
-        startWatching();
+        const etaEl = document.getElementById('tripEta');
+        const distEl = document.getElementById('tripDistance');
+        if (etaEl) etaEl.textContent = 'Acquiring precise location...';
+        if (distEl) distEl.textContent = '—';
+
+        acquirePreciseFix();
     };
+
+    /**
+     * Sample several GPS readings over a few seconds and keep only the
+     * most accurate one. This is what a fresh "Start Trip" position
+     * should be based on, instead of whatever the first (often coarse)
+     * watchPosition callback happens to return.
+     */
+    function acquirePreciseFix() {
+        if (!navigator.geolocation) return;
+
+        let bestPosition = null;
+        let readingsTaken = 0;
+        let finished = false;
+        const maxReadings = 5;
+        const maxWaitMs = 6000;
+
+        const acquisitionWatchId = navigator.geolocation.watchPosition(
+            (position) => {
+                readingsTaken++;
+
+                if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) {
+                    bestPosition = position;
+                }
+
+                if (readingsTaken >= maxReadings) {
+                    finish();
+                }
+            },
+            (err) => {
+                console.error('GPS acquisition error', err);
+                finish();
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 0,
+                timeout: maxWaitMs
+            }
+        );
+
+        const timeoutId = setTimeout(finish, maxWaitMs);
+
+        function finish() {
+            if (finished) return;
+            finished = true;
+
+            clearTimeout(timeoutId);
+            navigator.geolocation.clearWatch(acquisitionWatchId);
+
+            if (bestPosition) {
+                onPosition(bestPosition);
+            }
+
+            // Continuous tracking begins only after the precise initial fix.
+            startWatching();
+        }
+    }
 
     function startWatching() {
         if (!navigator.geolocation) return;
@@ -95,7 +166,7 @@
 
     function recalculateRoute(driverPos) {
         const now = Date.now();
-        if (now - lastRouteCallAt < 4000) return;
+        if (now - lastRouteCallAt < 3000) return;
         lastRouteCallAt = now;
 
         const isFirstRoute = fullPathPolyline.getPath().getLength() === 0;
@@ -109,12 +180,13 @@
 
             const route = result.routes[0];
             const leg = route.legs[0];
+            const precisePath = buildPrecisePath(route);
 
             if (isFirstRoute) {
-                fullPathPolyline.setPath(route.overview_path);
+                fullPathPolyline.setPath(precisePath);
             }
 
-            remainingPolyline.setPath(route.overview_path);
+            remainingPolyline.setPath(precisePath);
 
             const etaEl = document.getElementById('tripEta');
             const distEl = document.getElementById('tripDistance');

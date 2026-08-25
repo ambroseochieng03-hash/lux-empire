@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$tenant_id = $_SESSION['user_id'];
+$tenant_id = (int) Session::user()['id'];
 
 $latitude  = $_POST['latitude'] ?? null;
 $longitude = $_POST['longitude'] ?? null;

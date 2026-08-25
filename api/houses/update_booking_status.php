@@ -29,7 +29,7 @@ if (
     exit;
 }
 
-$landlord_id = $_SESSION['user_id'];
+$landlord_id = (int) Session::user()['id'];
 
 $stmt = $pdo->prepare("
     SELECT *

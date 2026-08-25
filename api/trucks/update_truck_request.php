@@ -57,7 +57,7 @@ $check = $pdo->prepare("
 
 $check->execute([
     $request_id,
-    $_SESSION['user_id']
+    (int) Session::user()['id']
 ]);
 
 $request = $check->fetch();

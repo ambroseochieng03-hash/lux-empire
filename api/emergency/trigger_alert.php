@@ -8,7 +8,7 @@ require_once '../../config/db.php';
 $db = new Database();
 $pdo = $db->connect();
 
-$user_id = $_SESSION['user_id'];
+$user_id = (int) Session::user()['id'];
 $role = $_SESSION['role'];
 
 $message = $_POST['message'] ?? 'Emergency alert';

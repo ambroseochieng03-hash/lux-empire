@@ -10,6 +10,23 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 $isLoggedIn = Session::isAuthenticated();
 
+$navNotifLink = null;
+
+if ($isLoggedIn) {
+    $navUser = Session::user();
+    $navRole = $navUser['role'] ?? null;
+
+    $notifRoleRoutes = [
+        'tenant'   => '/tenant/notifications',
+        'landlord' => '/landlord/notifications',
+        'driver'   => '/driver/notifications',
+    ];
+
+    if (isset($notifRoleRoutes[$navRole])) {
+        $navNotifLink = BASE_URL . $notifRoleRoutes[$navRole];
+    }
+}
+
 ?>
 
 <style>
@@ -29,6 +46,67 @@ $isLoggedIn = Session::isAuthenticated();
         drop-shadow(0 1px 0 rgba(255,255,255,0.55))
         drop-shadow(0 2px 2px rgba(0,0,0,0.35))
         drop-shadow(0 6px 10px rgba(0,0,0,0.45));
+}
+
+/* ================================
+   NOTIFICATION BELL
+================================= */
+
+.lux-notif-bell-wrap{
+    position:relative;
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(212,175,55,0.25);
+    transition:0.2s;
+    flex-shrink:0;
+}
+
+.lux-notif-bell-wrap:hover{
+    background:rgba(212,175,55,0.12);
+}
+
+.lux-notif-bell-icon{
+    color:var(--gold);
+    font-size:1.3rem;
+}
+
+.lux-notif-bell-badge{
+    position:absolute;
+    top:-4px;
+    right:-4px;
+    background:#ff3b3b;
+    color:white;
+    font-size:0.65rem;
+    font-weight:bold;
+    min-width:18px;
+    height:18px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 4px;
+    box-shadow:0 0 6px rgba(255,0,0,0.6);
+}
+
+.lux-notif-bell-wrap.has-unread .lux-notif-bell-icon{
+    animation: luxBellShake 1.8s ease-in-out infinite;
+    filter: drop-shadow(0 0 6px rgba(212,175,55,0.9));
+}
+
+@keyframes luxBellShake{
+    0%, 100% { transform: rotate(0deg); }
+    5%  { transform: rotate(14deg); }
+    10% { transform: rotate(-12deg); }
+    15% { transform: rotate(10deg); }
+    20% { transform: rotate(-8deg); }
+    25% { transform: rotate(4deg); }
+    30% { transform: rotate(0deg); }
 }
 </style>
 
@@ -83,6 +161,14 @@ $isLoggedIn = Session::isAuthenticated();
 </a>
 </div>
 
+<?php elseif ($navNotifLink): ?>
+
+<!-- NOTIFICATION BELL -->
+<div class="lux-notif-bell-wrap" id="luxNotifBell" style="margin-left:auto;" onclick="window.location.href='<?php echo $navNotifLink; ?>';">
+    <i class="fa-solid fa-bell lux-notif-bell-icon"></i>
+    <span class="lux-notif-bell-badge" id="luxNotifBellBadge" style="display:none;">0</span>
+</div>
+
 <?php endif; ?>
 
 </div>
@@ -103,4 +189,13 @@ document
 .toggle("active");
 }
 </script>
+<?php endif; ?>
+
+<?php if ($navNotifLink): ?>
+<script>
+    window.LUX_NOTIF_BELL_CONFIG = {
+        baseUrl: "<?php echo BASE_URL; ?>"
+    };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/notification-bell.js"></script>
 <?php endif; ?>

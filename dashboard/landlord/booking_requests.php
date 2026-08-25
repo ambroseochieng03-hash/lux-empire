@@ -7,7 +7,7 @@ require_once '../../classes/Booking.php';
 
 $bookingModel = new Booking();
 
-$bookings = $bookingModel->getBookingsByLandlord($_SESSION['user_id']);
+$bookings = $bookingModel->getBookingsByLandlord((int) Session::user()['id']);
 
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';

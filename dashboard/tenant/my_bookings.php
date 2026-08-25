@@ -54,6 +54,95 @@ require_once '../../includes/sidebar.php';
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
 
+<style>
+
+.booking-controls-bar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:16px;
+    margin-bottom:35px;
+}
+
+.booking-tabs{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.booking-tab-btn{
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.1);
+    color:var(--gray);
+    padding:12px 20px;
+    border-radius:14px;
+    font-weight:bold;
+    cursor:pointer;
+    transition:0.25s;
+}
+
+.booking-tab-btn:hover{
+    border-color:rgba(212,175,55,0.4);
+    color:white;
+}
+
+.booking-tab-btn.is-active{
+    background:linear-gradient(135deg,#d4af37,#f5d76e);
+    color:black;
+    border-color:transparent;
+}
+
+.booking-filters{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-left:auto;
+}
+
+.booking-search-input{
+    padding:12px 16px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.1);
+    background:rgba(255,255,255,0.05);
+    color:white;
+    min-width:220px;
+}
+
+.booking-search-input::placeholder{
+    color:var(--gray);
+}
+
+.booking-sort-select,
+.booking-status-select{
+    padding:12px 16px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.1);
+    background:rgba(255,255,255,0.05);
+    color:white;
+    cursor:pointer;
+}
+
+.booking-sort-select[hidden],
+.booking-status-select[hidden]{
+    display:none;
+}
+
+@media (max-width:768px){
+
+    .booking-filters{
+        margin-left:0;
+        width:100%;
+    }
+
+    .booking-search-input{
+        flex:1;
+        min-width:0;
+    }
+
+}
+
+</style>
+
 <div style="
     display:flex;
     min-height:100vh;
@@ -88,6 +177,35 @@ require_once '../../includes/sidebar.php';
 
         </div>
 
+        <!-- BOOKING CONTROLS: tabs, search, sort, status filter -->
+        <div class="booking-controls-bar">
+
+            <div class="booking-tabs">
+                <button type="button" class="booking-tab-btn is-active" data-tab="all">All</button>
+                <button type="button" class="booking-tab-btn" data-tab="house">House Bookings</button>
+                <button type="button" class="booking-tab-btn" data-tab="truck">Truck Requests</button>
+            </div>
+
+            <div class="booking-filters">
+
+                <input type="text"
+                       id="bookingSearchInput"
+                       class="booking-search-input"
+                       placeholder="Search bookings...">
+
+                <select id="bookingSortSelect" class="booking-sort-select" hidden>
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                </select>
+
+                <select id="bookingStatusSelect" class="booking-status-select" hidden>
+                    <option value="">All Statuses</option>
+                </select>
+
+            </div>
+
+        </div>
+
         <!-- SUCCESS MESSAGE -->
         <?php if (isset($_GET['success'])): ?>
 
@@ -105,6 +223,8 @@ require_once '../../includes/sidebar.php';
         <?php endif; ?>
 
         <!-- BOOKINGS -->
+        <div id="houseBookingsSection">
+
         <div class="tenant-grid" style="
             display:grid;
             grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
@@ -140,7 +260,12 @@ require_once '../../includes/sidebar.php';
                         }
                     ?>
 
-                    <div class="lux-card tenant-card" style="
+                    <div class="lux-card tenant-card booking-card"
+                         data-type="house"
+                         data-status="<?php echo htmlspecialchars($booking['status']); ?>"
+                         data-timestamp="<?php echo (int) strtotime($booking['booking_date']); ?>"
+                         data-search="<?php echo htmlspecialchars(strtolower($booking['title'] . ' ' . $booking['location'])); ?>"
+                         style="
                         border-radius:24px;
                         overflow:hidden;
                     ">
@@ -347,7 +472,7 @@ require_once '../../includes/sidebar.php';
                                 <!-- CANCEL -->
                                 <?php if ($booking['status'] === 'pending'): ?>
 
-                                    <form
+                                    <form class="booking-action-form"
                                         action="<?php echo BASE_URL; ?>/api/bookings/cancel_booking.php"
                                         method="POST"
                                     >
@@ -379,7 +504,7 @@ require_once '../../includes/sidebar.php';
                                 <?php endif; ?>
 
                                 <!-- DELETE -->
-                                <form
+                                <form class="booking-action-form"
                                     action="<?php echo BASE_URL; ?>/api/bookings/delete_booking.php"
                                     method="POST"
                                     onsubmit="return confirm('Delete this booking permanently?');"
@@ -477,11 +602,14 @@ require_once '../../includes/sidebar.php';
 
         </div>
 
+        </div>
+        <!-- /houseBookingsSection -->
+
         <!-- ========================================= -->
         <!-- TRUCK REQUESTS -->
         <!-- ========================================= -->
 
-        <div style="margin-top:70px;">
+        <div id="truckRequestsSection" style="margin-top:70px;">
 
             <div style="margin-bottom:35px;">
 
@@ -539,7 +667,12 @@ require_once '../../includes/sidebar.php';
 
                         ?>
 
-                        <div class="lux-card tenant-card tenant-card-padding" style="
+                        <div class="lux-card tenant-card tenant-card-padding booking-card"
+                             data-type="truck"
+                             data-status="<?php echo htmlspecialchars($trip['status']); ?>"
+                             data-timestamp="<?php echo (int) strtotime($trip['requested_at']); ?>"
+                             data-search="<?php echo htmlspecialchars(strtolower($trip['pickup_location'] . ' ' . $trip['destination'])); ?>"
+                             style="
                             padding:30px;
                             border-radius:28px;
                         ">
@@ -764,7 +897,7 @@ require_once '../../includes/sidebar.php';
                                     $trip['status'] === 'accepted'
                                 ): ?>
 
-                                    <form
+                                    <form class="booking-action-form"
                                         action="<?php echo BASE_URL; ?>/api/trucks/cancel_trip.php"
                                         method="POST"
                                     >
@@ -796,7 +929,7 @@ require_once '../../includes/sidebar.php';
                                 <?php endif; ?>
 
                                 <!-- DELETE -->
-                                <form
+                                <form class="booking-action-form"
                                     action="<?php echo BASE_URL; ?>/api/trucks/delete_trip_tenant.php"
                                     method="POST"
                                     onsubmit="return confirm('Delete this truck request permanently?');"
@@ -891,6 +1024,7 @@ require_once '../../includes/sidebar.php';
 </div>
 
 <script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/bookings-filter.js"></script>
 
 <?php require_once '../../includes/chat_starter_modal.php'; ?>
 

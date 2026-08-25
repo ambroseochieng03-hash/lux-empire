@@ -17,6 +17,27 @@
         return div.innerHTML;
     }
 
+    function markAllRead() {
+        const formData = new URLSearchParams();
+        formData.append('csrf_token', cfg.csrfToken);
+        return fetch(`${cfg.baseUrl}/api/notifications/mark_read.php`, { method: 'POST', body: formData });
+    }
+
+    function deleteNotification(id, itemEl) {
+        const formData = new URLSearchParams();
+        formData.append('id', id);
+        formData.append('csrf_token', cfg.csrfToken);
+
+        fetch(`${cfg.baseUrl}/api/notifications/delete_notification.php`, { method: 'POST', body: formData })
+            .then(() => {
+                itemEl.remove();
+
+                if (!list.querySelector('.notif-item')) {
+                    list.innerHTML = '<div class="notif-empty">No notifications yet.</div>';
+                }
+            });
+    }
+
     function render(notifications) {
         list.innerHTML = '';
 
@@ -35,14 +56,19 @@
                     <div class="notif-message">${escapeHtml(n.message)}</div>
                     <div class="notif-time">${timeAgo(n.created_at)}</div>
                 </div>
+                <button type="button" class="notif-clear-btn" aria-label="Clear notification">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             `;
 
             item.addEventListener('click', () => {
-                const formData = new URLSearchParams();
-                formData.append('id', n.id);
-                formData.append('csrf_token', cfg.csrfToken);
-                fetch(`${cfg.baseUrl}/api/notifications/mark_read.php`, { method: 'POST', body: formData })
-                    .then(() => { if (n.link) window.location.href = n.link; else load(); });
+                if (n.link) window.location.href = n.link;
+            });
+
+            const clearBtn = item.querySelector('.notif-clear-btn');
+            clearBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // don't trigger the card's own navigation
+                deleteNotification(n.id, item);
             });
 
             list.appendChild(item);
@@ -69,12 +95,13 @@
 
     if (markAllBtn) {
         markAllBtn.addEventListener('click', () => {
-            const formData = new URLSearchParams();
-            formData.append('csrf_token', cfg.csrfToken);
-            fetch(`${cfg.baseUrl}/api/notifications/mark_read.php`, { method: 'POST', body: formData }).then(load);
+            markAllRead().then(load);
         });
     }
 
-    load();
+    // Visiting this page is what "clears" the bell — mark everything
+    // read once on entry, then render the (now-read) list.
+    markAllRead().then(load);
+
     setInterval(load, 10000);
 })();
