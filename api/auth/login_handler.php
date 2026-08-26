@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once '../../config/db.php';
 require_once '../../config/session.php';
 require_once '../../classes/Auth.php';
+require_once '../../config/security/LoginSecurity.php';
 
 Session::start();
 
@@ -56,6 +57,18 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     exit;
 }
 
+/*
+|--------------------------------------------------------------------------
+| Login Security
+|--------------------------------------------------------------------------
+*/
+
+$ip = LoginSecurity::clientIp();
+
+LoginSecurity::beforeAuthentication(
+    $email,
+    $ip
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -88,6 +101,12 @@ $user = $auth->login(
 */
 
 if ($user === null) {
+
+    LoginSecurity::authenticationFailed(
+        $email,
+        $ip
+    );
+
     header(
         'Location: ' . BASE_URL . '/login?error='
         . urlencode('Incorrect empire credentials.')
@@ -141,6 +160,17 @@ if (isset($user['status'])) {
         exit;
     }
 }
+
+/*
+|--------------------------------------------------------------------------
+| Clear authentication abuse state
+|--------------------------------------------------------------------------
+*/
+
+LoginSecurity::authenticationSucceeded(
+    $email,
+    $ip
+);
 
 
 /*

@@ -1,37 +1,26 @@
 <?php
+
+declare(strict_types=1);
+
 require_once '../config/app.php';
 require_once '../config/session.php';
 
 /**
- * Clear all session data
+ * Start the current session so it can be completely destroyed.
  */
-$_SESSION = [];
+Session::start();
 
 /**
- * Destroy session cookie
+ * Completely destroy the authenticated session.
  */
-if (ini_get("session.use_cookies")) {
-    $params = session_get_cookie_params();
+Session::destroy();
 
-setcookie(
-session_name(),
-'',
-time() - 42000,
-$params["path"],
-$params["domain"],
-$params["secure"],
-$params["httponly"]
+/**
+ * Redirect to login.
+ */
+header(
+    'Location: ' . BASE_URL . '/login?success=' .
+    urlencode('You have safely exited the Empire.')
 );
-}
 
-/**
- * Destroy session
- */
-session_destroy();
-
-/**
- * Redirect with premium message
- */
-header("Location: " . BASE_URL . "/login?success=" . urlencode("You have safely exited the Empire."));
-exit();
-?>
+exit;

@@ -75,7 +75,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <span class="sidebar-badge" id="sidebarNotifBadge" style="display:none;"></span>
             </a>
 
-            <form method="POST" action="../../api/emergency/trigger_alert.php">
+            <form method="POST" action="<?php echo BASE_URL; ?>/api/emergency/trigger_alert.php">
 
                 <input type="hidden" name="message" value="Tenant emergency alert">
 

@@ -52,5 +52,5 @@ $stmt->execute([
     $message
 ]);
 
-header("Location: ../../dashboard/" . $role . "/dashboard.php?emergency=sent");
+header("Location: " . BASE_URL . "/dashboard/" . $role . "/dashboard.php?emergency=sent");
 exit();

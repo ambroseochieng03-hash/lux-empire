@@ -307,3 +307,28 @@ CREATE TABLE notifications (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE rate_limits (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    rate_key VARCHAR(255) NOT NULL,
+
+    attempts INT UNSIGNED NOT NULL DEFAULT 0,
+
+    window_started_at DATETIME NOT NULL,
+
+    blocked_until DATETIME DEFAULT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uq_rate_key (rate_key),
+
+    INDEX idx_blocked_until (blocked_until),
+
+    INDEX idx_window_started_at (window_started_at)
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;
