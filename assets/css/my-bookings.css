@@ -1,0 +1,416 @@
+/* =========================================================
+   LUX EMPIRE — MY BOOKINGS PAGE (dashboard/tenant/my_bookings.php)
+   Values below are moved verbatim from the previous <style> block
+   and inline style="" attributes — no visual/color changes.
+   Depends on assets/css/bookings.css being loaded first for the
+   shared .lb-star / .status-* / modal classes reused below.
+   ========================================================= */
+
+/* =========================================
+   CONTROLS BAR (tabs / search / sort / status)
+   — moved verbatim from the previous <style> block, unchanged.
+========================================= */
+
+.booking-controls-bar{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:16px;
+    margin-bottom:35px;
+}
+
+.booking-tabs{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.booking-tab-btn{
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.1);
+    color:var(--gray);
+    padding:12px 20px;
+    border-radius:14px;
+    font-weight:bold;
+    cursor:pointer;
+    transition:0.25s;
+}
+
+.booking-tab-btn:hover{
+    border-color:rgba(212,175,55,0.4);
+    color:white;
+}
+
+.booking-tab-btn.is-active{
+    background:linear-gradient(135deg,#d4af37,#f5d76e);
+    color:black;
+    border-color:transparent;
+}
+
+.booking-filters{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-left:auto;
+}
+
+.booking-search-input{
+    padding:12px 16px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.1);
+    background:rgba(255,255,255,0.05);
+    color:white;
+    min-width:220px;
+}
+
+.booking-search-input::placeholder{
+    color:var(--gray);
+}
+
+.booking-sort-select,
+.booking-status-select{
+    padding:12px 16px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,0.1);
+    background:rgba(255,255,255,0.05);
+    color:white;
+    cursor:pointer;
+}
+
+.booking-sort-select[hidden],
+.booking-status-select[hidden]{
+    display:none;
+}
+
+@media (max-width:768px){
+
+    .booking-filters{
+        margin-left:0;
+        width:100%;
+    }
+
+    .booking-search-input{
+        flex:1;
+        min-width:0;
+    }
+}
+
+/* =========================================
+   PAGE LAYOUT
+========================================= */
+
+.mb-page{
+    display:flex;
+    min-height:100vh;
+}
+
+.mb-main{
+    flex:1;
+    padding:40px;
+    margin-left:280px;
+    min-width:0;
+}
+
+.mb-header{
+    margin-bottom:35px;
+}
+
+.mb-title{
+    font-family:'Cinzel', serif;
+    color:var(--gold);
+    font-size:3rem;
+}
+
+.mb-subtitle{
+    color:var(--gray);
+    margin-top:10px;
+    line-height:1.8;
+}
+
+.mb-success-alert{
+    background:rgba(0,255,100,0.08);
+    border:1px solid rgba(0,255,100,0.25);
+    padding:14px;
+    border-radius:14px;
+    margin-bottom:25px;
+    color:#b8ffd2;
+}
+
+.mb-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
+    gap:30px;
+}
+
+.mb-empty-card{
+    padding:50px;
+    text-align:center;
+    grid-column:1/-1;
+    border-radius:28px;
+}
+
+.mb-empty-title{
+    color:var(--gold);
+    margin-bottom:15px;
+}
+
+.mb-empty-text{
+    color:var(--gray);
+    margin-bottom:25px;
+    line-height:1.8;
+}
+
+.mb-empty-link{
+    text-decoration:none;
+}
+
+/* =========================================
+   HOUSE BOOKING CARDS
+========================================= */
+
+.mb-house-card{
+    border-radius:24px;
+    overflow:hidden;
+}
+
+.mb-house-media{
+    height:220px;
+    overflow:hidden;
+    position:relative;
+}
+
+.mb-no-image{
+    width:100%;
+    height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--gold);
+    font-size:1rem;
+    letter-spacing:0.5px;
+    text-transform:uppercase;
+    opacity:0.6;
+}
+
+.mb-house-content{
+    padding:25px;
+}
+
+.mb-house-title{
+    color:white;
+    margin-bottom:10px;
+    line-height:1.5;
+}
+
+.mb-rating-wrap{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:15px;
+}
+
+.mb-location{
+    color:var(--gray);
+    margin-bottom:15px;
+    line-height:1.7;
+}
+
+.mb-price{
+    color:var(--gold);
+    margin-bottom:15px;
+    font-weight:bold;
+}
+
+.mb-status-badge{
+    padding:10px 14px;
+    border-radius:12px;
+    background:rgba(255,255,255,0.05);
+    display:inline-block;
+    margin-bottom:20px;
+    font-weight:bold;
+}
+
+.mb-actions{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+}
+
+.mb-btn-cancel,
+.mb-btn-delete,
+.mb-btn-cancel-trip,
+.mb-btn-delete-trip{
+    border:none;
+    padding:12px 18px;
+    border-radius:14px;
+    cursor:pointer;
+    font-weight:bold;
+    width:100%;
+    font-size:1rem;
+}
+
+.mb-btn-cancel,
+.mb-btn-cancel-trip{
+    background:#ff3b3b;
+    color:white;
+}
+
+.mb-btn-delete,
+.mb-btn-delete-trip{
+    background:rgba(255,80,80,0.12);
+    color:#ff5252;
+    border:1px solid rgba(255,0,0,0.25);
+}
+
+.mb-btn-cancel-trip,
+.mb-btn-delete-trip{
+    padding:14px 20px;
+    border-radius:16px;
+}
+
+.mb-btn-cancel:disabled,
+.mb-btn-delete:disabled,
+.mb-btn-cancel-trip:disabled,
+.mb-btn-delete-trip:disabled{
+    cursor:not-allowed;
+    opacity:0.7;
+}
+
+.mb-meta-row{
+    display:flex;
+    justify-content:space-between;
+    color:var(--gray);
+    font-size:0.95rem;
+    gap:15px;
+}
+
+/* =========================================
+   TRUCK REQUESTS SECTION
+========================================= */
+
+.mb-truck-section{
+    margin-top:70px;
+}
+
+.mb-truck-card{
+    padding:30px;
+    border-radius:28px;
+}
+
+.mb-truck-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:25px;
+    gap:20px;
+    flex-wrap:wrap;
+}
+
+.mb-truck-title{
+    color:white;
+    margin-bottom:8px;
+    line-height:1.5;
+}
+
+.mb-truck-meta-text{
+    color:var(--gray);
+    font-size:0.95rem;
+}
+
+.mb-truck-status-badge{
+    background:rgba(255,255,255,0.05);
+    padding:12px 16px;
+    border-radius:14px;
+    font-weight:bold;
+}
+
+/* Truck statuses are a different set from house booking statuses,
+   so they get their own color classes (kept distinct from the
+   .status-* classes in bookings.css, which are house-booking only). */
+
+.truck-status-pending{ color:orange; }
+.truck-status-accepted{ color:#00c853; }
+.truck-status-in_transit{ color:#42a5f5; }
+.truck-status-completed{ color:lightgreen; }
+.truck-status-cancelled{ color:#ff5252; }
+
+.mb-truck-field{
+    margin-bottom:20px;
+}
+
+.mb-truck-field-tight{
+    margin-bottom:18px;
+}
+
+.mb-truck-field-label{
+    color:var(--gray);
+    margin-bottom:8px;
+}
+
+.mb-truck-field-value{
+    color:white;
+    line-height:1.7;
+}
+
+.mb-truck-price{
+    color:var(--gold);
+    font-weight:bold;
+    margin-bottom:25px;
+    font-size:1.2rem;
+}
+
+.mb-driver-box{
+    background:rgba(255,255,255,0.04);
+    padding:16px;
+    border-radius:16px;
+    margin-bottom:25px;
+}
+
+.mb-driver-label{
+    color:var(--gray);
+    margin-bottom:10px;
+}
+
+.mb-message-driver-btn{
+    text-decoration:none;
+    background:rgba(255,255,255,0.08);
+    color:var(--gold);
+    border:1px solid var(--gold);
+    padding:14px 20px;
+    border-radius:16px;
+    font-weight:bold;
+    text-align:center;
+    cursor:pointer;
+    display:inline-block;
+    margin-bottom:12px;
+}
+
+.mb-driver-name{
+    color:white;
+    margin-bottom:6px;
+}
+
+.mb-driver-phone{
+    color:white;
+}
+
+.mb-btn-track{
+    text-decoration:none;
+    background:#42a5f5;
+    color:white;
+    padding:14px 20px;
+    border-radius:16px;
+    font-weight:bold;
+    text-align:center;
+}
+
+.mb-btn-edit{
+    text-decoration:none;
+    background:rgba(255,255,255,0.08);
+    color:white;
+    padding:14px 20px;
+    border-radius:16px;
+    font-weight:bold;
+    text-align:center;
+}

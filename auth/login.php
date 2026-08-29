@@ -15,7 +15,7 @@ require_once '../includes/navbar.php';
 
         <!-- Crown Identity -->
         <div style="text-align:center; margin-bottom:30px;">
-            <div style="font-size:4rem;">👑</div>
+            <div style="font-size:4rem;"></div>
 
             <h1 style="
                 font-family:'Cinzel', serif;
@@ -95,7 +95,7 @@ require_once '../includes/navbar.php';
         <!-- Extra Links -->
         <div style="text-align:center; margin-top:25px;">
             <p style="margin-bottom:10px;">
-                <a href="<?php echo BASE_URL; ?>/forgot_password" style="color:var(--gold); text-decoration:none;">
+                <a href="<?php echo BASE_URL; ?>/forgot-password" style="color:var(--gold); text-decoration:none;">
                     Forgotten your Empire key?
                 </a>
             </p>

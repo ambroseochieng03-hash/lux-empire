@@ -1,0 +1,97 @@
+/* =========================================================
+   LUX EMPIRE — NAVBAR EXTRAS
+   SAVE AT: assets/css/navbar-extra.css
+   (Base navbar layout — .lux-header/.lux-navbar/.logo/.nav-links —
+   already lives in assets/css/navbar.css, untouched, not shared
+   with me. This file only holds what was previously inline/in a
+   <style> block inside includes/navbar.php.)
+   ========================================================= */
+
+.lux-navbar-tagline{
+    display:block;
+    font-size:0.7rem;
+    color:var(--gray);
+    letter-spacing:2px;
+    margin-top:2px;
+}
+
+.lux-crown-3d-wrap{
+    font-size:2.3rem;
+    line-height:1;
+    display:inline-block;
+}
+
+.lux-crown-3d{
+    background: linear-gradient(145deg, #fff6d0 0%, #f5d76e 22%, #d4af37 50%, #a8791f 78%, #7a5a15 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    filter:
+        drop-shadow(0 1px 0 rgba(255,255,255,0.55))
+        drop-shadow(0 2px 2px rgba(0,0,0,0.35))
+        drop-shadow(0 6px 10px rgba(0,0,0,0.45));
+}
+
+/* ================================
+   NOTIFICATION BELL
+================================= */
+
+.lux-notif-bell-wrap{
+    position:relative;
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(212,175,55,0.25);
+    transition:0.2s;
+    flex-shrink:0;
+    /* was inline style="margin-left:auto" — always used this way */
+    margin-left:auto;
+}
+
+.lux-notif-bell-wrap:hover{
+    background:rgba(212,175,55,0.12);
+}
+
+.lux-notif-bell-icon{
+    color:var(--gold);
+    font-size:1.3rem;
+}
+
+.lux-notif-bell-badge{
+    position:absolute;
+    top:-4px;
+    right:-4px;
+    background:#ff3b3b;
+    color:white;
+    font-size:0.65rem;
+    font-weight:bold;
+    min-width:18px;
+    height:18px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 4px;
+    box-shadow:0 0 6px rgba(255,0,0,0.6);
+}
+
+.lux-notif-bell-wrap.has-unread .lux-notif-bell-icon{
+    animation: luxBellShake 1.8s ease-in-out infinite;
+    filter: drop-shadow(0 0 6px rgba(212,175,55,0.9));
+}
+
+@keyframes luxBellShake{
+    0%, 100% { transform: rotate(0deg); }
+    5%  { transform: rotate(14deg); }
+    10% { transform: rotate(-12deg); }
+    15% { transform: rotate(10deg); }
+    20% { transform: rotate(-8deg); }
+    25% { transform: rotate(4deg); }
+    30% { transform: rotate(0deg); }
+}

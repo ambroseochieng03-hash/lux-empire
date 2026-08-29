@@ -1,0 +1,364 @@
+/* =========================================================
+   LUX EMPIRE — HOMEPAGE (index.php)
+   Values below are moved verbatim from the previous inline
+   style="" attributes and <style> block — no visual changes,
+   except the hero/CTA button pairs now render as a single
+   nav-menu trigger (see includes/nav_menu.php) and the hero
+   title is now a typewriter target.
+   ========================================================= */
+
+.lux-gold-icon {
+    color: #d4af37;
+    text-shadow:
+        0 1px 0 #fff3b0,
+        0 2px 2px rgba(0, 0, 0, 0.45),
+        0 4px 8px rgba(212, 175, 55, 0.35);
+}
+
+.home-gold-text{
+    color:var(--gold);
+}
+
+/* =========================================
+   HERO
+========================================= */
+
+.home-hero{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+    overflow:hidden;
+    padding:120px 20px 80px;
+}
+
+.home-hero-glow-1{
+    position:absolute;
+    width:700px;
+    height:700px;
+    background:radial-gradient(circle, rgba(212,175,55,0.18), transparent 70%);
+    top:-250px;
+    right:-250px;
+    z-index:0;
+    filter:blur(40px);
+}
+
+.home-hero-glow-2{
+    position:absolute;
+    width:600px;
+    height:600px;
+    background:radial-gradient(circle, rgba(255,255,255,0.04), transparent 70%);
+    bottom:-200px;
+    left:-200px;
+    z-index:0;
+    filter:blur(40px);
+}
+
+.home-hero-grid{
+    max-width:1300px;
+    width:100%;
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+    gap:60px;
+    align-items:center;
+    position:relative;
+    z-index:2;
+}
+
+.home-badge{
+    display:inline-block;
+    padding:10px 18px;
+    border-radius:50px;
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.08);
+    color:var(--gold);
+    margin-bottom:25px;
+    font-size:0.95rem;
+    backdrop-filter:blur(12px);
+}
+
+.home-hero-title{
+    font-family:'Cinzel', serif;
+    font-size:clamp(3rem,7vw,6rem);
+    line-height:1.1;
+    color:var(--gold);
+    margin-bottom:25px;
+    font-weight:800;
+    min-height:2.2em;
+}
+
+/*
+ * The typewriter target starts empty and is filled by JS — this
+ * hides it from assistive tech (a visually-hidden static string
+ * right after it covers screen readers/SEO instead, see index.php).
+ */
+.home-hero-title-typed{
+    display:inline-block;
+}
+
+.home-typewriter-cursor{
+    display:inline-block;
+    margin-left:2px;
+    animation:homeTypewriterBlink 1s step-end infinite;
+}
+
+@keyframes homeTypewriterBlink{
+    0%, 100% { opacity:1; }
+    50% { opacity:0; }
+}
+
+.home-hero-desc{
+    color:var(--gray);
+    font-size:1.1rem;
+    line-height:1.9;
+    max-width:650px;
+    margin-bottom:35px;
+}
+
+.home-hero-actions{
+    display:flex;
+    gap:18px;
+    flex-wrap:wrap;
+}
+
+.home-hero-visual{
+    position:relative;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+
+.home-hero-card{
+    width:100%;
+    max-width:520px;
+    border-radius:35px;
+    overflow:hidden;
+    position:relative;
+}
+
+.home-hero-img{
+    width:100%;
+    height:500px;
+    object-fit:cover;
+}
+
+.home-hero-card-overlay{
+    position:absolute;
+    inset:0;
+    background:linear-gradient(
+        to top,
+        rgba(0,0,0,0.85),
+        rgba(0,0,0,0.15)
+    );
+}
+
+.home-hero-card-content{
+    position:absolute;
+    bottom:0;
+    left:0;
+    width:100%;
+    padding:30px;
+}
+
+.home-hero-card-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:15px;
+}
+
+.home-hero-card-tag{
+    background:rgba(212,175,55,0.15);
+    color:var(--gold);
+    padding:8px 14px;
+    border-radius:12px;
+    font-size:0.9rem;
+    border:1px solid rgba(212,175,55,0.25);
+}
+
+.home-hero-card-location{
+    color:white;
+    font-weight:bold;
+}
+
+.home-hero-card-title{
+    color:white;
+    font-size:2rem;
+    margin-bottom:10px;
+}
+
+.home-hero-card-desc{
+    color:#ddd;
+    line-height:1.7;
+    margin-bottom:20px;
+}
+
+.home-hero-card-bottom{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.home-hero-card-price-label{
+    color:var(--gray);
+}
+
+.home-hero-card-price{
+    color:var(--gold);
+    margin-top:5px;
+    font-size:1.7rem;
+}
+
+.home-hero-card-view-btn{
+    text-decoration:none;
+    padding:14px 22px;
+    border-radius:14px;
+}
+
+/* =========================================
+   STATS
+========================================= */
+
+.home-stats-section{
+    padding:60px 20px;
+}
+
+.home-stats-grid{
+    max-width:1300px;
+    margin:auto;
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:25px;
+}
+
+.home-stat-card{
+    padding:35px;
+    text-align:center;
+    border-radius:24px;
+}
+
+.home-stat-number{
+    color:var(--gold);
+    font-size:2.5rem;
+    margin-bottom:12px;
+}
+
+.home-stat-label{
+    color:var(--gray);
+    font-size:1rem;
+}
+
+/* =========================================
+   WHY CHOOSE US
+========================================= */
+
+.home-features-section{
+    padding:90px 20px;
+}
+
+.home-features-container{
+    max-width:1300px;
+    margin:auto;
+}
+
+.home-features-header{
+    text-align:center;
+    margin-bottom:70px;
+}
+
+.home-features-title{
+    font-family:'Cinzel', serif;
+    color:white;
+    font-size:3rem;
+    margin-bottom:20px;
+}
+
+.home-features-subtitle{
+    color:var(--gray);
+    max-width:700px;
+    margin:auto;
+    line-height:1.9;
+}
+
+.home-features-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:30px;
+}
+
+.home-feature-card{
+    padding:40px 30px;
+    border-radius:28px;
+}
+
+.home-feature-icon-wrap{
+    font-size:3rem;
+    margin-bottom:20px;
+}
+
+.home-feature-title{
+    color:white;
+    margin-bottom:15px;
+    font-size:1.5rem;
+}
+
+.home-feature-desc{
+    color:var(--gray);
+    line-height:1.8;
+}
+
+/* =========================================
+   CTA
+========================================= */
+
+.home-cta-section{
+    padding:100px 20px 120px;
+}
+
+.home-cta-card{
+    max-width:1200px;
+    margin:auto;
+    padding:70px 40px;
+    border-radius:40px;
+    text-align:center;
+    position:relative;
+    overflow:hidden;
+}
+
+.home-cta-glow{
+    position:absolute;
+    width:500px;
+    height:500px;
+    background:radial-gradient(circle, rgba(212,175,55,0.12), transparent 70%);
+    top:-200px;
+    right:-200px;
+}
+
+.home-cta-inner{
+    position:relative;
+    z-index:2;
+}
+
+.home-cta-title{
+    font-family:'Cinzel', serif;
+    font-size:clamp(2.5rem,5vw,4.5rem);
+    color:white;
+    margin-bottom:25px;
+}
+
+.home-cta-desc{
+    color:var(--gray);
+    max-width:750px;
+    margin:auto;
+    line-height:1.9;
+    margin-bottom:40px;
+    font-size:1.1rem;
+}
+
+.home-cta-actions{
+    display:flex;
+    justify-content:center;
+    gap:20px;
+    flex-wrap:wrap;
+}

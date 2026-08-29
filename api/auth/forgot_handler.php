@@ -44,7 +44,7 @@ $user = $stmt->fetch();
 if (!$user) {
 
     header(
-        "Location: '. BASE_URL . '/forgot-password?error=Account not found"
+        "Location: " . BASE_URL . "/forgot-password?error=Account not found"
     );
 
     exit();
@@ -213,7 +213,7 @@ try {
     $mail->send();
 
     header(
-        "Location: '. BASE_URL . '/forgot-password?success="
+        "Location: " . BASE_URL . "/forgot-password?success="
         . urlencode(
             "Password reset link sent, if the email exists."
         )
@@ -223,11 +223,15 @@ try {
 
 } catch (Exception $e) {
 
+    error_log(
+        '[' . date('Y-m-d H:i:s') . '] '
+        . 'LUX EMPIRE PHPMailer error: '
+        . $mail->ErrorInfo
+    );
+
     header(
-        "Location: '. BASE_URL . '/forgot-password?error="
-        . urlencode(
-            "Failed to send recovery email."
-        )
+        "Location: " . BASE_URL . "/forgot-password?error="
+        . urlencode("Failed to send recovery email.")
     );
 
     exit();

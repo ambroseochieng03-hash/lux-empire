@@ -5,8 +5,14 @@ require_once '../../includes/auth_check.php';
 requireRoleAccess('tenant');
 
 require_once '../../classes/House.php';
+require_once '../../classes/Booking.php';
+require_once '../../config/csrf.php';
 
 $houseModel = new House();
+$bookingModel = new Booking();
+
+$tenantId = (int) Session::user()['id'];
+$csrfToken = Csrf::token();
 
 /**
  * Search handling
@@ -19,98 +25,65 @@ if (!empty($search)) {
     $houses = $houseModel->getAllHouses();
 }
 
+/**
+ * Build a house_id => status map of this tenant's own active
+ * booking for each house, so the button/card can reflect "Request
+ * Pending" / already-acted-on state without another round trip.
+ * getBookingsByTenant() orders by booking_date DESC, so the first
+ * row seen per house_id is this tenant's most recent booking for it.
+ */
+$tenantBookingStatusByHouse = [];
+
+foreach ($bookingModel->getBookingsByTenant($tenantId) as $tenantBooking) {
+
+    $houseIdKey = (int) $tenantBooking['house_id'];
+
+    if (!isset($tenantBookingStatusByHouse[$houseIdKey])) {
+        $tenantBookingStatusByHouse[$houseIdKey] = $tenantBooking['status'];
+    }
+}
+
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
 ?>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bookings.css">
 
-<style>
-    .booking-lanlord-details{
-        background:rgba(255,255,255,0.05);
-        padding:15px;
-        border-radius:14px;
-        margin-bottom:18px;
-        color:var(--gray);
-        font-size:0.95rem;
-        line-height:1.8;
-        word-break:break-word;
-    }
-
-</style>
-
-<div style="
-    display:flex;
-    min-height:100vh;
-">
+<div class="lux-explore-page">
 
     <!-- MAIN -->
-    <main class="tenant-main" style="
-        flex:1;
-        padding:40px;
-        margin-left:280px;
-    ">
+    <main class="tenant-main lux-explore-main">
 
         <!-- HERO -->
-        <div style="
-            margin-bottom:40px;
-        ">
+        <div class="lux-explore-hero">
 
-            <h1 class="tenant-title" style="
-                font-family:'Cinzel', serif;
-                font-size:3rem;
-                color:var(--gold);
-                margin-bottom:10px;
-            ">
+            <h1 class="tenant-title lux-explore-title">
                 Discover Luxury Living
             </h1>
 
-            <p style="
-                color:var(--gray);
-                max-width:700px;
-                line-height:1.8;
-            ">
+            <p class="lux-explore-subtitle">
                 Explore elite homes, premium apartments, and prestigious spaces across the Empire.
             </p>
 
         </div>
 
         <!-- SEARCH BAR -->
-        <div class="lux-card tenant-card tenant-card-padding" style="
-            padding:25px;
-            margin-bottom:40px;
-            border-radius:24px;
-        ">
+        <div class="lux-card tenant-card tenant-card-padding lux-explore-search-card">
 
             <form method="GET"
                   action=""
-                  class="tenant-search-form"
-                  style="
-                    display:flex;
-                    gap:15px;
-                    flex-wrap:wrap;
-                  ">
+                  class="tenant-search-form lux-explore-search-form">
 
                 <input type="text"
                        name="search"
                        value="<?php echo htmlspecialchars($search); ?>"
                        placeholder="Search by title, location, or luxury features..."
-                       class="tenant-search-input"
-                       style="
-                            flex:1;
-                            min-width:250px;
-                            padding:16px;
-                            border:none;
-                            border-radius:16px;
-                       ">
+                       class="tenant-search-input lux-explore-search-input">
 
                 <button type="submit"
-                        class="lux-btn tenant-search-btn"
-                        style="
-                            padding:16px 28px;
-                            border-radius:16px;
-                        ">
+                        class="lux-btn tenant-search-btn lux-explore-search-btn">
                     Search Empire
                 </button>
 
@@ -119,25 +92,16 @@ require_once '../../includes/sidebar.php';
         </div>
 
         <!-- HOUSES GRID -->
-        <div class="tenant-grid" style="
-            display:grid;
-            grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
-            gap:30px;
-        ">
+        <div class="tenant-grid lux-explore-grid" id="exploreHousesGrid">
 
             <?php if (count($houses) > 0): ?>
 
                 <?php foreach ($houses as $house): ?>
 
                     <?php
-                        /*
-                         * Pull ALL media for this house via the existing
-                         * House::getHouseMedia() method (no LIMIT 1),
-                         * then split image vs video using the same
-                         * ".mp4" rule House::hasVideo()/hasImages()
-                         * already use internally.
-                         */
-                        $mediaItems = $houseModel->getHouseMedia((int) $house['id']);
+                        $houseId = (int) $house['id'];
+
+                        $mediaItems = $houseModel->getHouseMedia($houseId);
 
                         $imageUrls = [];
                         $videoUrl  = null;
@@ -152,16 +116,28 @@ require_once '../../includes/sidebar.php';
                                 $imageUrls[] = $path;
                             }
                         }
+
+                        $isOwnHouse = ((int) $house['landlord_id'] === $tenantId);
+                        $isHouseBooked = ($house['status'] === 'booked');
+                        $tenantStatus = $tenantBookingStatusByHouse[$houseId] ?? null;
+                        $tenantHasPending = ($tenantStatus === 'pending');
+                        $tenantHasApproved = ($tenantStatus === 'approved');
                     ?>
 
-                    <div class="lux-card tenant-card" style="
-                        overflow:hidden;
-                        border-radius:24px;
-                        transition:0.4s;
-                    ">
+                    <div class="lux-card tenant-card lux-explore-card<?php echo $isHouseBooked ? ' lux-explore-card-unavailable' : ''; ?>"
+                         data-house-id="<?php echo $houseId; ?>"
+                         data-house-status="<?php echo htmlspecialchars($house['status']); ?>">
 
                         <!-- MEDIA -->
-                        <div class="tenant-image" style="position:relative;">
+                        <div class="tenant-image lux-explore-media">
+
+                            <?php if ($isHouseBooked): ?>
+
+                                <div class="lux-explore-unavailable-badge">
+                                    No Longer Available
+                                </div>
+
+                            <?php endif; ?>
 
                             <?php if ($videoUrl !== null): ?>
 
@@ -232,43 +208,24 @@ require_once '../../includes/sidebar.php';
                             <?php endif; ?>
 
                             <!-- PRICE BADGE -->
-                            <div style="
-                                position:absolute;
-                                top:15px;
-                                right:15px;
-                                background:rgba(0,0,0,0.75);
-                                padding:10px 15px;
-                                border-radius:14px;
-                                color:var(--gold);
-                                font-weight:bold;
-                                backdrop-filter:blur(10px);
-                                pointer-events:none;
-                                z-index:3;
-                            ">
+                            <div class="lux-explore-price-badge">
                                 KES <?php echo number_format($house['price']); ?>
                             </div>
 
                         </div>
 
                         <!-- CONTENT -->
-                        <div class="tenant-card-padding" style="padding:25px;">
+                        <div class="tenant-card-padding lux-explore-content">
 
-                            <h2 style="
-                                color:white;
-                                font-size:1.6rem;
-                                margin-bottom:10px;
-                            ">
+                            <h2 class="lux-explore-card-title">
                                 <?php echo htmlspecialchars($house['title']); ?>
                             </h2>
-                                <br>
-                            <!-- RATING STARS -->
 
-                            <div style="
-                                color:var(--gold);
-                                font-size:1.1rem;
-                                margin-bottom:14px;
-                            ">
-                             
+                            <br>
+
+                            <!-- RATING STARS -->
+                            <div class="lux-explore-rating">
+
                                 <?php
                                     $rating = (int)($house['rating'] ?? 0);
 
@@ -283,27 +240,13 @@ require_once '../../includes/sidebar.php';
                             </div>
                                 <br>
 
-                            <!-- DESCRIPTION -->    
-
-                            <p style="
-                                color:rgba(255,255,255,0.72);
-                                line-height:1.8;
-                                margin-bottom:18px;
-                                font-size:0.95rem;
-                                letter-spacing:0.2px;
-                                font-weight:400;
-                            ">
+                            <!-- DESCRIPTION -->
+                            <p class="lux-explore-desc">
                                 <?php echo htmlspecialchars(substr($house['description'], 0, 120)); ?>...
                             </p>
 
                             <!-- DETAILS -->
-                            <div class="tenant-meta" style="
-                                display:flex;
-                                justify-content:space-between;
-                                flex-wrap:wrap;
-                                gap:12px;
-                                margin-bottom:18px;
-                            ">
+                            <div class="tenant-meta lux-explore-meta-row">
 
                                 <span style="color:var(--gray);">
                                     <?php echo htmlspecialchars($house['location']); ?>
@@ -328,12 +271,7 @@ require_once '../../includes/sidebar.php';
                             </div>
 
                             <!-- META -->
-                            <div class="tenant-meta" style="
-                                display:flex;
-                                justify-content:space-between;
-                                margin-bottom:25px;
-                                color:var(--gray);
-                            ">
+                            <div class="tenant-meta lux-explore-meta-row2">
 
                                 <span>
                                     <?php echo $house['bedrooms']; ?> Bedrooms
@@ -346,53 +284,51 @@ require_once '../../includes/sidebar.php';
                             </div>
 
                             <!-- BUTTONS -->
-                            <div class="tenant-actions" style="
-                                display:flex;
-                                gap:12px;
-                                flex-wrap:wrap;
-                            ">
+                            <div class="tenant-actions lux-explore-actions">
 
-                                <a href="<?php echo BASE_URL; ?>/dashboard/tenant/view_house.php?id=<?php echo $house['id']; ?>"
-                                   class="lux-btn"
-                                   style="
-                                        flex:1;
-                                        text-align:center;
-                                        text-decoration:none;
-                                   ">
+                                <a href="<?php echo BASE_URL; ?>/dashboard/tenant/view_house.php?id=<?php echo $houseId; ?>"
+                                   class="lux-btn lux-explore-btn-view">
                                     View Details
                                 </a>
 
-                                <a href="<?php echo BASE_URL; ?>/api/houses/book_house.php?id=<?php echo $house['id']; ?>"
-                                   style="
-                                        flex:1;
-                                        text-align:center;
-                                        text-decoration:none;
-                                        padding:14px;
-                                        border-radius:14px;
-                                        background:linear-gradient(135deg,#d4af37,#f5d76e);
-                                        color:black;
-                                        font-weight:bold;
-                                   ">
-                                    Book Now
-                                </a>
+                                <?php if ($isOwnHouse): ?>
+
+                                    <!-- Landlord viewing their own listing: no booking action -->
+
+                                <?php elseif ($isHouseBooked): ?>
+
+                                    <button type="button" class="lux-explore-btn-book lux-explore-btn-unavailable" disabled>
+                                        Unavailable
+                                    </button>
+
+                                <?php elseif ($tenantHasPending): ?>
+
+                                    <button type="button" class="lux-explore-btn-book lux-explore-btn-pending" disabled>
+                                        Request Pending
+                                    </button>
+
+                                <?php elseif ($tenantHasApproved): ?>
+
+                                    <button type="button" class="lux-explore-btn-book lux-explore-btn-pending" disabled>
+                                        Booked by You
+                                    </button>
+
+                                <?php else: ?>
+
+                                    <button type="button"
+                                            class="lux-explore-btn-book book-now-btn"
+                                            data-house-id="<?php echo $houseId; ?>">
+                                        Book Now
+                                    </button>
+
+                                <?php endif; ?>
 
                                 <button type="button"
-                                        class="lux-btn chat-starter-btn"
+                                        class="lux-btn chat-starter-btn lux-explore-btn-chat"
                                         data-other-user-id="<?php echo (int) $house['landlord_id']; ?>"
                                         data-other-role="landlord"
-                                        data-house-id="<?php echo (int) $house['id']; ?>"
-                                        data-other-name="<?php echo htmlspecialchars($house['landlord_name']); ?>"
-                                        style="
-                                            flex:1;
-                                            text-align:center;
-                                            padding:14px;
-                                            border-radius:14px;
-                                            background:rgba(255,255,255,0.08);
-                                            color:var(--gold);
-                                            border:1px solid var(--gold);
-                                            font-weight:bold;
-                                            cursor:pointer;
-                                        ">
+                                        data-house-id="<?php echo $houseId; ?>"
+                                        data-other-name="<?php echo htmlspecialchars($house['landlord_name']); ?>">
                                     <i class="fa-solid fa-comment-dots"></i> Message Landlord
                                 </button>
 
@@ -406,24 +342,13 @@ require_once '../../includes/sidebar.php';
 
             <?php else: ?>
 
-                <div class="lux-card tenant-card tenant-card-padding" style="
-                    padding:50px;
-                    text-align:center;
-                    grid-column:1/-1;
-                    border-radius:28px;
-                ">
+                <div class="lux-card tenant-card tenant-card-padding lux-explore-empty-card">
 
-                    <h2 style="
-                        color:var(--gold);
-                        margin-bottom:15px;
-                    ">
+                    <h2 class="lux-explore-empty-title">
                         No Luxury Properties Found
                     </h2>
 
-                    <p style="
-                        color:var(--gray);
-                        line-height:1.7;
-                    ">
+                    <p class="lux-explore-empty-text">
                         Your search returned no Empire listings.
                         Try another keyword or location.
                     </p>
@@ -452,7 +377,15 @@ require_once '../../includes/sidebar.php';
     </div>
 </div>
 
+<script>
+    window.LUX_BOOKING_CONFIG = {
+        baseUrl: "<?php echo BASE_URL; ?>",
+        csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"
+    };
+</script>
+
 <script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/bookings.js"></script>
 
 <?php require_once '../../includes/chat_starter_modal.php'; ?>
 

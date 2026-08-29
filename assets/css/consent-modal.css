@@ -1,0 +1,117 @@
+/* =========================================================
+   LUX EMPIRE — CONSENT MODAL
+   Used by includes/consent_modal.php on the landlord/driver
+   registration pages.
+   ========================================================= */
+
+.consent-modal{
+    position:fixed;
+    inset:0;
+    /*
+     * Was 3000 — bumped very high because assets/css/navbar.css
+     * hasn't been shared with me, so its actual z-index is unknown.
+     * This guarantees the modal renders above the navbar regardless.
+     */
+    z-index:999999;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+}
+
+.consent-modal.is-dismissed{
+    display:none;
+}
+
+.consent-modal-overlay{
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,0.75);
+    backdrop-filter:blur(6px);
+}
+
+.consent-modal-box{
+    position:relative;
+    max-width:560px;
+    width:100%;
+    max-height:85vh;
+    overflow-y:auto;
+    background:#0f0f0f;
+    border:1px solid rgba(212,175,55,0.3);
+    border-radius:24px;
+    padding:35px;
+    box-shadow:0 25px 70px rgba(0,0,0,0.6);
+}
+
+.consent-modal-title{
+    font-family:'Cinzel', serif;
+    color:var(--gold);
+    font-size:1.7rem;
+    margin-bottom:20px;
+}
+
+.consent-modal-body{
+    color:rgba(255,255,255,0.85);
+    line-height:1.8;
+    font-size:0.95rem;
+}
+
+.consent-modal-body p{
+    margin-bottom:14px;
+}
+
+.consent-modal-list{
+    margin:0 0 14px 20px;
+}
+
+.consent-modal-list li{
+    margin-bottom:8px;
+}
+
+.consent-modal-checkbox-row{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    margin-top:24px;
+    padding-top:20px;
+    border-top:1px solid rgba(255,255,255,0.1);
+    color:white;
+    font-size:0.9rem;
+    line-height:1.6;
+    cursor:pointer;
+}
+
+.consent-modal-checkbox-row input[type="checkbox"]{
+    margin-top:3px;
+    width:18px;
+    height:18px;
+    flex-shrink:0;
+    accent-color:#d4af37;
+    cursor:pointer;
+}
+
+.consent-modal-decline-btn{
+    display:block;
+    margin:16px auto 0;
+    background:transparent;
+    border:none;
+    color:rgba(255,255,255,0.5);
+    text-decoration:underline;
+    cursor:pointer;
+    font-size:0.85rem;
+}
+
+.consent-modal-decline-btn:hover{
+    color:#ff5252;
+}
+
+/*
+ * While the consent modal is open, the registration form fields
+ * behind it are visually present but must not be usable — this
+ * class is toggled onto the form by consent-modal.js.
+ */
+.consent-locked{
+    pointer-events:none;
+    filter:blur(2px);
+    user-select:none;
+}

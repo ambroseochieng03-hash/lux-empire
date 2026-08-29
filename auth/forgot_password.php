@@ -15,7 +15,7 @@ require_once '../includes/navbar.php';
 
         <!-- Identity -->
         <div style="text-align:center; margin-bottom:30px;">
-            <div style="font-size:4rem;">🔐</div>
+            <div style="font-size:4rem;"></div>
 
             <h1 style="
                 font-family:'Cinzel', serif;
@@ -68,14 +68,14 @@ require_once '../includes/navbar.php';
                 font-size:1.1rem;
                 border-radius:16px;
             ">
-                👑 Continue Recovery
+                Continue Recovery
             </button>
 
         </form>
 
         <!-- Back -->
         <div style="text-align:center; margin-top:25px;">
-            <a href="login.php" style="color:var(--gold); text-decoration:none;">
+            <a href="<?php echo BASE_URL; ?>/login" style="color:var(--gold); text-decoration:none;">
                 Return to Empire Gate
             </a>
         </div>

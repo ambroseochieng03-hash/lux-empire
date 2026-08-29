@@ -5,261 +5,105 @@ require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/navbar.php';
 ?>
 
-<style>
-
-    /* LUX EMPIRE — Metallic Gold Icons */
-.lux-gold-icon {
-    color: #d4af37;
-    text-shadow:
-        0 1px 0 #fff3b0,
-        0 2px 2px rgba(0, 0, 0, 0.45),
-        0 4px 8px rgba(212, 175, 55, 0.35);
-}
-
-</style>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/nav-menu.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/home.css">
 
 <!-- HERO SECTION -->
-<section style="
-    min-height:100vh;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    position:relative;
-    overflow:hidden;
-    padding:120px 20px 80px;
-">
+<section class="home-hero">
 
     <!-- BACKGROUND GLOW -->
-    <div style="
-        position:absolute;
-        width:700px;
-        height:700px;
-        background:radial-gradient(circle, rgba(212,175,55,0.18), transparent 70%);
-        top:-250px;
-        right:-250px;
-        z-index:0;
-        filter:blur(40px);
-    "></div>
-
-    <div style="
-        position:absolute;
-        width:600px;
-        height:600px;
-        background:radial-gradient(circle, rgba(255,255,255,0.04), transparent 70%);
-        bottom:-200px;
-        left:-200px;
-        z-index:0;
-        filter:blur(40px);
-    "></div>
+    <div class="home-hero-glow-1"></div>
+    <div class="home-hero-glow-2"></div>
 
     <!-- CONTENT -->
-    <div style="
-        max-width:1300px;
-        width:100%;
-        display:grid;
-        grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
-        gap:60px;
-        align-items:center;
-        position:relative;
-        z-index:2;
-    ">
+    <div class="home-hero-grid">
 
         <!-- LEFT -->
         <div>
 
-            <span style="
-                display:inline-block;
-                padding:10px 18px;
-                border-radius:50px;
-                background:rgba(255,255,255,0.06);
-                border:1px solid rgba(255,255,255,0.08);
-                color:var(--gold);
-                margin-bottom:25px;
-                font-size:0.95rem;
-                backdrop-filter:blur(12px);
-            ">
+            <span class="home-badge">
                 Welcome to LUX EMPIRE
             </span>
 
-            <h1 style="
-                font-family:'Cinzel', serif;
-                font-size:clamp(3rem,7vw,6rem);
-                line-height:1.1;
-                color:white;
-                margin-bottom:25px;
-                font-weight:800;
-            ">
-                Where <span style="
-                    color:var(--gold);
-                    text-shadow:0 0 20px rgba(212,175,55,0.4);
-                ">Luxury</span><br>
-                Finds Home.
+            <h1 class="home-hero-title">
+                <span id="homeTypewriter" class="home-hero-title-typed" aria-hidden="true"></span><span class="home-typewriter-cursor">|</span>
+                <span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);">
+                    Where Luxury Finds Home.
+                </span>
             </h1>
 
-            <p style="
-                color:var(--gray);
-                font-size:1.1rem;
-                line-height:1.9;
-                max-width:650px;
-                margin-bottom:35px;
-            ">
+            <p class="home-hero-desc">
                 Experience elite property living, premium rentals,
                 and intelligent logistics powered by modern luxury technology.
                 LUX EMPIRE connects tenants, landlords, and moving services
                 in one powerful ecosystem.
             </p>
 
-            <!-- BUTTONS -->
-            <div style="
-                display:flex;
-                gap:18px;
-                flex-wrap:wrap;
-            ">
-
-                <a href="auth/register.php"
-                   class="lux-btn"
-                   style="
-                        text-decoration:none;
-                        padding:18px 34px;
-                        border-radius:18px;
-                   ">
-                    Join The Empire
-                </a>
-
-                <a href="auth/login.php"
-                   style="
-                        text-decoration:none;
-                        padding:18px 34px;
-                        border-radius:18px;
-                        border:1px solid rgba(255,255,255,0.12);
-                        background:rgba(255,255,255,0.05);
-                        color:white;
-                        font-weight:600;
-                        backdrop-filter:blur(12px);
-                        transition:0.3s;
-                   ">
-                    <i class="fa-solid fa-right-to-bracket"></i> Login
-                </a>
-
+            <!-- ACTIONS: single compact nav menu, not a button pair -->
+            <div class="home-hero-actions">
+                <?php
+                    $navMenuTriggerLabel = 'Get Started';
+                    require __DIR__ . '/includes/nav_menu.php';
+                ?>
             </div>
 
         </div>
 
         <!-- RIGHT -->
-        <div style="
-            position:relative;
-            display:flex;
-            justify-content:center;
-            align-items:center;
-        ">
+        <div class="home-hero-visual">
 
             <!-- MAIN CARD -->
-            <div class="lux-card" style="
-                width:100%;
-                max-width:520px;
-                border-radius:35px;
-                overflow:hidden;
-                position:relative;
-            ">
+            <div class="lux-card home-hero-card">
 
                 <img src="assets/images/houses/luxury-house.jpg"
                      alt="Luxury House"
-                     style="
-                        width:100%;
-                        height:500px;
-                        object-fit:cover;
-                     ">
+                     class="home-hero-img">
 
                 <!-- OVERLAY -->
-                <div style="
-                    position:absolute;
-                    inset:0;
-                    background:linear-gradient(
-                        to top,
-                        rgba(0,0,0,0.85),
-                        rgba(0,0,0,0.15)
-                    );
-                "></div>
+                <div class="home-hero-card-overlay"></div>
 
                 <!-- CONTENT -->
-                <div style="
-                    position:absolute;
-                    bottom:0;
-                    left:0;
-                    width:100%;
-                    padding:30px;
-                ">
+                <div class="home-hero-card-content">
 
-                    <div style="
-                        display:flex;
-                        justify-content:space-between;
-                        align-items:center;
-                        margin-bottom:15px;
-                    ">
+                    <div class="home-hero-card-top">
 
-                        <span style="
-                            background:rgba(212,175,55,0.15);
-                            color:var(--gold);
-                            padding:8px 14px;
-                            border-radius:12px;
-                            font-size:0.9rem;
-                            border:1px solid rgba(212,175,55,0.25);
-                        ">
+                        <span class="home-hero-card-tag">
                             Premium Villa
                         </span>
 
-                        <span style="
-                            color:white;
-                            font-weight:bold;
-                        ">
+                        <span class="home-hero-card-location">
                             Nairobi
                         </span>
 
                     </div>
 
-                    <h2 style="
-                        color:white;
-                        font-size:2rem;
-                        margin-bottom:10px;
-                    ">
+                    <h2 class="home-hero-card-title">
                         Modern Elite Residence
                     </h2>
 
-                    <p style="
-                        color:#ddd;
-                        line-height:1.7;
-                        margin-bottom:20px;
-                    ">
+                    <p class="home-hero-card-desc">
                         Sophisticated architecture designed for luxury living and elite comfort.
                     </p>
 
-                    <div style="
-                        display:flex;
-                        justify-content:space-between;
-                        align-items:center;
-                    ">
+                    <div class="home-hero-card-bottom">
 
                         <div>
-                            <small style="color:var(--gray);">
+                            <small class="home-hero-card-price-label">
                                 Starting From
                             </small>
 
-                            <h3 style="
-                                color:var(--gold);
-                                margin-top:5px;
-                                font-size:1.7rem;
-                            ">
+                            <h3 class="home-hero-card-price">
                                 KES 120,000
                             </h3>
                         </div>
 
+                        <!--
+                            This stays a plain link (not the nav menu) —
+                            it's a content CTA for this one property
+                            preview, not primary site navigation.
+                        -->
                         <a href="auth/register.php"
-                           class="lux-btn"
-                           style="
-                                text-decoration:none;
-                                padding:14px 22px;
-                                border-radius:14px;
-                           ">
+                           class="lux-btn home-hero-card-view-btn">
                             View
                         </a>
 
@@ -276,17 +120,9 @@ require_once __DIR__ . '/includes/navbar.php';
 </section>
 
 <!-- STATS -->
-<section style="
-    padding:60px 20px;
-">
+<section class="home-stats-section">
 
-    <div style="
-        max-width:1300px;
-        margin:auto;
-        display:grid;
-        grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-        gap:25px;
-    ">
+    <div class="home-stats-grid">
 
         <?php
         $stats = [
@@ -299,24 +135,13 @@ require_once __DIR__ . '/includes/navbar.php';
         foreach ($stats as $stat):
         ?>
 
-        <div class="lux-card" style="
-            padding:35px;
-            text-align:center;
-            border-radius:24px;
-        ">
+        <div class="lux-card home-stat-card">
 
-            <h2 style="
-                color:var(--gold);
-                font-size:2.5rem;
-                margin-bottom:12px;
-            ">
+            <h2 class="home-stat-number">
                 <?php echo $stat[0]; ?>
             </h2>
 
-            <p style="
-                color:var(--gray);
-                font-size:1rem;
-            ">
+            <p class="home-stat-label">
                 <?php echo $stat[1]; ?>
             </p>
 
@@ -329,46 +154,24 @@ require_once __DIR__ . '/includes/navbar.php';
 </section>
 
 <!-- WHY CHOOSE US -->
-<section style="
-    padding:90px 20px;
-">
+<section class="home-features-section">
 
-    <div style="
-        max-width:1300px;
-        margin:auto;
-    ">
+    <div class="home-features-container">
 
-        <div style="
-            text-align:center;
-            margin-bottom:70px;
-        ">
+        <div class="home-features-header">
 
-            <h2 style="
-                font-family:'Cinzel', serif;
-                color:white;
-                font-size:3rem;
-                margin-bottom:20px;
-            ">
-                Why Choose <span style="color:var(--gold);">LUX EMPIRE</span>
+            <h2 class="home-features-title">
+                Why Choose <span class="home-gold-text">LUX EMPIRE</span>
             </h2>
 
-            <p style="
-                color:var(--gray);
-                max-width:700px;
-                margin:auto;
-                line-height:1.9;
-            ">
+            <p class="home-features-subtitle">
                 Built for modern luxury living with intelligent technology,
                 elegant experiences, and premium logistics.
             </p>
 
         </div>
 
-        <div style="
-            display:grid;
-            grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-            gap:30px;
-        ">
+        <div class="home-features-grid">
 
             <?php
             $features = [
@@ -381,30 +184,17 @@ require_once __DIR__ . '/includes/navbar.php';
             foreach ($features as $feature):
             ?>
 
-            <div class="lux-card" style="
-                padding:40px 30px;
-                border-radius:28px;
-            ">
+            <div class="lux-card home-feature-card">
 
-                <div style="
-                    font-size:3rem;
-                    margin-bottom:20px;
-                ">
+                <div class="home-feature-icon-wrap">
                     <i class="fa-solid <?php echo $feature[0]; ?> lux-gold-icon"></i>
                 </div>
 
-                <h3 style="
-                    color:white;
-                    margin-bottom:15px;
-                    font-size:1.5rem;
-                ">
+                <h3 class="home-feature-title">
                     <?php echo $feature[1]; ?>
                 </h3>
 
-                <p style="
-                    color:var(--gray);
-                    line-height:1.8;
-                ">
+                <p class="home-feature-desc">
                     <?php echo $feature[2]; ?>
                 </p>
 
@@ -419,82 +209,28 @@ require_once __DIR__ . '/includes/navbar.php';
 </section>
 
 <!-- CTA -->
-<section style="
-    padding:100px 20px 120px;
-">
+<section class="home-cta-section">
 
-    <div class="lux-card" style="
-        max-width:1200px;
-        margin:auto;
-        padding:70px 40px;
-        border-radius:40px;
-        text-align:center;
-        position:relative;
-        overflow:hidden;
-    ">
+    <div class="lux-card home-cta-card">
 
-        <div style="
-            position:absolute;
-            width:500px;
-            height:500px;
-            background:radial-gradient(circle, rgba(212,175,55,0.12), transparent 70%);
-            top:-200px;
-            right:-200px;
-        "></div>
+        <div class="home-cta-glow"></div>
 
-        <div style="position:relative; z-index:2;">
+        <div class="home-cta-inner">
 
-            <h2 style="
-                font-family:'Cinzel', serif;
-                font-size:clamp(2.5rem,5vw,4.5rem);
-                color:white;
-                margin-bottom:25px;
-            ">
+            <h2 class="home-cta-title">
                 Begin Your Luxury Journey
             </h2>
 
-            <p style="
-                color:var(--gray);
-                max-width:750px;
-                margin:auto;
-                line-height:1.9;
-                margin-bottom:40px;
-                font-size:1.1rem;
-            ">
+            <p class="home-cta-desc">
                 Join the future of luxury property living,
                 premium logistics, and elite real estate experiences.
             </p>
 
-            <div style="
-                display:flex;
-                justify-content:center;
-                gap:20px;
-                flex-wrap:wrap;
-            ">
-
-                <a href="auth/register.php"
-                   class="lux-btn"
-                   style="
-                        text-decoration:none;
-                        padding:18px 34px;
-                        border-radius:18px;
-                   ">
-                    <i class="fa-solid fa-crown lux-gold-icon"></i> Create Account
-                </a>
-
-                <a href="auth/login.php"
-                   style="
-                        text-decoration:none;
-                        padding:18px 34px;
-                        border-radius:18px;
-                        border:1px solid rgba(255,255,255,0.12);
-                        background:rgba(255,255,255,0.05);
-                        color:white;
-                        font-weight:600;
-                   ">
-                    <i class="fa-solid fa-right-from-bracket"></i> Access Platform
-                </a>
-
+            <div class="home-cta-actions">
+                <?php
+                    $navMenuTriggerLabel = 'Join Now';
+                    require __DIR__ . '/includes/nav_menu.php';
+                ?>
             </div>
 
         </div>
@@ -502,5 +238,8 @@ require_once __DIR__ . '/includes/navbar.php';
     </div>
 
 </section>
+
+<script src="<?php echo BASE_URL; ?>/assets/js/nav-menu.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/home-typewriter.js"></script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

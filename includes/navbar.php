@@ -29,86 +29,8 @@ if ($isLoggedIn) {
 
 ?>
 
-<style>
-.lux-crown-3d-wrap{
-    font-size:2.3rem;
-    line-height:1;
-    display:inline-block;
-}
-
-.lux-crown-3d{
-    background: linear-gradient(145deg, #fff6d0 0%, #f5d76e 22%, #d4af37 50%, #a8791f 78%, #7a5a15 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    color: transparent;
-    filter:
-        drop-shadow(0 1px 0 rgba(255,255,255,0.55))
-        drop-shadow(0 2px 2px rgba(0,0,0,0.35))
-        drop-shadow(0 6px 10px rgba(0,0,0,0.45));
-}
-
-/* ================================
-   NOTIFICATION BELL
-================================= */
-
-.lux-notif-bell-wrap{
-    position:relative;
-    width:44px;
-    height:44px;
-    border-radius:50%;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    cursor:pointer;
-    background:rgba(255,255,255,0.04);
-    border:1px solid rgba(212,175,55,0.25);
-    transition:0.2s;
-    flex-shrink:0;
-}
-
-.lux-notif-bell-wrap:hover{
-    background:rgba(212,175,55,0.12);
-}
-
-.lux-notif-bell-icon{
-    color:var(--gold);
-    font-size:1.3rem;
-}
-
-.lux-notif-bell-badge{
-    position:absolute;
-    top:-4px;
-    right:-4px;
-    background:#ff3b3b;
-    color:white;
-    font-size:0.65rem;
-    font-weight:bold;
-    min-width:18px;
-    height:18px;
-    border-radius:50%;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    padding:0 4px;
-    box-shadow:0 0 6px rgba(255,0,0,0.6);
-}
-
-.lux-notif-bell-wrap.has-unread .lux-notif-bell-icon{
-    animation: luxBellShake 1.8s ease-in-out infinite;
-    filter: drop-shadow(0 0 6px rgba(212,175,55,0.9));
-}
-
-@keyframes luxBellShake{
-    0%, 100% { transform: rotate(0deg); }
-    5%  { transform: rotate(14deg); }
-    10% { transform: rotate(-12deg); }
-    15% { transform: rotate(10deg); }
-    20% { transform: rotate(-8deg); }
-    25% { transform: rotate(4deg); }
-    30% { transform: rotate(0deg); }
-}
-</style>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/nav-menu.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/navbar-extra.css">
 
 <nav class="lux-header">
 <div class="lux-navbar">
@@ -118,13 +40,7 @@ if ($isLoggedIn) {
 <span class="lux-crown-3d-wrap"><i class="fa-solid fa-crown lux-crown-3d"></i></span>
 <div>
 <div>LUX EMPIRE</div>
-<small style="
-                    display:block;
-                    font-size:0.7rem;
-                    color: var(--gray);
-                    letter-spacing:2px;
-                    margin-top:2px;
-">
+<small class="lux-navbar-tagline">
                     Luxury • Power • Prestige
 </small>
 </div>
@@ -133,7 +49,7 @@ if ($isLoggedIn) {
 <?php if (!$isLoggedIn): ?>
 
 <!-- MOBILE MENU BUTTON -->
-<button class="lux-mobile-toggle" onclick="toggleLuxNavbar()">
+<button class="lux-mobile-toggle" id="luxMobileToggleBtn" type="button">
             ☰
 </button>
 
@@ -146,25 +62,23 @@ if ($isLoggedIn) {
 <a href="#">Contact</a>
 </div>
 
-<!-- ACTION BUTTONS -->
+<!--
+    Was two buttons (Login / Join The Empire) — now the single
+    compact nav menu (includes/nav_menu.php), which also holds the
+    landlord/driver registration links that didn't fit here before
+    without the navbar visually expanding.
+-->
 <div class="lux-nav-buttons" id="luxNavButtons">
-<a href="<?php echo BASE_URL; ?>/login" class="lux-btn" style="
-                background: transparent;
-                color: var(--gold);
-                border: 1px solid var(--gold);
-">
-                Login
-</a>
-
-<a href="<?php echo BASE_URL; ?>/register" class="lux-btn">
-                Join The Empire
-</a>
+    <?php
+        $navMenuTriggerLabel = 'Access Empire';
+        require __DIR__ . '/nav_menu.php';
+    ?>
 </div>
 
 <?php elseif ($navNotifLink): ?>
 
 <!-- NOTIFICATION BELL -->
-<div class="lux-notif-bell-wrap" id="luxNotifBell" style="margin-left:auto;" onclick="window.location.href='<?php echo $navNotifLink; ?>';">
+<div class="lux-notif-bell-wrap" id="luxNotifBell" data-notif-link="<?php echo htmlspecialchars($navNotifLink); ?>">
     <i class="fa-solid fa-bell lux-notif-bell-icon"></i>
     <span class="lux-notif-bell-badge" id="luxNotifBellBadge" style="display:none;">0</span>
 </div>
@@ -176,19 +90,17 @@ if ($isLoggedIn) {
 
 <?php if (!$isLoggedIn): ?>
 <script>
-function toggleLuxNavbar() {
-
-document
-.getElementById("luxNavLinks")
-.classList
-.toggle("active");
-
-document
-.getElementById("luxNavButtons")
-.classList
-.toggle("active");
-}
+    /*
+     * Small bootstrapping listeners only (same pattern used across
+     * this app for page config, e.g. window.LUX_BOOKING_CONFIG) —
+     * not inline onclick="" attributes.
+     */
+    document.getElementById('luxMobileToggleBtn').addEventListener('click', function () {
+        document.getElementById('luxNavLinks').classList.toggle('active');
+        document.getElementById('luxNavButtons').classList.toggle('active');
+    });
 </script>
+<script src="<?php echo BASE_URL; ?>/assets/js/nav-menu.js"></script>
 <?php endif; ?>
 
 <?php if ($navNotifLink): ?>
@@ -196,6 +108,10 @@ document
     window.LUX_NOTIF_BELL_CONFIG = {
         baseUrl: "<?php echo BASE_URL; ?>"
     };
+
+    document.getElementById('luxNotifBell').addEventListener('click', function () {
+        window.location.href = this.dataset.notifLink;
+    });
 </script>
 <script src="<?php echo BASE_URL; ?>/assets/js/notification-bell.js"></script>
 <?php endif; ?>

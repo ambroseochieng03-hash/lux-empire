@@ -1,5 +1,5 @@
 /**
- * MY BOOKINGS — tabs, search, sort, status filter, scroll preservation
+ * MY BOOKINGS — tabs, search, sort, status filter
  * ---------------------------------------------------------------
  * Purely client-side. Every booking/truck card already carries the data
  * it needs, rendered by dashboard/tenant/my_bookings.php:
@@ -10,6 +10,12 @@
  *
  * No backend calls are made here — filtering/sorting only show, hide,
  * and reorder cards already present in the DOM.
+ *
+ * NOTE: this file previously also preserved scroll position around a
+ * full-page reload triggered by the Cancel/Delete forms. Those forms
+ * are now handled entirely via AJAX by assets/js/bookings.js (no
+ * reload happens), so that logic no longer applies and has been
+ * removed rather than left as dead code.
  */
 (function () {
     'use strict';
@@ -157,47 +163,5 @@
     sortSelect.addEventListener('change', applySort);
 
     setTab('all');
-
-    /* ================================================================
-       SCROLL POSITION PRESERVATION
-       ---------------------------------------------------------------
-       The Cancel/Delete forms still submit and reload the page exactly
-       as before — nothing about that submission was changed, since the
-       actual endpoint behavior wasn't something to guess at. This just
-       remembers where the user was, and scrolls back there after the
-       reload.
-       ================================================================ */
-
-    var SCROLL_KEY = 'luxBookingsScrollY';
-
-    document.querySelectorAll('.booking-action-form').forEach(function (form) {
-        form.addEventListener('submit', function () {
-            try {
-                sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
-            } catch (err) {
-                /* sessionStorage unavailable — nothing to do, submit proceeds normally */
-            }
-        });
-    });
-
-    window.addEventListener('load', function () {
-        var savedY;
-
-        try {
-            savedY = sessionStorage.getItem(SCROLL_KEY);
-        } catch (err) {
-            savedY = null;
-        }
-
-        if (savedY !== null) {
-            window.scrollTo(0, parseInt(savedY, 10) || 0);
-
-            try {
-                sessionStorage.removeItem(SCROLL_KEY);
-            } catch (err) {
-                /* ignore */
-            }
-        }
-    });
 
 }());

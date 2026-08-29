@@ -503,6 +503,13 @@ class House
 
     /**
      * GET ALL HOUSES
+     *
+     * Excludes houses whose 12-hour post-acceptance visibility
+     * window has elapsed (status = 'booked' AND booked_at is more
+     * than 12 hours ago). Nothing is deleted — this is purely a
+     * listing-query filter, per the agreed booked_at + render-time
+     * check approach. Houses that are 'available', 'rented', or
+     * 'booked' within the last 12 hours are still returned.
      */
     public function getAllHouses(): array
     {
@@ -526,6 +533,12 @@ class House
 
             JOIN users u
                 ON h.landlord_id = u.id
+
+            WHERE (
+                h.status != 'booked'
+                OR h.booked_at IS NULL
+                OR h.booked_at > (NOW() - INTERVAL 12 HOUR)
+            )
 
             ORDER BY h.id DESC
         ";
@@ -1193,6 +1206,10 @@ class House
 
     /**
      * SEARCH HOUSES
+     *
+     * Same 12-hour lifecycle exclusion as getAllHouses() — search
+     * must keep working (per spec) and must stay consistent with
+     * the main listing.
      */
     public function searchHouses(
         string $keyword
@@ -1220,9 +1237,16 @@ class House
                 ON h.landlord_id = u.id
 
             WHERE
+            (
                 h.title LIKE :title
                 OR h.location LIKE :location
                 OR h.description LIKE :description
+            )
+            AND (
+                h.status != 'booked'
+                OR h.booked_at IS NULL
+                OR h.booked_at > (NOW() - INTERVAL 12 HOUR)
+            )
 
             ORDER BY h.id DESC
         ";

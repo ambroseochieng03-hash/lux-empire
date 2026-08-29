@@ -1,5 +1,21 @@
 <?php
 
+require_once __DIR__ . '/../config/session.php';
+
+/*
+ * Ensure the session is active before ANY output is sent.
+ *
+ * Dashboard pages already start the session early via
+ * auth_check.php, so this is a no-op there. Public pages that
+ * render this header (and, downstream, navbar.php) without going
+ * through auth_check.php previously left the session unstarted
+ * until navbar.php's own guarded Session::start() call — by which
+ * point this file had already sent the <!DOCTYPE html>/<head>
+ * output below, producing "headers already sent" warnings.
+ */
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    Session::start();
+}
 
 require_once __DIR__ . '/../config/app.php';
 ?>

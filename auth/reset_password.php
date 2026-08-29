@@ -88,7 +88,7 @@ if ((int)$reset['used'] === 1) {
 
         <!-- Identity -->
         <div style="text-align:center; margin-bottom:30px;">
-            <div style="font-size:4rem;">👑</div>
+            <div style="font-size:4rem; color:var(--gold);"><i class="fa-solid fa-crown"></i></div>
 
             <h1 style="
                 font-family:'Cinzel', serif;
@@ -119,7 +119,7 @@ if ((int)$reset['used'] === 1) {
                 box-shadow:0 10px 30px rgba(255,0,0,0.08);
             ">
 
-                ⚠️
+                <i class="fa-solid fa-triangle-exclamation"></i>
                 <?= htmlspecialchars($_GET['error']) ?>
 
             </div>
@@ -173,14 +173,14 @@ if ((int)$reset['used'] === 1) {
                 font-size:1.1rem;
                 border-radius:16px;
             ">
-                🔐 Update Empire Key
+                <i class="fa-solid fa-lock"></i> Update Empire Key
             </button>
 
         </form>
 
         <!-- Back -->
         <div style="text-align:center; margin-top:25px;">
-            <a href="login.php" style="color:var(--gold); text-decoration:none;">
+            <a href="<?php echo BASE_URL; ?>/login" style="color:var(--gold); text-decoration:none;">
                 Return to Empire Gate
             </a>
         </div>

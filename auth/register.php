@@ -15,7 +15,7 @@ require_once '../includes/navbar.php';
 
         <!-- Crown Identity -->
         <div style="text-align:center; margin-bottom:30px;">
-            <div style="font-size:4rem;">👑</div>
+            <div style="font-size:4rem;"></div>
             <h1 style="
                 font-family:'Cinzel', serif;
                 color: var(--gold);

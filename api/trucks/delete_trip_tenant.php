@@ -1,42 +1,59 @@
 <?php
 
+declare(strict_types=1);
+
 require_once '../../includes/auth_check.php';
 requireRoleAccess('tenant');
 
-require_once '../../config/db.php';
+require_once '../../classes/TruckRequest.php';
+require_once '../../config/app.php';
+require_once '../../config/csrf.php';
+require_once '../../config/security/DoSProtection.php';
+require_once '../../config/security/RateLimiter.php';
 
-$db = new Database();
-$pdo = $db->connect();
+header('Content-Type: application/json');
 
-/*
-|--------------------------------------------------------------------------
-| ONLY POST
-|--------------------------------------------------------------------------
-*/
+DoSProtection::check();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-
-    die("Invalid request.");
-}
-
-/*
-|--------------------------------------------------------------------------
-| GET DATA
-|--------------------------------------------------------------------------
-*/
-
-$tenant_id = (int) Session::user()['id'];
-
-$trip_id = $_POST['trip_id'] ?? null;
-
-if (!$trip_id) {
-
-    $_SESSION['error'] = "Invalid trip.";
-
-    header("Location: ../../dashboard/tenant/my_bookings.php");
-
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
     exit;
 }
+
+/**
+ * Previously had NO CSRF check at all — closing that gap here.
+ */
+Csrf::requireValid($_POST['csrf_token'] ?? null);
+
+$tenantId = (int) Session::user()['id'];
+
+$rateKey = 'delete_trip:' . $tenantId;
+
+if (RateLimiter::isBlocked($rateKey)) {
+    http_response_code(429);
+    echo json_encode(['success' => false, 'message' => 'Too many attempts. Please wait a moment and try again.']);
+    exit;
+}
+
+$attempts = RateLimiter::hit($rateKey, 60);
+
+if ($attempts > 20) {
+    RateLimiter::block($rateKey, 120);
+    http_response_code(429);
+    echo json_encode(['success' => false, 'message' => 'Too many attempts. Please wait a moment and try again.']);
+    exit;
+}
+
+$trip_id = filter_input(INPUT_POST, 'trip_id', FILTER_VALIDATE_INT);
+
+if (!$trip_id) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Invalid trip.']);
+    exit;
+}
+
+$truckModel = new TruckRequest();
 
 /*
 |--------------------------------------------------------------------------
@@ -44,27 +61,11 @@ if (!$trip_id) {
 |--------------------------------------------------------------------------
 */
 
-$stmt = $pdo->prepare("
-    SELECT *
-    FROM truck_requests
-    WHERE id = ?
-    AND tenant_id = ?
-    LIMIT 1
-");
+$trip = $truckModel->getRequestById($trip_id);
 
-$stmt->execute([
-    $trip_id,
-    $tenant_id
-]);
-
-$trip = $stmt->fetch();
-
-if (!$trip) {
-
-    $_SESSION['error'] = "Trip not found.";
-
-    header("Location: ../../dashboard/tenant/my_bookings.php");
-
+if (!$trip || (int) $trip['tenant_id'] !== $tenantId) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Trip not found.']);
     exit;
 }
 
@@ -74,26 +75,17 @@ if (!$trip) {
 |--------------------------------------------------------------------------
 */
 
-$delete = $pdo->prepare("
-    DELETE FROM truck_requests
-    WHERE id = ?
-");
-
-$success = $delete->execute([
-    $trip_id
-]);
+$success = $truckModel->deleteRequest($trip_id, $tenantId);
 
 if ($success) {
-
-    $_SESSION['success'] =
-        "🗑 Truck request deleted successfully.";
-
-} else {
-
-    $_SESSION['error'] =
-        "Failed to delete truck request.";
+    echo json_encode([
+        'success' => true,
+        'message' => 'Truck request deleted successfully.',
+        'trip_id' => $trip_id
+    ]);
+    exit;
 }
 
-header("Location: ../../dashboard/tenant/my_bookings.php");
-
+http_response_code(500);
+echo json_encode(['success' => false, 'message' => 'Failed to delete truck request.']);
 exit;

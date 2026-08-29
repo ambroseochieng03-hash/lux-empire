@@ -4,300 +4,26 @@ require_once '../../includes/auth_check.php';
 requireRoleAccess('landlord');
 
 require_once '../../classes/Booking.php';
+require_once '../../classes/House.php';
+require_once '../../config/csrf.php';
 
 $bookingModel = new Booking();
+$houseModel = new House();
+$csrfToken = Csrf::token();
 
-$bookings = $bookingModel->getBookingsByLandlord((int) Session::user()['id']);
+/**
+ * Pending queue only — approved/rejected requests no longer belong
+ * here (§9). History remains in the bookings table untouched.
+ */
+$bookings = $bookingModel->getPendingBookingsByLandlord((int) Session::user()['id']);
 
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
 ?>
 
-<style>
-/* =========================================
-   LANDLORD BOOKING REQUESTS RESPONSIVE
-========================================= */
-
-.landlord-layout{
-    display:flex;
-    min-height:100vh;
-}
-
-.landlord-main{
-    flex:1;
-    padding:40px;
-    margin-left:280px;
-    width:calc(100% - 280px);
-    box-sizing:border-box;
-}
-
-.landlord-header{
-    margin-bottom:35px;
-}
-
-.landlord-title{
-    font-family:'Cinzel', serif;
-    color:var(--gold);
-    font-size:3rem;
-    line-height:1.2;
-    margin-bottom:10px;
-}
-
-.landlord-subtitle{
-    color:var(--gray);
-    line-height:1.8;
-    max-width:700px;
-}
-
-.bookings-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
-    gap:30px;
-}
-
-.booking-card{
-    border-radius:24px;
-    overflow:hidden;
-    height:100%;
-    display:flex;
-    flex-direction:column;
-}
-
-.booking-image{
-    height:220px;
-    overflow:hidden;
-    background:rgba(255,255,255,0.04);
-}
-
-.booking-image img{
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    display:block;
-}
-
-.booking-placeholder{
-    width:100%;
-    height:100%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    color:var(--gold);
-    font-size:2rem;
-}
-
-.booking-content{
-    padding:25px;
-    display:flex;
-    flex-direction:column;
-    flex:1;
-}
-
-.booking-property-title{
-    color:white;
-    margin-bottom:10px;
-    font-size:1.5rem;
-    line-height:1.4;
-    word-break:break-word;
-}
-
-.booking-location{
-    color:var(--gray);
-    margin-bottom:12px;
-    line-height:1.6;
-}
-
-.booking-price{
-    color:var(--gold);
-    font-weight:bold;
-    margin-bottom:18px;
-    font-size:1.1rem;
-}
-
-.booking-tenant-box{
-    background:rgba(255,255,255,0.05);
-    padding:15px;
-    border-radius:14px;
-    margin-bottom:18px;
-    color:var(--gray);
-    font-size:0.95rem;
-    line-height:1.8;
-    word-break:break-word;
-}
-
-.booking-status{
-    font-weight:bold;
-    margin-bottom:22px;
-}
-
-.booking-actions{
-    display:flex;
-    gap:12px;
-    flex-wrap:wrap;
-}
-
-.booking-btn{
-    flex:1;
-    min-width:120px;
-    text-align:center;
-    padding:14px;
-    border-radius:14px;
-    font-weight:bold;
-    text-decoration:none;
-    transition:0.3s;
-    box-sizing:border-box;
-}
-
-.booking-btn:hover{
-    transform:translateY(-2px);
-}
-
-.booking-btn-approve{
-    background:linear-gradient(135deg,#00c853,#64dd17);
-    color:black;
-}
-
-.booking-btn-reject{
-    background:#ff3b3b;
-    color:white;
-}
-
-.booking-finished{
-    text-align:center;
-    color:var(--gray);
-    padding-top:5px;
-}
-
-.empty-card{
-    padding:50px;
-    text-align:center;
-    grid-column:1/-1;
-    border-radius:28px;
-}
-
-.empty-title{
-    color:var(--gold);
-    margin-bottom:15px;
-    font-size:2rem;
-}
-
-.empty-text{
-    color:var(--gray);
-    line-height:1.7;
-}
-
-/* =========================================
-   TABLET
-========================================= */
-
-@media (max-width: 992px){
-
-    .landlord-main{
-        margin-left:0;
-        width:100%;
-        padding:30px 22px;
-    }
-
-    .landlord-title{
-        font-size:2.5rem;
-    }
-
-    .bookings-grid{
-        grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
-        gap:24px;
-    }
-}
-
-/* =========================================
-   MOBILE
-========================================= */
-
-@media (max-width: 768px){
-
-    .landlord-main{
-        padding:22px 16px 40px;
-    }
-
-    .landlord-title{
-        font-size:2rem;
-    }
-
-    .landlord-subtitle{
-        font-size:0.95rem;
-    }
-
-    .bookings-grid{
-        grid-template-columns:1fr;
-        gap:22px;
-    }
-
-    .booking-image{
-        height:200px;
-    }
-
-    .booking-content{
-        padding:20px;
-    }
-
-    .booking-property-title{
-        font-size:1.3rem;
-    }
-
-    .booking-actions{
-        flex-direction:column;
-    }
-
-    .booking-btn{
-        width:100%;
-    }
-
-    .empty-card{
-        padding:35px 20px;
-    }
-}
-
-/* =========================================
-   SMALL MOBILE
-========================================= */
-
-@media (max-width: 480px){
-
-    .landlord-main{
-        padding:18px 12px 35px;
-    }
-
-    .landlord-title{
-        font-size:1.7rem;
-    }
-
-    .booking-image{
-        height:180px;
-    }
-
-    .booking-content{
-        padding:18px;
-    }
-
-    .booking-property-title{
-        font-size:1.15rem;
-    }
-
-    .booking-tenant-box{
-        font-size:0.9rem;
-    }
-
-    .booking-btn{
-        padding:13px;
-        border-radius:12px;
-        font-size:0.95rem;
-    }
-
-    .empty-title{
-        font-size:1.6rem;
-    }
-}
-</style>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bookings.css">
 
 <div class="landlord-layout">
 
@@ -318,23 +44,96 @@ require_once '../../includes/sidebar.php';
         </div>
 
         <!-- BOOKINGS GRID -->
-        <div class="bookings-grid">
+        <div class="bookings-grid" id="landlordBookingsGrid">
 
             <?php if (count($bookings) > 0): ?>
 
                 <?php foreach ($bookings as $booking): ?>
 
-                    <div class="lux-card booking-card">
+                    <?php
+                        $bookingHouseId = (int) $booking['house_id'];
 
-                        <!-- IMAGE -->
+                        $mediaItems = $houseModel->getHouseMedia($bookingHouseId);
+
+                        $imageUrls = [];
+                        $videoUrl  = null;
+
+                        foreach ($mediaItems as $mediaItem) {
+
+                            $path = BASE_URL . '/assets/uploads/house_images/' . $mediaItem['image_path'];
+
+                            if (preg_match('/\.mp4$/i', $mediaItem['image_path'])) {
+                                $videoUrl = $path;
+                            } else {
+                                $imageUrls[] = $path;
+                            }
+                        }
+                    ?>
+
+                    <div class="lux-card booking-card" data-booking-id="<?php echo (int) $booking['id']; ?>">
+
+                        <!-- MEDIA -->
                         <div class="booking-image">
 
-                            <?php if (!empty($booking['image'])): ?>
+                            <?php if ($videoUrl !== null): ?>
 
-                                <img
-                                    src="../../assets/uploads/house_images/<?php echo htmlspecialchars($booking['image']); ?>"
-                                    alt="Luxury Property"
-                                >
+                                <div class="media-frame"
+                                     data-video="<?php echo htmlspecialchars($videoUrl); ?>"
+                                     data-caption="<?php echo htmlspecialchars($booking['title']); ?>">
+
+                                    <video class="media-video"
+                                           src="<?php echo htmlspecialchars($videoUrl); ?>"
+                                           controls
+                                           preload="metadata"
+                                           playsinline>
+                                    </video>
+
+                                    <button type="button" class="media-enlarge-btn" aria-label="Enlarge video">⤢</button>
+
+                                </div>
+
+                            <?php elseif (!empty($imageUrls)): ?>
+
+                                <?php $mediaImagesJson = json_encode($imageUrls); ?>
+
+                                <div class="media-frame"
+                                     data-images='<?php echo htmlspecialchars($mediaImagesJson, ENT_QUOTES); ?>'
+                                     data-caption="<?php echo htmlspecialchars($booking['title']); ?>"
+                                     data-current-index="0">
+
+                                    <div class="media-carousel">
+
+                                        <div class="media-carousel-track">
+
+                                            <?php foreach ($imageUrls as $index => $url): ?>
+
+                                                <img class="media-slide<?php echo $index === 0 ? ' is-active' : ''; ?>"
+                                                     src="<?php echo htmlspecialchars($url); ?>"
+                                                     data-index="<?php echo $index; ?>"
+                                                     alt="<?php echo htmlspecialchars($booking['title']); ?> image <?php echo $index + 1; ?>">
+
+                                            <?php endforeach; ?>
+
+                                        </div>
+
+                                    </div>
+
+                                    <?php if (count($imageUrls) > 1): ?>
+
+                                        <button type="button" class="media-carousel-btn media-carousel-prev" aria-label="Previous image">‹</button>
+                                        <button type="button" class="media-carousel-btn media-carousel-next" aria-label="Next image">›</button>
+
+                                        <div class="media-carousel-dots">
+                                            <?php foreach ($imageUrls as $index => $url): ?>
+                                                <span class="media-dot<?php echo $index === 0 ? ' is-active' : ''; ?>" data-index="<?php echo $index; ?>"></span>
+                                            <?php endforeach; ?>
+                                        </div>
+
+                                    <?php endif; ?>
+
+                                    <button type="button" class="media-enlarge-btn" aria-label="Enlarge image">⤢</button>
+
+                                </div>
 
                             <?php else: ?>
 
@@ -356,42 +155,23 @@ require_once '../../includes/sidebar.php';
                             <br>
 
                             <!-- HOUSE RATING -->
-                            <div style="
-                                display:flex;
-                                align-items:center;
-                                gap:10px;
-                                margin-bottom:18px;
-                                flex-wrap:wrap;
-                            ">
+                            <div class="lb-rating-row">
 
                                 <?php
                                     $rating = (int)($booking['rating'] ?? 0);
                                 ?>
 
-                                <div style="
-                                    display:flex;
-                                    gap:3px;
-                                    font-size:1.1rem;
-                                ">
+                                <div class="lb-stars">
 
                                     <?php for($i = 1; $i <= 5; $i++): ?>
 
-                                        <span style="
-                                            color: <?php echo ($i <= $rating) ? '#d4af37' : 'rgba(255,255,255,0.2)'; ?>;
-                                            text-shadow: <?php echo ($i <= $rating) ? '0 0 8px rgba(212,175,55,0.4)' : 'none'; ?>;
-                                            transition:0.3s;
-                                        ">
-                                            ★
-                                        </span>
+                                        <span class="lb-star<?php echo ($i <= $rating) ? ' is-filled' : ''; ?>">★</span>
 
                                     <?php endfor; ?>
 
                                 </div>
 
-                                <span style="
-                                    color:var(--gray);
-                                    font-size:0.9rem;
-                                ">
+                                <span class="lb-rating-text">
                                     <?php echo $rating; ?>/5 Property Rating
                                 </span>
 
@@ -408,7 +188,7 @@ require_once '../../includes/sidebar.php';
                             <!-- TENANT INFO -->
                             <div class="booking-tenant-box">
 
-                                
+
                                 <?php echo htmlspecialchars($booking['tenant_name']); ?>
 
                                 <br>
@@ -420,51 +200,33 @@ require_once '../../includes/sidebar.php';
                             </div>
 
                             <!-- STATUS -->
-                            <?php
-                                $status = $booking['status'];
-                                $color = "gray";
+                            <?php $status = $booking['status']; ?>
 
-                                if ($status == "pending") {
-                                    $color = "orange";
-                                }
-
-                                if ($status == "approved") {
-                                    $color = "lightgreen";
-                                }
-
-                                if ($status == "rejected") {
-                                    $color = "red";
-                                }
-                            ?>
-
-                            <div
-                                class="booking-status"
-                                style="color:<?php echo $color; ?>;"
-                            >
+                            <div class="booking-status status-<?php echo htmlspecialchars($status); ?>">
                                 Status:
                                 <?php echo ucfirst($status); ?>
                             </div>
 
-                            <!-- ACTIONS -->
-                            <?php if ($status == "pending"): ?>
+                            <!-- ACTIONS (this query only ever returns pending, but keep the guard) -->
+                            <?php if ($status === "pending"): ?>
 
                                 <div class="booking-actions">
 
                                     <!-- APPROVE -->
-                                    <a
-                                        href="../../api/houses/update_booking_status.php?id=<?php echo $booking['id']; ?>&status=approved"
-                                        class="booking-btn booking-btn-approve"
-                                    >
+                                    <button type="button"
+                                            class="booking-btn booking-btn-approve booking-action-btn"
+                                            data-booking-id="<?php echo (int) $booking['id']; ?>"
+                                            data-action="accept">
                                         Approve
-                                    </a>
+                                    </button>
 
                                     <!-- REJECT -->
-                                    <a
-                                        href="../../api/houses/update_booking_status.php?id=<?php echo $booking['id']; ?>&status=rejected"
-                                        class="booking-btn booking-btn-reject"
-                                    >
+                                    <button type="button"
+                                            class="booking-btn booking-btn-reject booking-action-btn"
+                                            data-booking-id="<?php echo (int) $booking['id']; ?>"
+                                            data-action="reject">
                                         Reject
-                                    </a>
+                                    </button>
 
                                 </div>
 
@@ -484,7 +246,7 @@ require_once '../../includes/sidebar.php';
 
             <?php else: ?>
 
-                <div class="lux-card empty-card">
+                <div class="lux-card empty-card" id="landlordBookingsEmpty">
 
                     <h2 class="empty-title">
                         No Booking Requests
@@ -503,5 +265,29 @@ require_once '../../includes/sidebar.php';
     </main>
 
 </div>
+
+<!-- MEDIA LIGHTBOX (shared, single instance) -->
+<div class="media-lightbox" id="mediaLightbox" aria-hidden="true">
+    <div class="media-lightbox-overlay" data-media-close></div>
+    <div class="media-lightbox-content">
+        <button type="button" class="media-lightbox-close" data-media-close aria-label="Close">×</button>
+        <button type="button" class="media-lightbox-nav media-lightbox-prev" aria-label="Previous image">‹</button>
+        <div class="media-lightbox-stage">
+            <img class="media-lightbox-image" src="" alt="">
+        </div>
+        <button type="button" class="media-lightbox-nav media-lightbox-next" aria-label="Next image">›</button>
+        <div class="media-lightbox-counter"></div>
+    </div>
+</div>
+
+<script>
+    window.LUX_BOOKING_CONFIG = {
+        baseUrl: "<?php echo BASE_URL; ?>",
+        csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"
+    };
+</script>
+
+<script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/bookings.js"></script>
 
 <?php require_once '../../includes/footer.php'; ?>

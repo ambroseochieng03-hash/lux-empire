@@ -332,3 +332,64 @@ CREATE TABLE rate_limits (
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE bookings
+  ADD COLUMN pending_lock VARCHAR(64)
+    GENERATED ALWAYS AS (
+      CASE WHEN status = 'pending'
+           THEN CONCAT(tenant_id, '-', house_id)
+           ELSE NULL END
+    ) STORED;
+
+ALTER TABLE bookings
+  ADD UNIQUE KEY uniq_tenant_house_pending (pending_lock);  
+
+ALTER TABLE houses
+    ADD COLUMN booked_at TIMESTAMP NULL DEFAULT NULL AFTER status;  
+
+-- LUX EMPIRE
+-- Migration: application-level encryption columns + consent audit trail
+--
+-- 1) users.national_id_encrypted — NEW column, holds ciphertext for the
+--    landlord registration flow's ID field. The existing plaintext
+--    users.national_id column is left completely untouched (still used
+--    by the old universal auth/register.php / tenant stopgap), so
+--    nothing already reading that column is affected.
+--
+-- 2) drivers.license_number / drivers.vehicle_plate — widened to TEXT
+--    to hold ciphertext (nonce + encrypted value, base64-encoded) in
+--    place of the plaintext they held before. vehicle_type is NOT
+--    encrypted (not sensitive) but widened slightly to fit a longer
+--    free-text description.
+--
+-- 3) consent_records — audit trail of every accept/decline decision
+--    made on the landlord/driver registration consent notice.
+--    user_id is nullable because a "decline" happens before any
+--    account exists.
+
+ALTER TABLE users
+    ADD COLUMN national_id_encrypted TEXT NULL AFTER national_id;
+
+ALTER TABLE drivers
+    MODIFY COLUMN license_number TEXT NULL,
+    MODIFY COLUMN vehicle_plate TEXT NULL,
+    MODIFY COLUMN vehicle_type VARCHAR(150) NULL;
+
+CREATE TABLE consent_records (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+
+    user_id INT NULL,
+
+    role VARCHAR(20) NOT NULL,
+    consent_type VARCHAR(50) NOT NULL DEFAULT 'data_processing',
+
+    decision ENUM('accepted', 'declined') NOT NULL,
+
+    ip_address VARCHAR(45) NULL,
+
+    decided_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci;    
