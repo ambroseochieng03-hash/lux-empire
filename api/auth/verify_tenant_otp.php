@@ -10,6 +10,7 @@ require_once '../../classes/Otp.php';
 require_once '../../classes/TrustedDevice.php';
 require_once '../../config/security/DoSProtection.php';
 require_once '../../config/security/RateLimiter.php';
+require_once '../../classes/Notification.php'; 
 
 Session::start();
 header('Content-Type: application/json');
@@ -88,8 +89,18 @@ unset($_SESSION['pending_tenant_registration_id']);
 $trustedDevice = new TrustedDevice();
 $trustedDevice->trust((int) $userId);
 
+$notification = new Notification();
+$notification->create(
+    (int) $user['id'],
+    'welcome',
+    'Welcome to LUX EMPIRE',
+    'Your account is verified. Browse luxury properties and request a move whenever you\'re ready.',
+    BASE_URL . '/tenant'
+);
+
 echo json_encode([
     'success' => true,
     'message' => 'Welcome to LUX EMPIRE.',
-    'redirect' => BASE_URL . '/tenant'
+    'redirect' => BASE_URL . '/tenant',
+    'csrf_token' => Csrf::token()   // The token client-side is now stale after regenerate()
 ]);

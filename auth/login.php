@@ -3,113 +3,69 @@ require_once '../includes/header.php';
 require_once '../includes/navbar.php';
 ?>
 
-<section class="hero" style="min-height: 100vh; padding-top: 120px;">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/auth-forms.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/role-select-modal.css">
 
-    <div class="lux-card" style="
-        max-width: 600px;
-        width: 100%;
-        margin: auto;
-        padding: 50px;
-        border-radius: 30px;
-    ">
+<section class="auth-hero">
 
-        <!-- Crown Identity -->
-        <div style="text-align:center; margin-bottom:30px;">
-            <div style="font-size:4rem;"></div>
+    <div class="lux-card auth-card">
 
-            <h1 style="
-                font-family:'Cinzel', serif;
-                color: var(--gold);
-                font-size: 2.8rem;
-                margin-bottom:10px;
-            ">
-                Enter The Empire
-            </h1>
-
-            <p style="color: var(--gray);">
-                Access your luxury world of property, movement, and prestige.
-            </p>
+        <div class="auth-header">
+            <h1 class="auth-title">Enter The Empire</h1>
+            <p class="auth-subtitle">Access your luxury world of property, movement, and prestige.</p>
         </div>
 
-        <!-- Success -->
         <?php if (isset($_GET['success'])): ?>
-            <div style="
-                background: rgba(0,255,100,0.08);
-                border: 1px solid rgba(0,255,100,0.25);
-                padding: 12px;
-                border-radius: 12px;
-                margin-bottom: 20px;
-                color: #b8ffd2;
-                text-align:center;
-            ">
+            <div class="auth-alert auth-alert-success">
                 <?php echo htmlspecialchars($_GET['success']); ?>
             </div>
         <?php endif; ?>
 
-        <!-- Error -->
         <?php if (isset($_GET['error'])): ?>
-            <div style="
-                background: rgba(255,0,0,0.08);
-                border: 1px solid rgba(255,0,0,0.25);
-                padding: 12px;
-                border-radius: 12px;
-                margin-bottom: 20px;
-                color: #ffb3b3;
-                text-align:center;
-            ">
+            <div class="auth-alert auth-alert-error">
                 <?php echo htmlspecialchars($_GET['error']); ?>
             </div>
         <?php endif; ?>
 
-        <!-- Login Form -->
         <form action="<?php echo BASE_URL; ?>/login-handler" method="POST">
 
-            <!-- Email -->
-            <div style="margin-bottom:18px;">
-                <label>Email Address</label>
-                <input type="email" name="email" required
-                    placeholder="Enter your empire email"
-                    style="width:100%; padding:14px; margin-top:8px; border-radius:14px; border:none;">
+            <div class="auth-field">
+                <label for="loginEmail">Email Address</label>
+                <input type="email" id="loginEmail" name="email" required
+                       placeholder="Enter your empire email">
             </div>
 
-            <!-- Password -->
-            <div style="margin-bottom:25px;">
-                <label>Password</label>
-                <input type="password" name="password" required
-                    placeholder="Your secure empire key"
-                    style="width:100%; padding:14px; margin-top:8px; border-radius:14px; border:none;">
+            <div class="auth-field">
+                <label for="loginPassword">Password</label>
+                <input type="password" id="loginPassword" name="password" required
+                       placeholder="Your secure empire key">
             </div>
 
-            <!-- Submit -->
-            <button type="submit" class="lux-btn" style="
-                width:100%;
-                padding:16px;
-                font-size:1.1rem;
-                border-radius:16px;
-            ">
+            <button type="submit" class="lux-btn auth-submit-btn">
                 <i class="fa-solid fa-right-to-bracket"></i> Enter Now
             </button>
 
         </form>
 
-        <!-- Extra Links -->
-        <div style="text-align:center; margin-top:25px;">
-            <p style="margin-bottom:10px;">
-                <a href="<?php echo BASE_URL; ?>/forgot-password" style="color:var(--gold); text-decoration:none;">
+        <div class="auth-footer-link">
+            <p>
+                <a href="<?php echo BASE_URL; ?>/forgot-password">
                     Forgotten your Empire key?
                 </a>
             </p>
 
-            <p style="color:var(--gray);">
+            <p>
                 New to the Empire?
-                <a href="<?php echo BASE_URL; ?>/register" style="color:var(--gold); text-decoration:none;">
-                    Join Here
-                </a>
+                <a href="#" data-open-role-select>Join Here</a>
             </p>
         </div>
 
     </div>
 
 </section>
+
+<?php require __DIR__ . '/../includes/role_select_modal.php'; ?>
+
+<script src="<?php echo BASE_URL; ?>/assets/js/role-select-modal.js"></script>
 
 <?php require_once '../includes/footer.php'; ?>

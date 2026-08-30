@@ -113,11 +113,57 @@ require_once __DIR__ . '/../includes/navbar.php';
 
                                 <?php if ($videoUrl !== null): ?>
 
-                                    <video class="media-video" src="<?php echo htmlspecialchars($videoUrl); ?>" muted preload="metadata"></video>
+                                    <div class="media-frame"
+                                         data-video="<?php echo htmlspecialchars($videoUrl); ?>"
+                                         data-caption="<?php echo htmlspecialchars($house['title']); ?>">
+
+                                        <video class="media-video"
+                                               src="<?php echo htmlspecialchars($videoUrl); ?>"
+                                               controls
+                                               autoplay
+                                               muted
+                                               loop
+                                               playsinline
+                                               preload="metadata">
+                                        </video>
+
+                                        <button type="button" class="media-enlarge-btn" aria-label="Enlarge video">⤢</button>
+
+                                    </div>
 
                                 <?php elseif (!empty($imageUrls)): ?>
 
-                                    <img src="<?php echo htmlspecialchars($imageUrls[0]); ?>" alt="<?php echo htmlspecialchars($house['title']); ?>" style="width:100%;height:100%;object-fit:cover;">
+                                    <?php $mediaImagesJson = json_encode($imageUrls); ?>
+
+                                    <div class="media-frame"
+                                         data-images='<?php echo htmlspecialchars($mediaImagesJson, ENT_QUOTES); ?>'
+                                         data-caption="<?php echo htmlspecialchars($house['title']); ?>"
+                                         data-current-index="0">
+
+                                        <div class="media-carousel">
+                                            <div class="media-carousel-track">
+                                                <?php foreach ($imageUrls as $index => $url): ?>
+                                                    <img class="media-slide<?php echo $index === 0 ? ' is-active' : ''; ?>"
+                                                         src="<?php echo htmlspecialchars($url); ?>"
+                                                         data-index="<?php echo $index; ?>"
+                                                         alt="<?php echo htmlspecialchars($house['title']); ?> <?php echo $index + 1; ?>">
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+
+                                        <?php if (count($imageUrls) > 1): ?>
+                                            <button type="button" class="media-carousel-btn media-carousel-prev" aria-label="Previous image">‹</button>
+                                            <button type="button" class="media-carousel-btn media-carousel-next" aria-label="Next image">›</button>
+                                            <div class="media-carousel-dots">
+                                                <?php foreach ($imageUrls as $index => $url): ?>
+                                                    <span class="media-dot<?php echo $index === 0 ? ' is-active' : ''; ?>" data-index="<?php echo $index; ?>"></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
+
+                                        <button type="button" class="media-enlarge-btn" aria-label="Enlarge image">⤢</button>
+
+                                    </div>
 
                                 <?php else: ?>
 
@@ -267,6 +313,20 @@ require_once __DIR__ . '/../includes/navbar.php';
     </div>
 </div>
 
+<!-- MEDIA LIGHTBOX (shared, single instance) -->
+<div class="media-lightbox" id="mediaLightbox" aria-hidden="true">
+    <div class="media-lightbox-overlay" data-media-close></div>
+    <div class="media-lightbox-content">
+        <button type="button" class="media-lightbox-close" data-media-close aria-label="Close">×</button>
+        <button type="button" class="media-lightbox-nav media-lightbox-prev" aria-label="Previous image">‹</button>
+        <div class="media-lightbox-stage">
+            <img class="media-lightbox-image" src="" alt="">
+        </div>
+        <button type="button" class="media-lightbox-nav media-lightbox-next" aria-label="Next image">›</button>
+        <div class="media-lightbox-counter"></div>
+    </div>
+</div>
+
 <?php require __DIR__ . '/../includes/tenant_register_modal.php'; ?>
 
 <script>
@@ -282,6 +342,7 @@ require_once __DIR__ . '/../includes/navbar.php';
 </script>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/tenant-register-modal.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/guest-browse.js"></script>
 <script

@@ -41,7 +41,7 @@ if ($isLoggedIn) {
 <div>
 <div>LUX EMPIRE</div>
 <small class="lux-navbar-tagline">
-                    Luxury • Power • Prestige
+                    Elite Homes • Effortless Moves
 </small>
 </div>
 </div>

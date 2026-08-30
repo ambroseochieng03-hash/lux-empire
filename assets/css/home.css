@@ -85,7 +85,7 @@
     color:var(--gold);
     margin-bottom:25px;
     font-weight:800;
-    min-height:2.2em;
+    min-height:2.2em;   /* fallback only — JS sets an exact px height once it runs */
 }
 
 /*
@@ -95,6 +95,7 @@
  */
 .home-hero-title-typed{
     display:inline-block;
+    word-break:break-word;
 }
 
 .home-typewriter-cursor{

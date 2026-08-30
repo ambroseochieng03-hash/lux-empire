@@ -80,7 +80,11 @@ googleClientId } to be set by the page before this script runs.
          * registration completes, fire it automatically instead of
          * just dropping the user on their dashboard.
          */
-        async function completePendingGuestActionThenRedirect(fallbackRedirect) {
+        async function completePendingGuestActionThenRedirect(fallbackRedirect, newCsrfToken) {
+
+            if (newCsrfToken) {
+                cfg.csrfToken = newCsrfToken;   // ADD THIS — keep the token in sync with the server
+            }
 
             const pendingRaw = sessionStorage.getItem('luxPendingGuestAction');
 
@@ -104,13 +108,15 @@ googleClientId } to be set by the page before this script runs.
             if (pending.type === 'book_house') {
 
                 try {
-                    await postForm(`${cfg.baseUrl}/api/houses/book_house.php`, {
+                    const result = await postForm(`${cfg.baseUrl}/api/houses/book_house.php`, {
                         house_id: pending.houseId,
                         csrf_token: cfg.csrfToken
                     });
+                    if (!result.success) {
+                        sessionStorage.setItem('luxBookingFailedMessage', result.message || 'Booking could not be completed automatically.');
+                    }
                 } catch (e) {
-                    // Not fatal — they can just click Book Now again
-                    // from their now-authenticated session.
+                    sessionStorage.setItem('luxBookingFailedMessage', 'Booking could not be completed automatically.');
                 }
 
                 window.location.href = cfg.baseUrl + '/tenant/my-bookings';
@@ -250,7 +256,7 @@ googleClientId } to be set by the page before this script runs.
                 return;
             }
 
-            completePendingGuestActionThenRedirect(data.redirect || cfg.baseUrl + '/tenant');
+            completePendingGuestActionThenRedirect(data.redirect || cfg.baseUrl + '/tenant', data.csrf_token);
         });
 
         // ---- Resend OTP ----
@@ -291,7 +297,7 @@ googleClientId } to be set by the page before this script runs.
                 return;
             }
 
-            completePendingGuestActionThenRedirect(data.redirect || cfg.baseUrl + '/tenant');
+            completePendingGuestActionThenRedirect(data.redirect || cfg.baseUrl + '/tenant', data.csrf_token);
         });
 
         // ---- Google Identity Services ----
@@ -314,7 +320,7 @@ googleClientId } to be set by the page before this script runs.
                     return;
                 }
 
-                completePendingGuestActionThenRedirect(data.redirect || cfg.baseUrl + '/tenant');
+                completePendingGuestActionThenRedirect(data.redirect || cfg.baseUrl + '/tenant', data.csrf_token);
             });
         }
 

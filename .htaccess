@@ -33,7 +33,6 @@ RewriteRule ^ - [F,L]
 # ================================================================
 
 RewriteRule ^login/?$ auth/login.php [END]
-RewriteRule ^register/?$ auth/register.php [END]
 RewriteRule ^logout/?$ auth/logout.php [END]
 
 RewriteRule ^forgot-password/?$ auth/forgot_password.php [END]

@@ -114,8 +114,10 @@ switch ($result['status']) {
 
         echo json_encode([
             'success' => true,
-            'needs_password' => true,
-            'message' => 'Almost done — set a password to secure your account.'
+            'needs_password' => false,
+            'message' => 'Welcome back.',
+            'redirect' => BASE_URL . '/tenant',
+            'csrf_token' => Csrf::token()
         ]);
         break;
 

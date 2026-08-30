@@ -8,6 +8,7 @@ require_once '../../classes/User.php';
 require_once '../../classes/Consent.php';
 require_once '../../config/security/DoSProtection.php';
 require_once '../../config/security/RateLimiter.php';
+require_once '../../classes/Notification.php';
 
 Session::start();
 
@@ -108,6 +109,15 @@ if (is_int($result)) {
          */
         error_log('LUX EMPIRE consent recording failed for user ' . $newUserId . ': ' . $e->getMessage());
     }
+
+    $notification = new Notification();
+    $notification->create(
+        $newUserId,
+        'welcome',
+        'Welcome to LUX EMPIRE',
+        'Your landlord account has been created. Start listing your properties to reach tenants across the Empire.',
+        BASE_URL . '/landlord'
+    );
 
     header("Location: " . BASE_URL . "/login?success=" . urlencode("Welcome to LUX EMPIRE. Your landlord account has been created."));
     exit();
