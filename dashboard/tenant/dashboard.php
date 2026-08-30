@@ -107,7 +107,7 @@ require_once '../../includes/sidebar.php';
         <div class="lux-tenant-actions">
 
             <!-- SEARCH HOMES -->
-            <a href="../tenant/search_houses.php"
+            <a href="<?php echo BASE_URL; ?>/tenant/search-houses"
                class="lux-card lux-tenant-action-card">
 
                 <h3 class="lux-tenant-action-title">
@@ -121,7 +121,7 @@ require_once '../../includes/sidebar.php';
             </a>
 
             <!-- REQUEST TRUCK -->
-            <a href="../tenant/request_truck.php"
+            <a href="<?php echo BASE_URL; ?>/tenant/request-truck"
                class="lux-card lux-tenant-action-card">
 
                 <h3 class="lux-tenant-action-title">
@@ -135,7 +135,7 @@ require_once '../../includes/sidebar.php';
             </a>
 
             <!-- BOOKINGS -->
-            <a href="../tenant/my_bookings.php"
+            <a href="<?php echo BASE_URL; ?>/tenant/my-bookings"
                class="lux-card lux-tenant-action-card">
 
                 <h3 class="lux-tenant-action-title">

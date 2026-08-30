@@ -50,8 +50,10 @@ RewriteRule ^reset-handler/?$ api/auth/reset_handler.php [END]
 RewriteRule ^register/landlord/?$ auth/register_landlord.php [END]
 RewriteRule ^register/driver/?$ auth/register_driver.php [END]
 
-RewriteRule ^register-landlord-handler/?$ api/auth/register_landlord_handler.php [END]
-RewriteRule ^register-driver-handler/?$ api/auth/register_driver_handler.php [END]
+RewriteRule ^register-landlord-handler/?$ api/auth/register-landlord-handler.php [END]
+RewriteRule ^register-driver-handler/?$  api/auth/register-driver-handler.php  [END]
+
+RewriteRule ^browse/?$ guest/browse.php [END]
 
 
 RewriteRule ^tenant/messages/?$ dashboard/tenant/messages.php [END]

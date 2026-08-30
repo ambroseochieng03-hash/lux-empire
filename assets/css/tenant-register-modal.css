@@ -1,0 +1,171 @@
+/* =========================================================
+   LUX EMPIRE — TENANT REGISTRATION MODAL
+   SAVE AT: assets/css/tenant-register-modal.css
+   ========================================================= */
+
+.tenant-register-modal{
+    position:fixed;
+    inset:0;
+    z-index:999999;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+}
+
+.tenant-register-modal.is-open{
+    display:flex;
+}
+
+.tenant-register-modal-overlay{
+    position:absolute;
+    inset:0;
+    background:rgba(0,0,0,0.75);
+    backdrop-filter:blur(6px);
+}
+
+.tenant-register-modal-box{
+    position:relative;
+    max-width:420px;
+    width:100%;
+    max-height:90vh;
+    overflow-y:auto;
+    background:#0f0f0f;
+    border:1px solid rgba(212,175,55,0.3);
+    border-radius:24px;
+    padding:35px;
+    box-shadow:0 25px 70px rgba(0,0,0,0.6);
+}
+
+.tenant-register-modal-close{
+    position:absolute;
+    top:16px;
+    right:16px;
+    background:transparent;
+    border:none;
+    color:rgba(255,255,255,0.5);
+    font-size:1.5rem;
+    cursor:pointer;
+    line-height:1;
+}
+
+.tenant-register-modal-close:hover{
+    color:white;
+}
+
+.tenant-register-modal-title{
+    font-family:'Cinzel', serif;
+    color:var(--gold);
+    font-size:1.5rem;
+    margin-bottom:6px;
+}
+
+.tenant-register-modal-subtitle{
+    color:var(--gray);
+    font-size:0.9rem;
+    margin-bottom:22px;
+}
+
+.tr-google-btn-wrap{
+    display:flex;
+    justify-content:center;
+    margin-bottom:20px;
+    min-height:40px;
+}
+
+.tr-divider{
+    display:flex;
+    align-items:center;
+    text-align:center;
+    color:var(--gray);
+    font-size:0.8rem;
+    margin-bottom:20px;
+}
+
+.tr-divider::before,
+.tr-divider::after{
+    content:"";
+    flex:1;
+    height:1px;
+    background:rgba(255,255,255,0.1);
+}
+
+.tr-divider span{
+    padding:0 12px;
+}
+
+.tenant-register-modal-field{
+    margin-bottom:16px;
+}
+
+.tenant-register-modal-field label{
+    color:rgba(255,255,255,0.85);
+    font-size:0.85rem;
+    display:block;
+    margin-bottom:6px;
+}
+
+.tenant-register-modal-field input{
+    width:100%;
+    padding:12px 14px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.08);
+    background:rgba(255,255,255,0.05);
+    color:white;
+    font-size:1rem;
+    box-sizing:border-box;
+}
+
+.tenant-register-modal-field input:focus{
+    outline:none;
+    border-color:rgba(212,175,55,0.5);
+}
+
+.tenant-register-modal-submit{
+    width:100%;
+    padding:14px;
+    border-radius:14px;
+    border:none;
+    cursor:pointer;
+    font-size:1rem;
+    margin-top:6px;
+}
+
+.tenant-register-modal-submit:disabled{
+    opacity:0.6;
+    cursor:not-allowed;
+}
+
+.tr-error{
+    background:rgba(255,0,0,0.08);
+    border:1px solid rgba(255,0,0,0.25);
+    color:#ffb3b3;
+    padding:10px 12px;
+    border-radius:10px;
+    font-size:0.85rem;
+    margin-bottom:16px;
+}
+
+.tr-resend-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:16px;
+    font-size:0.8rem;
+    color:var(--gray);
+}
+
+.tr-resend-row button{
+    background:transparent;
+    border:none;
+    color:var(--gold);
+    cursor:pointer;
+    font-size:0.8rem;
+    text-decoration:underline;
+}
+
+.tr-resend-row button:disabled{
+    color:rgba(255,255,255,0.3);
+    cursor:not-allowed;
+    text-decoration:none;
+}

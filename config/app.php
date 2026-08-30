@@ -112,6 +112,17 @@ define(
     $_ENV['GOOGLE_MAPS_API_KEY']
 );
 
+/*
+ * Google Identity Services client id (tenant "Sign in with Google").
+ * Safe to expose to the frontend — this is a client id, not a
+ * secret. No client secret is needed for this flow (see
+ * classes/GoogleAuth.php).
+ */
+define(
+    'GOOGLE_OAUTH_CLIENT_ID',
+    $_ENV['GOOGLE_OAUTH_CLIENT_ID'] ?? ''
+);
+
 
 /*
 |--------------------------------------------------------------------------

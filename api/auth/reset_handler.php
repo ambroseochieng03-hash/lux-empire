@@ -40,7 +40,7 @@ if (
 ) {
 
     header(
-        "Location: '. BASE_URL . '/login?error="
+        "Location:" . BASE_URL . "/login?error="
         . urlencode("Invalid reset request.")
     );
 
@@ -50,7 +50,7 @@ if (
 if ($password !== $confirmPassword) {
 
     header(
-        "Location: '. BASE_URL . '/reset-password?token="
+        "Location:" . BASE_URL . "/reset-password?token="
         . urlencode($token)
         . "&error="
         . urlencode("Passwords do not match.")
@@ -62,7 +62,7 @@ if ($password !== $confirmPassword) {
 if (strlen($password) < 8) {
 
     header(
-        "Location: '. BASE_URL . '/reset-password?token="
+        "Location:" . BASE_URL . "/reset-password?token="
         . urlencode($token)
         . "&error="
         . urlencode(
@@ -104,7 +104,7 @@ $reset = $stmt->fetch();
 if (!$reset) {
 
     header(
-        "Location: '. BASE_URL . '/login?error="
+        "Location:" . BASE_URL . "/login?error="
         . urlencode("Invalid reset token.")
     );
 
@@ -120,7 +120,7 @@ if (!$reset) {
 if ((int)$reset['used'] === 1) {
 
     header(
-        "Location: '. BASE_URL . '/login?error="
+        "Location:" . BASE_URL . "/login?error="
         . urlencode("This reset link has already been used.")
     );
 
@@ -138,7 +138,7 @@ if (
 ) {
 
     header(
-        "Location: '. BASE_URL . '/login?error="
+        "Location:" . BASE_URL . "/login?error="
         . urlencode("Reset link expired.")
     );
 
@@ -176,7 +176,7 @@ $success = $update->execute([
 if (!$success) {
 
     header(
-        "Location: '. BASE_URL . '/login?error="
+        "Location:" . BASE_URL . "/login?error="
         . urlencode("Failed to update password.")
     );
 
@@ -206,7 +206,7 @@ $markUsed->execute([
 */
 
 header(
-    "Location: '. BASE_URL . '/login?success="
+    "Location:" . BASE_URL . "/login?success="
     . urlencode("Empire key updated successfully.")
 );
 

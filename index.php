@@ -102,7 +102,7 @@ require_once __DIR__ . '/includes/navbar.php';
                             it's a content CTA for this one property
                             preview, not primary site navigation.
                         -->
-                        <a href="auth/register.php"
+                        <a href="<?php echo BASE_URL; ?>/browse"
                            class="lux-btn home-hero-card-view-btn">
                             View
                         </a>
