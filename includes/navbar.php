@@ -1,6 +1,4 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
 require_once __DIR__ . '/../config/session.php';
 
@@ -32,6 +30,10 @@ if ($isLoggedIn) {
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/nav-menu.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/navbar-extra.css">
 
+<?php if (!$isLoggedIn): ?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/mobile-nav.css">
+<?php endif; ?>
+
 <nav class="lux-header">
 <div class="lux-navbar">
 
@@ -49,38 +51,45 @@ if ($isLoggedIn) {
 <?php if (!$isLoggedIn): ?>
 
 <!-- MOBILE MENU BUTTON -->
-<button class="lux-mobile-toggle" id="luxMobileToggleBtn" type="button">
+<button class="lux-mobile-toggle" id="luxMobileToggleBtn" type="button" aria-haspopup="true" aria-expanded="false">
             ☰
 </button>
 
-<!-- NAVIGATION -->
+<!-- DESKTOP NAVIGATION -->
 <div class="nav-links" id="luxNavLinks">
 <a href="<?php echo BASE_URL; ?>/">Home</a>
-<a href="#">LUX Homes</a>
-<a href="#">LUX Move</a>
-<a href="#">Estates</a>
-<a href="#">Contact</a>
+<a href="<?php echo BASE_URL; ?>/browse">LUX Homes</a>
+<a href="<?php echo BASE_URL; ?>/browse">LUX Move</a>
+<a href="#" data-open-info-modal="about">About</a>
+<a href="#" data-open-info-modal="contact">Contact</a>
 </div>
 
-<!--
-    Was two buttons (Login / Join The Empire) — now the single
-    compact nav menu (includes/nav_menu.php), which also holds the
-    landlord/driver registration links that didn't fit here before
-    without the navbar visually expanding.
--->
 <div class="lux-nav-buttons" id="luxNavButtons">
-    <?php
+<?php
         $navMenuTriggerLabel = 'Access Empire';
-        require __DIR__ . '/nav_menu.php';
-    ?>
+require __DIR__ . '/nav_menu.php';
+?>
+</div>
+
+<!-- MOBILE NAV POPOVER — compact, anchored under the hamburger,
+     not a full-width expansion. Consolidates nav + auth entry
+     points + info modals into one small menu for small screens. -->
+<div class="lux-mobile-nav-popover" id="luxMobileNavPopover" aria-hidden="true">
+<a href="<?php echo BASE_URL; ?>/">Home</a>
+<a href="<?php echo BASE_URL; ?>/browse">Browse Listings</a>
+<a href="<?php echo BASE_URL; ?>/login">Sign In</a>
+<a href="#" data-open-role-select>Create Account</a>
+<a href="#" data-open-info-modal="about">About</a>
+<a href="#" data-open-info-modal="contact">Contact</a>
+<a href="<?php echo BASE_URL; ?>/forgot-password">Recover Your Account</a>
 </div>
 
 <?php elseif ($navNotifLink): ?>
 
 <!-- NOTIFICATION BELL -->
 <div class="lux-notif-bell-wrap" id="luxNotifBell" data-notif-link="<?php echo htmlspecialchars($navNotifLink); ?>">
-    <i class="fa-solid fa-bell lux-notif-bell-icon"></i>
-    <span class="lux-notif-bell-badge" id="luxNotifBellBadge" style="display:none;">0</span>
+<i class="fa-solid fa-bell lux-notif-bell-icon"></i>
+<span class="lux-notif-bell-badge is-hidden" id="luxNotifBellBadge">0</span>
 </div>
 
 <?php endif; ?>
@@ -89,18 +98,8 @@ if ($isLoggedIn) {
 </nav>
 
 <?php if (!$isLoggedIn): ?>
-<script>
-    /*
-     * Small bootstrapping listeners only (same pattern used across
-     * this app for page config, e.g. window.LUX_BOOKING_CONFIG) —
-     * not inline onclick="" attributes.
-     */
-    document.getElementById('luxMobileToggleBtn').addEventListener('click', function () {
-        document.getElementById('luxNavLinks').classList.toggle('active');
-        document.getElementById('luxNavButtons').classList.toggle('active');
-    });
-</script>
 <script src="<?php echo BASE_URL; ?>/assets/js/nav-menu.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/mobile-nav.js"></script>
 <?php endif; ?>
 
 <?php if ($navNotifLink): ?>
@@ -108,10 +107,7 @@ if ($isLoggedIn) {
     window.LUX_NOTIF_BELL_CONFIG = {
         baseUrl: "<?php echo BASE_URL; ?>"
     };
-
-    document.getElementById('luxNotifBell').addEventListener('click', function () {
-        window.location.href = this.dataset.notifLink;
-    });
 </script>
+<script src="<?php echo BASE_URL; ?>/assets/js/navbar-notif-init.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/notification-bell.js"></script>
 <?php endif; ?>

@@ -4,7 +4,6 @@ require_once '../includes/navbar.php';
 ?>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/auth-forms.css">
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/role-select-modal.css">
 
 <section class="auth-hero">
 
@@ -63,9 +62,5 @@ require_once '../includes/navbar.php';
     </div>
 
 </section>
-
-<?php require __DIR__ . '/../includes/role_select_modal.php'; ?>
-
-<script src="<?php echo BASE_URL; ?>/assets/js/role-select-modal.js"></script>
 
 <?php require_once '../includes/footer.php'; ?>

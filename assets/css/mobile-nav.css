@@ -1,0 +1,62 @@
+/* =========================================================
+   LUX EMPIRE — MOBILE NAV POPOVER
+   SAVE AT: assets/css/mobile-nav.css
+
+   ASSUMPTION FLAGGED: hides .nav-links / .lux-nav-buttons and
+   shows only the hamburger + this popover at <=768px, matching
+   the breakpoint already used elsewhere (guest-browse.css).
+   navbar.css (base layout) wasn't shared with me to confirm its
+   own breakpoint — if it differs, share it and I'll align exactly.
+   ========================================================= */
+
+.lux-mobile-nav-popover{
+    display:none;
+    position:absolute;
+    top:100%;
+    right:20px;
+    width:170px;              /* ~4.5cm at 96dpi, per your reference image */
+    max-width:46vw;           /* never covers the whole screen on very narrow devices */
+    background:#0f0f0f;
+    border:1px solid rgba(212,175,55,0.3);
+    border-radius:14px;
+    padding:8px;
+    box-shadow:0 15px 40px rgba(0,0,0,0.5);
+    z-index:1300;
+    flex-direction:column;
+    gap:2px;
+}
+
+.lux-mobile-nav-popover.is-open{
+    display:flex;
+}
+
+.lux-mobile-nav-popover a{
+    display:block;
+    padding:12px 14px;
+    border-radius:10px;
+    color:rgba(255,255,255,0.9);
+    text-decoration:none;
+    font-size:0.9rem;
+    white-space:nowrap;       /* keeps each link to one line */
+    overflow:hidden;
+    text-overflow:ellipsis;
+    transition:0.2s;
+}
+
+.lux-mobile-nav-popover a:hover{
+    background:rgba(212,175,55,0.12);
+    color:var(--gold);
+}
+
+@media (min-width:769px){
+    .lux-mobile-nav-popover{
+        display:none !important;
+    }
+}
+
+@media (max-width:768px){
+    .nav-links,
+    .lux-nav-buttons{
+        display:none !important;
+    }
+}

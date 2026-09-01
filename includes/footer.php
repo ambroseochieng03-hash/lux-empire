@@ -1,6 +1,4 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
 require_once __DIR__ . '/../config/session.php';
 
@@ -13,69 +11,45 @@ $isLoggedIn = Session::isAuthenticated();
 
 <?php if (!$isLoggedIn): ?>
 
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/footer-extra.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/role-select-modal.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/info-modals.css">
+
 <footer class="lux-footer">
 
-<!-- Gold Divider -->
 <div class="gold-line"></div>
 
-<!-- Crown / Brand -->
 <h3>LUX EMPIRE</h3>
 
-<p style="
-        max-width: 700px;
-        margin: 18px auto;
-        font-size: 1rem;
-        line-height: 1.8;
-">
-        Luxury Living. Elite Movement. One Empire.  
-        Discover premium homes, elite transport, and a lifestyle built for royalty.
+<p class="lux-footer-desc">
+    Luxury Living. Elite Movement. One Empire.
+    Discover premium homes, elite transport, and a lifestyle built for royalty.
 </p>
 
-<!-- Footer Navigation -->
-<div style="
-        display:flex;
-        justify-content:center;
-        flex-wrap:wrap;
-        gap:25px;
-        margin:30px 0;
-">
-<a href="<?php echo BASE_URL; ?>/" style="color: var(--gray); text-decoration:none;">Home</a>
-<a href="#" style="color: var(--gray); text-decoration:none;">Luxury Homes</a>
-<a href="#" style="color: var(--gray); text-decoration:none;">Elite Transport</a>
-<a href="#" style="color: var(--gray); text-decoration:none;">About Empire</a>
-<a href="#" style="color: var(--gray); text-decoration:none;">Contact</a>
+<div class="lux-footer-links">
+<a href="<?php echo BASE_URL; ?>/">Home</a>
+<a href="<?php echo BASE_URL; ?>/browse">Luxury Homes</a>
+<a href="<?php echo BASE_URL; ?>/browse">Elite Transport</a>
+<a href="#" data-open-info-modal="about">About Empire</a>
+<a href="#" data-open-info-modal="contact">Contact</a>
+<a href="#" data-open-info-modal="privacy">Privacy Policy</a>
 </div>
 
-<!-- Social / Prestige -->
-<div style="
-        display:flex;
-        justify-content:center;
-        gap:20px;
-        font-size:1.4rem;
-        margin-bottom:25px;
-">
-<span></span>
-<span></span>
-<span></span>
-<span></span>
-</div>
-
-<!-- Royal Quote -->
-<p style="
-        font-style: italic;
-        color: var(--gold);
-        margin-bottom: 20px;
-        font-family: 'Cinzel', serif;
-">
-        “Where elegance meets empire.”
+<p class="lux-footer-quote">
+    "Where elegance meets empire."
 </p>
 
-<!-- Copyright -->
-<p style="font-size: 0.85rem; color: #777;">
+<p class="lux-footer-copyright">
 &copy; <?php echo date("Y"); ?> LUX EMPIRE. All Rights Reserved.
 </p>
 
 </footer>
+
+<?php require __DIR__ . '/role_select_modal.php'; ?>
+<?php require __DIR__ . '/info_modals.php'; ?>
+
+<script src="<?php echo BASE_URL; ?>/assets/js/role-select-modal.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/info-modals.js"></script>
 
 <?php endif; ?>
 

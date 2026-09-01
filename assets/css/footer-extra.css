@@ -1,0 +1,48 @@
+/* =========================================================
+   LUX EMPIRE — FOOTER EXTRAS
+   SAVE AT: assets/css/footer-extra.css
+   (Base footer look — .lux-footer / .gold-line / h3 — already
+   lives in your existing global stylesheet, untouched. This file
+   only holds what was previously inline style="" attributes.)
+   ========================================================= */
+
+.lux-footer-desc{
+    max-width:700px;
+    margin:18px auto;
+    font-size:1rem;
+    line-height:1.8;
+    color:var(--gray);
+    text-align:center;
+}
+
+.lux-footer-links{
+    display:flex;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:25px;
+    margin:30px 0;
+}
+
+.lux-footer-links a{
+    color:var(--gray);
+    text-decoration:none;
+    transition:0.2s;
+}
+
+.lux-footer-links a:hover{
+    color:var(--gold);
+}
+
+.lux-footer-quote{
+    font-style:italic;
+    color:var(--gold);
+    margin-bottom:20px;
+    font-family:'Cinzel', serif;
+    text-align:center;
+}
+
+.lux-footer-copyright{
+    font-size:0.85rem;
+    color:#777;
+    text-align:center;
+}

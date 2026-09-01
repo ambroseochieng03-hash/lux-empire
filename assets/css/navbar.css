@@ -28,46 +28,13 @@
         margin-left:auto;
     }
 
-    /* HIDE MENUS INITIALLY */
+    /* HIDE DESKTOP MENUS ON MOBILE — replaced by
+       #luxMobileNavPopover (mobile-nav.css / mobile-nav.js) */
 
     .nav-links,
     .lux-nav-buttons{
         display:none !important;
         width:100%;
-    }
-
-    /* SHOW WHEN ACTIVE */
-
-    .nav-links.active,
-    .lux-nav-buttons.active{
-        display:flex !important;
-    }
-
-    /* MOBILE NAV LINKS */
-
-    .nav-links.active{
-        flex-direction:column;
-        gap:12px;
-        padding-top:15px;
-    }
-
-    .nav-links.active a{
-        width:100%;
-        padding:12px 0;
-        border-bottom:1px solid rgba(255,255,255,0.08);
-    }
-
-    /* MOBILE BUTTONS */
-
-    .lux-nav-buttons.active{
-        flex-direction:column;
-        gap:12px;
-        padding-top:10px;
-    }
-
-    .lux-nav-buttons.active .lux-btn{
-        width:100%;
-        text-align:center;
     }
 
 }
