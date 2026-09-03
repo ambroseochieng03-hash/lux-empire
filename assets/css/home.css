@@ -363,3 +363,90 @@
     gap:20px;
     flex-wrap:wrap;
 }
+
+/* =========================================
+   HERO — SIDE DECOR (house + truck)
+   -----------------------------------------
+   Positioned with `left: calc(50% + 650px + gap)` —
+   650px is exactly half of .home-hero-grid's own
+   max-width:1300px. That means this element always
+   starts precisely at the grid's right edge plus a
+   small gap, no matter how wide the real viewport is.
+   It can never land on top of the card, because it's
+   anchored to the card's container edge, not a guessed
+   viewport offset.
+
+   It only becomes visible once the media query confirms
+   the resulting empty margin is provably big enough to
+   fit it (200px wide + gap + buffer), so there's no
+   in-between state where it partially overlaps.
+========================================= */
+
+.home-hero-side-decor{
+    display:none;                              /* hidden by default */
+    position:absolute;
+    top:50%;
+    left:calc(50% + 650px + 30px);
+    transform:translateY(-50%);
+    width:200px;
+    height:160px;
+    z-index:1;                                 /* below .home-hero-grid's z-index:2 */
+    pointer-events:none;
+}
+
+/*
+ * Margin beyond the grid = (100vw - 1300px) / 2.
+ * At 1850px that margin is 275px — comfortably more
+ * than the 30px gap + 200px decor width (230px used),
+ * leaving a safety buffer either side.
+ */
+@media (min-width:1850px){
+    .home-hero-side-decor{
+        display:block;
+    }
+}
+
+.home-hero-decor-road{
+    position:absolute;
+    bottom:30px;
+    left:0;
+    width:100%;
+    height:2px;
+    background:repeating-linear-gradient(
+        to right,
+        rgba(212,175,55,0.3) 0px,
+        rgba(212,175,55,0.3) 10px,
+        transparent 10px,
+        transparent 20px
+    );
+}
+
+.home-hero-decor-house{
+    position:absolute;
+    bottom:42px;
+    right:5px;
+    font-size:4.5rem;
+    color:rgba(212,175,55,0.18);
+    animation:homeDecorFloat 4s ease-in-out infinite;
+}
+
+.home-hero-decor-truck{
+    position:absolute;
+    bottom:36px;
+    font-size:1.8rem;
+    color:rgba(212,175,55,0.55);
+    text-shadow:0 0 12px rgba(212,175,55,0.4);
+    animation:homeDecorDrive 6s linear infinite;
+}
+
+@keyframes homeDecorFloat{
+    0%,100%{ transform:translateY(0); }
+    50%    { transform:translateY(-8px); }
+}
+
+@keyframes homeDecorDrive{
+    0%   { left:-30px; opacity:0; }
+    12%  { opacity:1; }
+    82%  { opacity:1; }
+    100% { left:100%; opacity:0; }
+}

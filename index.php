@@ -117,6 +117,13 @@ require_once __DIR__ . '/includes/navbar.php';
 
     </div>
 
+    <!-- Decorative truck+house animation — desktop-only, fills the empty right margin -->
+    <div class="home-hero-side-decor" aria-hidden="true">
+        <div class="home-hero-decor-road"></div>
+        <i class="fa-solid fa-house home-hero-decor-house"></i>
+        <i class="fa-solid fa-truck-fast home-hero-decor-truck"></i>
+    </div>
+
 </section>
 
 <!-- STATS -->
