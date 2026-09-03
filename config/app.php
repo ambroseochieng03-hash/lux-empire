@@ -41,6 +41,11 @@ define(
     'Luxury Living. Elite Movement. One Empire.'
 );
 
+define(
+    'APP_FAVICON',
+    'assets/images/lux-favicon.svg'
+);
+
 
 /*
 |--------------------------------------------------------------------------

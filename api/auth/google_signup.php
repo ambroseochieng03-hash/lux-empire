@@ -100,24 +100,26 @@ switch ($result['status']) {
             'success' => true,
             'needs_password' => false,
             'message' => 'Welcome back.',
-            'redirect' => BASE_URL . '/tenant'
+            'redirect' => BASE_URL . '/tenant',
+            'csrf_token' => Csrf::token()
         ]);
         break;
 
     case 'new_pending_password':
         /*
-         * New account, email already verified by Google — still
-         * needs a password set (mandatory for everyone) before
-         * being fully active. Not logged in yet.
+         * FIX: this is a brand-new account. Google verified the
+         * email, but the account is NOT active and NOT logged in
+         * yet — it still needs the mandatory password set via
+         * google_set_password.php. needs_password MUST be true, or
+         * the frontend skips straight to a redirect for a user who
+         * was never actually authenticated.
          */
         $_SESSION['pending_tenant_registration_id'] = $result['user_id'];
 
         echo json_encode([
             'success' => true,
-            'needs_password' => false,
-            'message' => 'Welcome back.',
-            'redirect' => BASE_URL . '/tenant',
-            'csrf_token' => Csrf::token()
+            'needs_password' => true,
+            'message' => 'Almost done — set a password to secure your account.'
         ]);
         break;
 

@@ -15,7 +15,8 @@ googleClientId } to be set by the page before this script runs.
         return;
     }
 
-    let otpCountdownTimer = null;
+    let otpExpiryTimer = null;
+    let resendCooldownTimer = null;
 
     document.addEventListener('DOMContentLoaded', () => {
 
@@ -56,12 +57,14 @@ googleClientId } to be set by the page before this script runs.
         function closeModal() {
             modal.classList.remove('is-open');
             modal.setAttribute('aria-hidden', 'true');
-            if (otpCountdownTimer) {
-                clearInterval(otpCountdownTimer);
+            if (otpExpiryTimer) {
+                clearInterval(otpExpiryTimer);
+            }
+            if (resendCooldownTimer) {
+                clearInterval(resendCooldownTimer);
             }
         }
 
-        // Any element with data-open-tenant-register opens this modal.
         document.addEventListener('click', (event) => {
             if (event.target.closest('[data-open-tenant-register]')) {
                 event.preventDefault();
@@ -73,6 +76,23 @@ googleClientId } to be set by the page before this script runs.
         // modal programmatically, not just via a data-attribute click.
         window.openTenantRegisterModal = openModal;
 
+        modal.querySelectorAll('[data-tr-close]').forEach((el) => {
+            el.addEventListener('click', closeModal);
+        });
+
+        async function postForm(url, fields) {
+            const formData = new URLSearchParams();
+            Object.keys(fields).forEach((key) => formData.append(key, fields[key]));
+
+            const response = await fetch(url, { method: 'POST', body: formData });
+
+            try {
+                return await response.json();
+            } catch (e) {
+                return { success: false, message: 'Unexpected server response.' };
+            }
+        }
+
         /*
          * If a guest was mid-action (Book Now / truck request) before
          * registering, that intent is sitting in sessionStorage under
@@ -83,7 +103,10 @@ googleClientId } to be set by the page before this script runs.
         async function completePendingGuestActionThenRedirect(fallbackRedirect, newCsrfToken) {
 
             if (newCsrfToken) {
-                cfg.csrfToken = newCsrfToken;   // ADD THIS — keep the token in sync with the server
+                // Keep the token in sync — Csrf::regenerate() ran
+                // server-side (login is a privilege boundary), so the
+                // token this page started with is now stale.
+                cfg.csrfToken = newCsrfToken;
             }
 
             const pendingRaw = sessionStorage.getItem('luxPendingGuestAction');
@@ -153,32 +176,21 @@ googleClientId } to be set by the page before this script runs.
             window.location.href = fallbackRedirect;
         }
 
-        modal.querySelectorAll('[data-tr-close]').forEach((el) => {
-            el.addEventListener('click', closeModal);
-        });
-
-        async function postForm(url, fields) {
-            const formData = new URLSearchParams();
-            Object.keys(fields).forEach((key) => formData.append(key, fields[key]));
-
-            const response = await fetch(url, { method: 'POST', body: formData });
-
-            try {
-                return await response.json();
-            } catch (e) {
-                return { success: false, message: 'Unexpected server response.' };
-            }
-        }
-
-        function startOtpCountdown(seconds) {
+        /*
+         * FIX: these were previously ONE timer — the resend button
+         * only re-enabled once the OTP fully expired (5 minutes),
+         * which made it look broken. Now two independent timers:
+         *   - OTP expiry countdown: display only, ~5 minutes.
+         *   - Resend cooldown: short (matches the server's 45s
+         *     cooldown in resend_tenant_otp.php), controls the
+         *     button's disabled state.
+         */
+        function startOtpExpiryCountdown(seconds) {
 
             const timerEl = document.getElementById('trOtpTimer');
-            const resendBtn = document.getElementById('trResendOtp');
 
-            resendBtn.disabled = true;
-
-            if (otpCountdownTimer) {
-                clearInterval(otpCountdownTimer);
+            if (otpExpiryTimer) {
+                clearInterval(otpExpiryTimer);
             }
 
             let remaining = seconds;
@@ -188,11 +200,10 @@ googleClientId } to be set by the page before this script runs.
                 const s = String(remaining % 60).padStart(2, '0');
                 timerEl.textContent = remaining > 0
                     ? `Code expires in ${m}:${s}`
-                    : 'Code expired';
+                    : 'Code expired — request a new one';
 
                 if (remaining <= 0) {
-                    clearInterval(otpCountdownTimer);
-                    resendBtn.disabled = false;
+                    clearInterval(otpExpiryTimer);
                     return;
                 }
 
@@ -200,7 +211,36 @@ googleClientId } to be set by the page before this script runs.
             }
 
             tick();
-            otpCountdownTimer = setInterval(tick, 1000);
+            otpExpiryTimer = setInterval(tick, 1000);
+        }
+
+        function startResendCooldown(seconds) {
+
+            const resendBtn = document.getElementById('trResendOtp');
+
+            resendBtn.disabled = true;
+
+            if (resendCooldownTimer) {
+                clearInterval(resendCooldownTimer);
+            }
+
+            let remaining = seconds;
+
+            function tick() {
+
+                if (remaining <= 0) {
+                    clearInterval(resendCooldownTimer);
+                    resendBtn.disabled = false;
+                    resendBtn.textContent = 'Resend Code';
+                    return;
+                }
+
+                resendBtn.textContent = `Resend Code (${remaining}s)`;
+                remaining -= 1;
+            }
+
+            tick();
+            resendCooldownTimer = setInterval(tick, 1000);
         }
 
         // ---- STEP 1: submit details ----
@@ -232,7 +272,8 @@ googleClientId } to be set by the page before this script runs.
             }
 
             showStep('otp');
-            startOtpCountdown(data.expires_in || 300);
+            startOtpExpiryCountdown(data.expires_in || 300);
+            startResendCooldown(45);
         });
 
         // ---- STEP 2a: verify OTP ----
@@ -270,10 +311,17 @@ googleClientId } to be set by the page before this script runs.
 
             if (!data.success) {
                 showError('trOtpError', data.message || 'Something went wrong.');
+
+                // Server-enforced cooldown was hit — reflect it so the
+                // button doesn't look clickable when it isn't.
+                if (typeof data.retry_after === 'number' && data.retry_after > 0) {
+                    startResendCooldown(data.retry_after);
+                }
                 return;
             }
 
-            startOtpCountdown(data.expires_in || 300);
+            startOtpExpiryCountdown(data.expires_in || 300);
+            startResendCooldown(data.resend_cooldown || 45);
         });
 
         // ---- STEP 2b: Google — set password ----

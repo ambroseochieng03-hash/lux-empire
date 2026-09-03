@@ -10,7 +10,7 @@ require_once '../../classes/Otp.php';
 require_once '../../classes/TrustedDevice.php';
 require_once '../../config/security/DoSProtection.php';
 require_once '../../config/security/RateLimiter.php';
-require_once '../../classes/Notification.php'; 
+require_once '../../classes/Notification.php';
 
 Session::start();
 header('Content-Type: application/json');
@@ -41,7 +41,22 @@ if (RateLimiter::isBlocked($rateKey)) {
     exit;
 }
 
-RateLimiter::hit($rateKey, 300);
+/*
+ * FIX: this used to call hit() and discard the result — the
+ * threshold was never actually checked, so nothing was enforced.
+ * Otp::verify() itself caps at 5 wrong guesses against a single
+ * code, but this is a broader per-IP-independent guard: 10 verify
+ * attempts (right or wrong) per 5-minute window, then a 10-minute
+ * block, regardless of how many times they've resent the code.
+ */
+$attempts = RateLimiter::hit($rateKey, 300);
+
+if ($attempts > 10) {
+    RateLimiter::block($rateKey, 600);
+    http_response_code(429);
+    echo json_encode(['success' => false, 'message' => 'Too many attempts. Please try again later.']);
+    exit;
+}
 
 $code = trim($_POST['code'] ?? '');
 
@@ -102,5 +117,5 @@ echo json_encode([
     'success' => true,
     'message' => 'Welcome to LUX EMPIRE.',
     'redirect' => BASE_URL . '/tenant',
-    'csrf_token' => Csrf::token()   // The token client-side is now stale after regenerate()
+    'csrf_token' => Csrf::token()
 ]);

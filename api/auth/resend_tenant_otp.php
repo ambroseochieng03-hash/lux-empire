@@ -33,22 +33,37 @@ if (!$userId) {
 }
 
 /*
- * One resend per 60 seconds, max 5 per hour — generous enough for a
- * genuinely lost email, tight enough to stop abuse of the mail
- * sender.
+ * FIX: two SEPARATE limits now, where before only the hourly cap
+ * existed:
+ *   1) A hard 45-second cooldown between individual resends (uses
+ *      RateLimiter::block() as a plain "must wait" timer, not a
+ *      counting window).
+ *   2) Max 5 resends per hour, as before.
  */
-$rateKey = 'resend_tenant_otp:' . $userId;
+$cooldownKey = 'resend_tenant_otp_cooldown:' . $userId;
 
-if (RateLimiter::isBlocked($rateKey)) {
+if (RateLimiter::isBlocked($cooldownKey)) {
     http_response_code(429);
-    echo json_encode(['success' => false, 'message' => 'Please wait before requesting another code.']);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Please wait a moment before requesting another code.',
+        'retry_after' => RateLimiter::retryAfter($cooldownKey)
+    ]);
     exit;
 }
 
-$attempts = RateLimiter::hit($rateKey, 3600);
+$hourlyKey = 'resend_tenant_otp:' . $userId;
+
+if (RateLimiter::isBlocked($hourlyKey)) {
+    http_response_code(429);
+    echo json_encode(['success' => false, 'message' => 'Too many resend attempts. Please try again later.']);
+    exit;
+}
+
+$attempts = RateLimiter::hit($hourlyKey, 3600);
 
 if ($attempts > 5) {
-    RateLimiter::block($rateKey, 3600);
+    RateLimiter::block($hourlyKey, 3600);
     http_response_code(429);
     echo json_encode(['success' => false, 'message' => 'Too many resend attempts. Please try again later.']);
     exit;
@@ -80,8 +95,14 @@ try {
     exit;
 }
 
+/*
+ * Start the 45-second cooldown NOW, after a successful send.
+ */
+RateLimiter::block($cooldownKey, 45);
+
 echo json_encode([
     'success' => true,
     'message' => 'A new code has been sent.',
-    'expires_in' => 300
+    'expires_in' => 300,
+    'resend_cooldown' => 45
 ]);

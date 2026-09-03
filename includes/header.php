@@ -41,8 +41,12 @@ require_once __DIR__ . '/../config/app.php';
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/emergency.css">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/navbar.css">
 
-    <!-- Crown Icon -->
-    <link rel="icon" type="image/png" href="<?php echo BASE_URL; ?>/assets/images/logo/crown.png">
+    <!-- LUX EMPIRE Favicon -->
+    <link
+        rel="icon"
+        type="image/svg+xml"
+        href="<?php echo BASE_URL . '/' . APP_FAVICON; ?>"
+    >
 
     <!-- Premium Meta -->
     <meta name="theme-color" content="#0A0A0A">

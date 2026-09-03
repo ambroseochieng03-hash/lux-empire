@@ -39,7 +39,23 @@ if ($isLoggedIn) {
 
 <!-- BRAND -->
 <div class="logo">
-<span class="lux-crown-3d-wrap"><i class="fa-solid fa-crown lux-crown-3d"></i></span>
+<span class="lux-mark-wrap">
+    <svg viewBox="0 0 100 96" xmlns="http://www.w3.org/2000/svg" class="lux-house-mark" aria-hidden="true">
+        <defs>
+            <linearGradient id="luxHouseGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#fff6d0"/>
+                <stop offset="22%" stop-color="#f5d76e"/>
+                <stop offset="50%" stop-color="#d4af37"/>
+                <stop offset="78%" stop-color="#a8791f"/>
+                <stop offset="100%" stop-color="#7a5a15"/>
+            </linearGradient>
+        </defs>
+        <path d="M50 6 L94 42 L82 42 L82 90 L60 90 L60 62 L40 62 L40 90 L18 90 L18 42 L6 42 Z"
+              fill="none" stroke="url(#luxHouseGradient)" stroke-width="7" stroke-linejoin="round"/>
+        <path d="M34 46 L66 78 M66 46 L34 78"
+              fill="none" stroke="url(#luxHouseGradient)" stroke-width="7" stroke-linecap="round"/>
+    </svg>
+</span>
 <div>
 <div>LUX EMPIRE</div>
 <small class="lux-navbar-tagline">

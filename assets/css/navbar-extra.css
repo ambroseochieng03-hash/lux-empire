@@ -95,3 +95,25 @@
     25% { transform: rotate(4deg); }
     30% { transform: rotate(0deg); }
 }
+
+/* ================================
+   HOUSE + X BRAND MARK (replaces crown)
+================================= */
+
+.lux-mark-wrap{
+    width:2.5rem;
+    height:2.4rem;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+    filter:
+        drop-shadow(0 1px 0 rgba(255,255,255,0.5))
+        drop-shadow(0 2px 2px rgba(0,0,0,0.35))
+        drop-shadow(0 6px 10px rgba(0,0,0,0.45));
+}
+
+.lux-house-mark{
+    width:100%;
+    height:100%;
+}
