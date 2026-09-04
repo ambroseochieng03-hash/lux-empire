@@ -166,6 +166,37 @@ require_once '../../includes/sidebar.php';
 
 }
 
+.media-preview-grid{
+    display:grid;
+    gap:18px;
+}
+
+.media-preview-item{
+    position:relative;
+}
+
+.media-remove-btn{
+    position:absolute;
+    top:10px;
+    right:10px;
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    border:none;
+    background:rgba(0,0,0,0.65);
+    color:#ff5252;
+    font-size:1.2rem;
+    line-height:1;
+    cursor:pointer;
+    z-index:5;
+    transition:0.2s;
+}
+
+.media-remove-btn:hover{
+    background:rgba(255,0,0,0.25);
+    color:white;
+}
+
 @media (max-width: 768px){
 
     .edit-main{
@@ -528,68 +559,39 @@ require_once '../../includes/sidebar.php';
 
             <?php if (!empty($media)): ?>
 
-                <div style="
-                    display:grid;
-                    gap:18px;
-                ">
+                <div class="media-preview-grid" id="mediaPreviewGrid">
 
                     <?php foreach ($media as $item): ?>
 
                         <?php
-                        $mediaPath =
-                            $item['image_path'] ?? '';
-
-                        $mediaUrl =
-                            '../../assets/uploads/house_images/'
-                            . rawurlencode($mediaPath);
-
-                        $isVideo =
-                            strtolower(
-                                pathinfo(
-                                    $mediaPath,
-                                    PATHINFO_EXTENSION
-                                )
-                            ) === 'mp4';
+                        $mediaPath = $item['image_path'] ?? '';
+                        $mediaUrl  = '../../assets/uploads/house_images/' . rawurlencode($mediaPath);
+                        $isVideo   = strtolower(pathinfo($mediaPath, PATHINFO_EXTENSION)) === 'mp4';
                         ?>
 
-                        <?php if ($isVideo): ?>
+                        <div class="media-preview-item" data-media-id="<?= (int) $item['id'] ?>">
 
-                            <video
-                                controls
-                                preload="metadata"
-                                style="
-                                    width:100%;
-                                    max-height:320px;
-                                    border-radius:24px;
-                                    display:block;
-                                    background:#000;
-                                "
-                            >
-                                <source
-                                    src="<?= htmlspecialchars(
-                                        $mediaUrl,
-                                        ENT_QUOTES,
-                                        'UTF-8'
-                                    ) ?>"
-                                    type="video/mp4"
-                                >
-                                Your browser does not support video playback.
-                            </video>
+                            <?php if ($isVideo): ?>
 
-                        <?php else: ?>
+                                <video controls preload="metadata" class="preview-image">
+                                    <source src="<?= htmlspecialchars($mediaUrl, ENT_QUOTES, 'UTF-8') ?>" type="video/mp4">
+                                    Your browser does not support video playback.
+                                </video>
 
-                            <img
-                                src="<?= htmlspecialchars(
-                                    $mediaUrl,
-                                    ENT_QUOTES,
-                                    'UTF-8'
-                                ) ?>"
-                                class="preview-image"
-                                loading="lazy"
-                                alt="Property media"
-                            >
+                            <?php else: ?>
 
-                        <?php endif; ?>
+                                <img src="<?= htmlspecialchars($mediaUrl, ENT_QUOTES, 'UTF-8') ?>"
+                                    class="preview-image" loading="lazy" alt="Property media">
+
+                            <?php endif; ?>
+
+                            <button type="button"
+                                    class="media-remove-btn"
+                                    data-media-id="<?= (int) $item['id'] ?>"
+                                    data-house-id="<?= (int) $house['id'] ?>"
+                                    aria-label="Remove this media">×</button>
+
+                        </div>
 
                     <?php endforeach; ?>
 
@@ -597,7 +599,7 @@ require_once '../../includes/sidebar.php';
 
             <?php else: ?>
 
-                <div style="
+                <div id="mediaEmptyPlaceholder" style="
                     height:280px;
                     border-radius:24px;
                     display:flex;
@@ -605,9 +607,9 @@ require_once '../../includes/sidebar.php';
                     justify-content:center;
                     background:rgba(255,255,255,0.05);
                     color:var(--gold);
-                    font-size:4rem;
+                    font-size:1.2rem;
                 ">
-                    Property media
+                    No media uploaded yet
                 </div>
 
             <?php endif; ?>
@@ -776,6 +778,57 @@ editHouseForm.addEventListener(
     }
 );
 
+</script>
+
+<script>
+    document.querySelectorAll('.media-remove-btn').forEach(function (btn) {
+
+        btn.addEventListener('click', async function () {
+
+            if (!confirm('Remove this media permanently? This cannot be undone.')) {
+                return;
+            }
+
+            var mediaId = btn.dataset.mediaId;
+            var houseId = btn.dataset.houseId;
+            var csrfToken = document.querySelector('input[name="csrf_token"]').value;
+
+            btn.disabled = true;
+
+            try {
+
+                var formData = new FormData();
+                formData.append('media_id', mediaId);
+                formData.append('house_id', houseId);
+                formData.append('csrf_token', csrfToken);
+
+                var response = await fetch('../../api/houses/delete_house_media.php', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                });
+
+                var result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Could not remove this media.');
+                }
+
+                var item = btn.closest('.media-preview-item');
+                var grid = document.getElementById('mediaPreviewGrid');
+
+                item.remove();
+
+                if (grid && grid.children.length === 0) {
+                    grid.outerHTML = '<div id="mediaEmptyPlaceholder" style="height:280px;border-radius:24px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);color:var(--gold);font-size:1.2rem;">No media uploaded yet</div>';
+                }
+
+            } catch (error) {
+                alert(error.message || 'Unable to remove media.');
+                btn.disabled = false;
+            }
+        });
+    });
 </script>
 
 <?php require_once '../../includes/footer.php'; ?>

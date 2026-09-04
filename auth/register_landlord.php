@@ -13,6 +13,7 @@ require_once __DIR__ . '/../includes/navbar.php';
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/consent-modal.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/auth-forms.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/form-validation.css">
 
 <section class="auth-hero">
 
@@ -56,27 +57,27 @@ require_once __DIR__ . '/../includes/navbar.php';
 
                 <div class="auth-field">
                     <label for="fullName">Full Name</label>
-                    <input type="text" id="fullName" name="full_name" required placeholder="Your full legal name">
+                    <input type="text" id="fullName" name="full_name" data-validate="fullname" required placeholder="Your full legal name">
                 </div>
 
                 <div class="auth-field">
                     <label for="email">Email Address</label>
-                    <input type="email" id="email" name="email" required placeholder="you@example.com">
+                    <input type="email" id="email" name="email" data-validate="email" required placeholder="you@example.com">
                 </div>
 
                 <div class="auth-field">
                     <label for="phone">Contact Number</label>
-                    <input type="text" id="phone" name="phone" required placeholder="+254...">
+                    <input type="text" id="phone" name="phone" data-validate="phone_required" required placeholder="0712345678 or +254712345678">
                 </div>
 
                 <div class="auth-field">
                     <label for="nationalId">National ID</label>
-                    <input type="text" id="nationalId" name="national_id" required placeholder="Identification number">
+                    <input type="text" id="nationalId" name="national_id" data-validate="national_id" required placeholder="7-9 digit ID number">
                 </div>
 
                 <div class="auth-field">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required minlength="8">
+                    <input type="password" id="password" name="password" data-validate="password" required minlength="8">
                 </div>
 
                 <button type="submit" class="lux-btn auth-submit-btn">
@@ -105,6 +106,17 @@ require_once __DIR__ . '/../includes/navbar.php';
         role: "landlord"
     };
 </script>
+<script src="<?php echo BASE_URL; ?>/assets/js/form-validation.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/consent-modal.js"></script>
+<script>
+    // Block submission client-side if any field fails validation —
+    // server-side (api/auth/register_landlord_handler.php) is the
+    // real, authoritative gate; this is UX only.
+    document.querySelector('.auth-form-fields').closest('form').addEventListener('submit', (event) => {
+        if (window.LuxFormValidation && !LuxFormValidation.validateForm(document.querySelector('.auth-form-fields'))) {
+            event.preventDefault();
+        }
+    });
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

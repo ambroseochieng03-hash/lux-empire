@@ -50,6 +50,7 @@ require_once '../../includes/sidebar.php';
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bookings.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/house-filters.css">
 
 <div class="lux-explore-page">
 
@@ -73,26 +74,35 @@ require_once '../../includes/sidebar.php';
         <div class="lux-card tenant-card tenant-card-padding lux-explore-search-card">
 
             <form method="GET"
-                  action=""
-                  class="tenant-search-form lux-explore-search-form">
+                action=""
+                class="tenant-search-form lux-explore-search-form">
 
                 <input type="text"
-                       name="search"
-                       value="<?php echo htmlspecialchars($search); ?>"
-                       placeholder="Search by title, location, or luxury features..."
-                       class="tenant-search-input lux-explore-search-input">
+                    id="houseKeywordInput"
+                    name="search"
+                    value="<?php echo htmlspecialchars($search); ?>"
+                    placeholder="Search by title, location, or luxury features..."
+                    class="tenant-search-input lux-explore-search-input">
 
                 <button type="submit"
                         class="lux-btn tenant-search-btn lux-explore-search-btn">
                     Search Empire
                 </button>
 
+                <button type="button"
+                        class="lux-btn hf-trigger-btn"
+                        data-open-house-filters>
+                    <i class="fa-solid fa-sliders"></i> Filters
+                </button>
+
             </form>
 
         </div>
 
+        <?php require_once '../../includes/house_filter_modal.php'; ?>
+
         <!-- HOUSES GRID -->
-        <div class="tenant-grid lux-explore-grid" id="exploreHousesGrid">
+        <div class="tenant-grid lux-explore-grid" id="housesResultsGrid">
 
             <?php if (count($houses) > 0): ?>
 
@@ -382,10 +392,15 @@ require_once '../../includes/sidebar.php';
         baseUrl: "<?php echo BASE_URL; ?>",
         csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"
     };
+    window.LUX_TENANT_BOOKING_STATUS = <?php echo json_encode($tenantBookingStatusByHouse, JSON_FORCE_OBJECT); ?>;
+    window.LUX_CURRENT_TENANT_ID = <?php echo (int) $tenantId; ?>;
+    window.LUX_IS_GUEST = false;
+    window.LUX_CARD_VARIANT = 'tenant';
 </script>
 
 <script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/bookings.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/house-filters.js"></script>
 
 <?php require_once '../../includes/chat_starter_modal.php'; ?>
 

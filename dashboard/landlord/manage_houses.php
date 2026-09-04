@@ -13,6 +13,9 @@ $houses = $houseModel->getHousesByLandlord((int) Session::user()['id']);
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
+require_once '../../config/csrf.php';
+$csrfToken = Csrf::token();
+
 ?>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
@@ -451,14 +454,12 @@ require_once '../../includes/sidebar.php';
                                     Edit
                                 </a>
 
-                                <!-- DELETE -->
-                                <a
-                                    href="<?php echo BASE_URL; ?>/api/houses/delete_house.php?id=<?php echo $house['id']; ?>"
-                                    onclick="return confirm('Delete this property?')"
-                                    class="action-btn delete-btn"
-                                >
+                                <!-- DELETE — now AJAX, no page reload -->
+                                <button type="button"
+                                        class="action-btn delete-btn house-delete-btn"
+                                        data-house-id="<?php echo (int) $house['id']; ?>">
                                     Delete
-                                </a>
+                                </button>
 
                             </div>
 
@@ -503,6 +504,7 @@ require_once '../../includes/sidebar.php';
             <?php endif; ?>
 
         </div>
+        <div class="lux-card house-card" id="houseCard-<?php echo (int) $house['id']; ?>">
 
     </main>
 
@@ -522,6 +524,15 @@ require_once '../../includes/sidebar.php';
     </div>
 </div>
 
+
+
+<script>
+    window.LUX_MANAGE_HOUSES_CONFIG = {
+        baseUrl: "<?php echo BASE_URL; ?>",
+        csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"
+    };
+</script>
 <script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/manage-houses.js"></script>
 
 <?php require_once '../../includes/footer.php'; ?>

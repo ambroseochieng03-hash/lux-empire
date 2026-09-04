@@ -6,14 +6,15 @@ Types each phrase, pauses, erases it, then moves to the next —
 loops forever. The blinking cursor is pure CSS (.home-typewriter-
 cursor in home.css); this script only ever touches the text.
 
-Height-locking: since font-size is a clamp() and phrases vary in
-length, different phrases can wrap to different line counts at
-the same viewport width (e.g. 2 lines vs 3), which grows/shrinks
-.home-hero-title and shifts every section below it. To prevent
-that, we measure the tallest phrase's rendered height using a
-hidden clone (same classes, same width) and lock .home-hero-title
-to that height. Re-measured on resize, since the clamp() font-size
-and available width both change with viewport.
+Height handling: font-size is a clamp(), and phrases vary a lot in
+length, so different phrases can wrap to different line counts at
+the same viewport width. Rather than locking .home-hero-title to
+the tallest phrase across the WHOLE list forever (which leaves a
+permanent gap under every shorter phrase), we measure and set the
+height for just the phrase about to be typed, right as it's about
+to start. Paired with a CSS transition on `height` (see home.css),
+this turns each phrase change into a smooth resize instead of a
+sudden layout jump — no gap, no shake.
 =========================================
 */
 
@@ -48,12 +49,12 @@ and available width both change with viewport.
         }
 
         /*
-         * Measure the tallest possible height .home-hero-title could
-         * need across every phrase, at the current viewport, and
-         * lock it there. A hidden clone is used so measurement never
-         * causes a visible flash/shift of the real element.
+         * Measures a single phrase's fully-rendered height (via a
+         * hidden clone, so there's never a visible flash) and sets
+         * .home-hero-title to exactly that height. Called once per
+         * phrase, not once for the whole list.
          */
-        function lockTitleHeight() {
+        function setHeightForPhrase(phrase) {
 
             const measurer = titleEl.cloneNode(true);
 
@@ -62,43 +63,41 @@ and available width both change with viewport.
             measurer.style.pointerEvents = 'none';
             measurer.style.height = 'auto';
             measurer.style.minHeight = '0';
+            measurer.style.transition = 'none';
             measurer.style.width = titleEl.getBoundingClientRect().width + 'px';
 
             document.body.appendChild(measurer);
 
             const measurerTyped = measurer.querySelector('.home-hero-title-typed');
+            if (measurerTyped) {
+                measurerTyped.textContent = phrase;
+            }
 
-            let tallest = 0;
-
-            PHRASES.forEach((phrase) => {
-                if (measurerTyped) {
-                    measurerTyped.textContent = phrase;
-                }
-                tallest = Math.max(tallest, measurer.getBoundingClientRect().height);
-            });
+            const height = measurer.getBoundingClientRect().height;
 
             document.body.removeChild(measurer);
 
-            if (tallest > 0) {
-                titleEl.style.height = tallest + 'px';
+            if (height > 0) {
+                titleEl.style.height = height + 'px';
             }
         }
-
-        lockTitleHeight();
-
-        let resizeTimer = null;
-        window.addEventListener('resize', () => {
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(lockTitleHeight, RESIZE_DEBOUNCE_MS);
-        });
-
-        /*
-         * ---- Typing loop (unchanged from before) ----
-         */
 
         let phraseIndex = 0;
         let charIndex = 0;
         let isErasing = false;
+
+        // Set the correct height for the very first phrase before typing starts.
+        setHeightForPhrase(PHRASES[phraseIndex]);
+
+        // Re-measure the CURRENT phrase on resize, since clamp() font-size
+        // and available width both change across viewport sizes.
+        let resizeTimer = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                setHeightForPhrase(PHRASES[phraseIndex]);
+            }, RESIZE_DEBOUNCE_MS);
+        });
 
         function tick() {
 
@@ -125,6 +124,12 @@ and available width both change with viewport.
             if (charIndex === 0) {
                 isErasing = false;
                 phraseIndex = (phraseIndex + 1) % PHRASES.length;
+
+                // Resize toward the NEXT phrase now, during the pause —
+                // so the box has already smoothly settled to the right
+                // height before a single character of it is typed.
+                setHeightForPhrase(PHRASES[phraseIndex]);
+
                 setTimeout(tick, PAUSE_AFTER_ERASE_MS);
                 return;
             }

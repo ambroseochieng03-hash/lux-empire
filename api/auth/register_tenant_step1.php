@@ -8,6 +8,7 @@ require_once '../../config/csrf.php';
 require_once '../../classes/User.php';
 require_once '../../classes/Otp.php';
 require_once '../../classes/Mailer.php';
+require_once '../../classes/Validator.php';
 require_once '../../config/security/DoSProtection.php';
 require_once '../../config/security/RateLimiter.php';
 
@@ -47,21 +48,54 @@ $email = trim($_POST['email'] ?? '');
 $phone = trim($_POST['phone'] ?? '');
 $password = $_POST['password'] ?? '';
 
-if ($fullName === '' || $email === '' || $password === '') {
+/*
+ * Field-by-field validation with field-specific error messages, so
+ * the frontend can highlight exactly which input is wrong — not just
+ * a generic "invalid input" message.
+ */
+
+if (!Validator::isValidFullName($fullName)) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Name, email, and password are required.']);
+    echo json_encode([
+        'success' => false,
+        'field' => 'full_name',
+        'message' => 'Enter a valid full name (letters only, at least 2 characters).'
+    ]);
     exit;
 }
 
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+if (!Validator::isValidEmail($email)) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Invalid email address.']);
+    echo json_encode([
+        'success' => false,
+        'field' => 'email',
+        'message' => 'Enter a valid email address.'
+    ]);
     exit;
 }
 
-if (strlen($password) < 8) {
+/*
+ * Phone is optional on the tenant modal (per the original field
+ * label), so only validate its FORMAT if something was entered —
+ * an empty string is allowed through.
+ */
+if ($phone !== '' && !Validator::isValidKenyanPhone($phone)) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Password must be at least 8 characters.']);
+    echo json_encode([
+        'success' => false,
+        'field' => 'phone',
+        'message' => 'Enter a valid Kenyan phone number (e.g. 0712345678 or +254712345678).'
+    ]);
+    exit;
+}
+
+if (!Validator::isValidPassword($password)) {
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'field' => 'password',
+        'message' => 'Password must be at least 8 characters.'
+    ]);
     exit;
 }
 
@@ -71,7 +105,7 @@ $result = $userModel->registerTenantPending($fullName, $email, $phone, $password
 
 if (!is_int($result)) {
     http_response_code(409);
-    echo json_encode(['success' => false, 'message' => $result]);
+    echo json_encode(['success' => false, 'field' => 'email', 'message' => $result]);
     exit;
 }
 
@@ -80,21 +114,12 @@ $userId = $result;
 $otp = new Otp();
 $code = $otp->generate($userId, 'registration');
 
-/*
- * ---------------------------------------------------------------
- * MAILER INTERFACE ASSUMED — classes/Mailer.php hasn't been shared
- * with me, so this call is a guess at its shape. If it doesn't
- * match the real class, this line is what needs fixing — nothing
- * else in this file depends on it.
- * ---------------------------------------------------------------
- */
 try {
     $mailer = new Mailer();
     $mailer->send(
         $email,
-        $fullName,                                  // toName — I already have this in scope
-        'Your LUX EMPIRE verification code',        // subject
-        'Your verification code is ' . $code . '. It expires in 5 minutes.'  // bodyHtml
+        'Your LUX EMPIRE verification code',
+        'Your verification code is ' . $code . '. It expires in 5 minutes.'
     );
 } catch (Throwable $e) {
     error_log('LUX EMPIRE OTP email send failed: ' . $e->getMessage());
@@ -103,10 +128,6 @@ try {
     exit;
 }
 
-/*
- * Store the pending registration id SERVER-SIDE in session — never
- * trust a client-supplied user_id for the verify/resend steps.
- */
 $_SESSION['pending_tenant_registration_id'] = $userId;
 
 echo json_encode([

@@ -1,0 +1,18 @@
+/* =========================================================
+   LUX EMPIRE — LIVE FORM VALIDATION
+   SAVE AT: assets/css/form-validation.css
+   Link this alongside auth-forms.css / tenant-register-modal.css —
+   used by tenant, landlord, and driver registration alike.
+   ========================================================= */
+
+.field-invalid{
+    border-color:#ff3b3b !important;
+    box-shadow:0 0 0 1px rgba(255,59,59,0.4);
+}
+
+.field-error-msg{
+    color:#ff8080;
+    font-size:0.8rem;
+    margin-top:6px;
+    line-height:1.4;
+}

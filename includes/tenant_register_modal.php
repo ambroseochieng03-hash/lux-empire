@@ -36,22 +36,22 @@
 
             <div class="tenant-register-modal-field">
                 <label for="trFullName">Full Name</label>
-                <input type="text" id="trFullName" placeholder="Your full name">
+                <input type="text" id="trFullName" data-validate="fullname" placeholder="Your full name">
             </div>
 
             <div class="tenant-register-modal-field">
                 <label for="trEmail">Email Address</label>
-                <input type="email" id="trEmail" placeholder="you@example.com">
+                <input type="email" id="trEmail" data-validate="email" placeholder="you@example.com">
             </div>
 
             <div class="tenant-register-modal-field">
                 <label for="trPhone">Phone Number (optional)</label>
-                <input type="text" id="trPhone" placeholder="+254...">
+                <input type="text" id="trPhone" data-validate="phone" placeholder="+254...">
             </div>
 
             <div class="tenant-register-modal-field">
                 <label for="trPassword">Password</label>
-                <input type="password" id="trPassword" placeholder="At least 8 characters">
+                <input type="password" id="trPassword" data-validate="password" placeholder="At least 8 characters">
             </div>
 
             <button type="button" class="lux-btn tenant-register-modal-submit" id="trSubmitDetails">
@@ -98,7 +98,7 @@
 
             <div class="tenant-register-modal-field">
                 <label for="trGooglePassword">Password</label>
-                <input type="password" id="trGooglePassword" placeholder="At least 8 characters">
+                <input type="password" id="trGooglePassword" data-validate="password" placeholder="At least 8 characters">
             </div>
 
             <button type="button" class="lux-btn tenant-register-modal-submit" id="trSubmitGooglePassword">

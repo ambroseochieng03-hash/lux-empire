@@ -1263,4 +1263,284 @@ class House
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    /**
+     * PRICE BOUNDS
+     *
+     * Feeds the filter modal's range-slider min/max.
+     */
+    public function getPriceBounds(): array
+    {
+        $stmt = $this->conn->query("
+            SELECT
+                MIN(price) AS min_price,
+                MAX(price) AS max_price
+            FROM houses
+            WHERE status != 'booked'
+            OR booked_at IS NULL
+            OR booked_at > (NOW() - INTERVAL 12 HOUR)
+        ");
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return [
+            'min' => $row['min_price'] !== null ? (float) $row['min_price'] : 0.0,
+            'max' => $row['max_price'] !== null ? (float) $row['max_price'] : 0.0,
+        ];
+    }
+
+    /**
+     * DISTINCT HOUSE TYPES — for the filter dropdown, DB-driven not hardcoded.
+     */
+    public function getDistinctHouseTypes(): array
+    {
+        $stmt = $this->conn->query("
+            SELECT DISTINCT house_type
+            FROM houses
+            WHERE house_type IS NOT NULL AND house_type != ''
+            ORDER BY house_type ASC
+        ");
+
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
+     * DISTINCT LOCATIONS — for the filter datalist, DB-driven not hardcoded.
+     */
+    public function getDistinctLocations(): array
+    {
+        $stmt = $this->conn->query("
+            SELECT DISTINCT location
+            FROM houses
+            WHERE location IS NOT NULL AND location != ''
+            ORDER BY location ASC
+        ");
+
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    public function getInstitutions(): array
+    {
+        $stmt = $this->conn->query("
+            SELECT id, name, type, latitude, longitude
+            FROM institutions
+            ORDER BY name ASC
+        ");
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function filterHouses(array $filters, int $limit = 12, int $offset = 0): array
+    {
+        if ($offset > 0) {
+            $useFilters = ($filters['_mode'] ?? 'exact') === 'relaxed'
+                ? $this->relaxFilters($filters)[0]
+                : $filters;
+
+            $page = $this->runFilterQuery($useFilters, $limit, $offset);
+
+            return [
+                'houses'      => $page['rows'],
+                'total'       => $page['total'],
+                'exact_match' => ($filters['_mode'] ?? 'exact') !== 'relaxed',
+                'relaxed'     => [],
+            ];
+        }
+
+        $exact = $this->runFilterQuery($filters, $limit, $offset);
+
+        if ($exact['total'] > 0) {
+            return [
+                'houses'      => $exact['rows'],
+                'total'       => $exact['total'],
+                'exact_match' => true,
+                'relaxed'     => [],
+            ];
+        }
+
+        [$relaxedFilters, $relaxedFields] = $this->relaxFilters($filters);
+
+        if (empty($relaxedFields)) {
+            return [
+                'houses'      => [],
+                'total'       => 0,
+                'exact_match' => true,
+                'relaxed'     => [],
+            ];
+        }
+
+        $broad = $this->runFilterQuery($relaxedFilters, $limit, $offset);
+
+        return [
+            'houses'      => $broad['rows'],
+            'total'       => $broad['total'],
+            'exact_match' => false,
+            'relaxed'     => $relaxedFields,
+        ];
+    }
+
+    /**
+     * v1 heuristic, in order of least disruptive first:
+     *   1. widen price ceiling by 20%
+     *   2. widen the proximity radius by 50% (min +2km)
+     *   3. drop house_type entirely
+     * location/bedrooms/bathrooms/keyword stay untouched — hard constraints.
+     */
+    private function relaxFilters(array $filters): array
+    {
+        $relaxed = $filters;
+        $touched = [];
+
+        if (!empty($filters['max_price'])) {
+            $relaxed['max_price'] = round(((float) $filters['max_price']) * 1.20, 2);
+            $touched[] = 'max_price';
+        }
+
+        if (!empty($filters['institution_id']) && !empty($filters['max_distance_km'])) {
+            $currentRadius = (float) $filters['max_distance_km'];
+            $relaxed['max_distance_km'] = $currentRadius + max($currentRadius * 0.5, 2);
+            $touched[] = 'max_distance_km';
+        }
+
+        if (!empty($filters['house_type'])) {
+            unset($relaxed['house_type']);
+            $touched[] = 'house_type';
+        }
+
+        return [$relaxed, $touched];
+    }
+
+    private function runFilterQuery(array $filters, int $limit, int $offset): array
+    {
+        $where = [
+            "(h.status != 'booked' OR h.booked_at IS NULL OR h.booked_at > (NOW() - INTERVAL 12 HOUR))"
+        ];
+        $params = [];
+        $distanceSelect = '';
+
+        if (!empty($filters['keyword'])) {
+            $where[] = "(h.title LIKE :keyword OR h.location LIKE :keyword OR h.description LIKE :keyword)";
+            $params[':keyword'] = '%' . $filters['keyword'] . '%';
+        }
+
+        if (isset($filters['min_price']) && $filters['min_price'] !== '') {
+            $where[] = "h.price >= :min_price";
+            $params[':min_price'] = (float) $filters['min_price'];
+        }
+
+        if (isset($filters['max_price']) && $filters['max_price'] !== '') {
+            $where[] = "h.price <= :max_price";
+            $params[':max_price'] = (float) $filters['max_price'];
+        }
+
+        if (!empty($filters['house_type'])) {
+            $where[] = "h.house_type = :house_type";
+            $params[':house_type'] = $filters['house_type'];
+        }
+
+        if (!empty($filters['location'])) {
+            $where[] = "h.location LIKE :location";
+            $params[':location'] = '%' . $filters['location'] . '%';
+        }
+
+        if (isset($filters['bedrooms']) && $filters['bedrooms'] !== '') {
+            $where[] = "h.bedrooms >= :bedrooms";
+            $params[':bedrooms'] = (int) $filters['bedrooms'];
+        }
+
+        if (isset($filters['bathrooms']) && $filters['bathrooms'] !== '') {
+            $where[] = "h.bathrooms >= :bathrooms";
+            $params[':bathrooms'] = (int) $filters['bathrooms'];
+        }
+
+        if (!empty($filters['institution_id']) && !empty($filters['max_distance_km'])) {
+
+            $institution = $this->getInstitutionById((int) $filters['institution_id']);
+
+            if ($institution !== null) {
+
+                // Haversine distance in km — computed live against the
+                // house's own lat/lng, never pre-stored (either point
+                // can move, and this stays cheap at our current scale).
+                $distanceExpr = "(6371 * acos(
+                    cos(radians(:inst_lat)) * cos(radians(h.latitude))
+                    * cos(radians(h.longitude) - radians(:inst_lng))
+                    + sin(radians(:inst_lat)) * sin(radians(h.latitude))
+                ))";
+
+                $where[] = "h.latitude IS NOT NULL AND h.longitude IS NOT NULL";
+                $where[] = "{$distanceExpr} <= :max_distance_km";
+
+                $params[':inst_lat'] = $institution['latitude'];
+                $params[':inst_lng'] = $institution['longitude'];
+                $params[':max_distance_km'] = (float) $filters['max_distance_km'];
+
+                $distanceSelect = ", {$distanceExpr} AS distance_km";
+            }
+        }
+
+        $whereSql = implode(' AND ', $where);
+        $sortSql = $this->resolveSort($filters['sort'] ?? 'newest');
+
+        $countStmt = $this->conn->prepare("SELECT COUNT(*) FROM houses h WHERE {$whereSql}");
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        $stmt = $this->conn->prepare("
+            SELECT
+                h.*,
+                u.full_name AS landlord_name,
+                u.email AS landlord_email,
+                u.phone AS landlord_phone,
+                (
+                    SELECT hi.image_path FROM house_images hi
+                    WHERE hi.house_id = h.id ORDER BY hi.id ASC LIMIT 1
+                ) AS image
+                {$distanceSelect}
+            FROM houses h
+            JOIN users u ON h.landlord_id = u.id
+            WHERE {$whereSql}
+            ORDER BY {$sortSql}
+            LIMIT :limit OFFSET :offset
+        ");
+
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return [
+            'rows'  => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'total' => $total,
+        ];
+    }
+
+    private function getInstitutionById(int $id): ?array
+    {
+        $stmt = $this->conn->prepare("
+            SELECT id, name, latitude, longitude
+            FROM institutions
+            WHERE id = :id
+            LIMIT 1
+        ");
+
+        $stmt->execute([':id' => $id]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
+    }
+
+    private function resolveSort(string $sort): string
+    {
+        return match ($sort) {
+            'price_asc'  => 'h.price ASC',
+            'price_desc' => 'h.price DESC',
+            'oldest'     => 'h.id ASC',
+            default      => 'h.id DESC',
+        };
+    }
 }

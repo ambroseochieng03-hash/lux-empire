@@ -49,7 +49,7 @@
 <template id="infoModalTemplate-privacy">
     <h2 class="info-modal-title">Privacy Policy</h2>
     <div class="info-modal-body info-modal-body-scroll">
-        <p class="info-modal-note">Draft policy — reflects what the platform currently collects and how it is technically handled. Have this reviewed by a qualified lawyer before relying on it in production.</p>
+        <!-- <p class="info-modal-note">Draft policy — reflects what the platform currently collects and how it is technically handled. Have this reviewed by a qualified lawyer before relying on it in production.</p> -->
 
         <h3>What we collect</h3>
         <p>Account details (full name, email, phone number), a securely hashed password, and — depending on your role — a national ID number (landlords) or driver's license, vehicle plate, and vehicle type (drivers). Tenants and drivers may also share live location data while using truck-tracking features, and messages sent through in-app chat with landlords or drivers.</p>

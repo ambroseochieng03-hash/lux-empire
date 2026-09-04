@@ -86,6 +86,7 @@
     margin-bottom:25px;
     font-weight:800;
     min-height:2.2em;   /* fallback only — JS sets an exact px height once it runs */
+    transition: height 0.28s ease;   /* ADD THIS — turns phrase-to-phrase resizing into a smooth animation instead of a snap */
 }
 
 /*
@@ -136,37 +137,46 @@
     border-radius:35px;
     overflow:hidden;
     position:relative;
+    display:flex;
+    flex-direction:column;
 }
 
-.home-hero-img{
+.home-hero-media-wrap{
     width:100%;
-    height:500px;
+    height:340px;
+    position:relative;
+    overflow:hidden;
+}
+
+.home-hero-fallback-img{
+    width:100%;
+    height:100%;
     object-fit:cover;
+    display:block;
 }
 
-.home-hero-card-overlay{
+.home-hero-price-badge{
     position:absolute;
-    inset:0;
-    background:linear-gradient(
-        to top,
-        rgba(0,0,0,0.85),
-        rgba(0,0,0,0.15)
-    );
+    top:16px;
+    left:16px;
+    background:rgba(0,0,0,0.55);
+    backdrop-filter:blur(6px);
+    color:var(--gold);
+    font-weight:bold;
+    padding:8px 16px;
+    border-radius:12px;
+    z-index:5;
 }
 
-.home-hero-card-content{
-    position:absolute;
-    bottom:0;
-    left:0;
-    width:100%;
-    padding:30px;
+.home-hero-card-body{
+    padding:26px 30px 30px;
 }
 
 .home-hero-card-top{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    margin-bottom:15px;
+    margin-bottom:14px;
 }
 
 .home-hero-card-tag{
@@ -185,36 +195,34 @@
 
 .home-hero-card-title{
     color:white;
-    font-size:2rem;
+    font-size:1.6rem;
     margin-bottom:10px;
+    line-height:1.4;
 }
 
 .home-hero-card-desc{
     color:#ddd;
     line-height:1.7;
-    margin-bottom:20px;
-}
-
-.home-hero-card-bottom{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-
-.home-hero-card-price-label{
-    color:var(--gray);
-}
-
-.home-hero-card-price{
-    color:var(--gold);
-    margin-top:5px;
-    font-size:1.7rem;
+    margin-bottom:22px;
 }
 
 .home-hero-card-view-btn{
+    display:inline-block;
     text-decoration:none;
-    padding:14px 22px;
+    padding:14px 26px;
     border-radius:14px;
+    width:100%;
+    text-align:center;
+    box-sizing:border-box;
+}
+
+@media (max-width:600px){
+    .home-hero-media-wrap{
+        height:240px;
+    }
+    .home-hero-card-body{
+        padding:20px 20px 24px;
+    }
 }
 
 /* =========================================

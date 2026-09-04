@@ -40,6 +40,7 @@ require_once __DIR__ . '/../includes/navbar.php';
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bookings.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/guest-browse.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/tenant-register-modal.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/house-filters.css">
 
 <div class="guest-browse-page">
 
@@ -70,14 +71,20 @@ require_once __DIR__ . '/../includes/navbar.php';
 
             <form method="GET" action="" class="guest-browse-search-form">
                 <input type="text"
-                       name="search"
-                       value="<?php echo htmlspecialchars($search); ?>"
-                       placeholder="Search by title, location, or luxury features..."
-                       class="guest-browse-search-input">
+                    id="houseKeywordInput"
+                    name="search"
+                    value="<?php echo htmlspecialchars($search); ?>"
+                    placeholder="Search by title, location, or luxury features..."
+                    class="guest-browse-search-input">
                 <button type="submit" class="lux-btn">Search</button>
+                <button type="button" class="lux-btn hf-trigger-btn" data-open-house-filters>
+                    <i class="fa-solid fa-sliders"></i> Filters
+                </button>
             </form>
 
-            <div class="tenant-grid lux-explore-grid">
+            <?php require __DIR__ . '/../includes/house_filter_modal.php'; ?>
+
+            <div class="tenant-grid lux-explore-grid" id="housesResultsGrid">
 
                 <?php if (count($houses) > 0): ?>
 
@@ -339,12 +346,17 @@ require_once __DIR__ . '/../includes/navbar.php';
         csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>",
         googleClientId: "<?php echo htmlspecialchars(GOOGLE_OAUTH_CLIENT_ID); ?>"
     };
+    window.LUX_TENANT_BOOKING_STATUS = {};
+    window.LUX_CURRENT_TENANT_ID = null;
+    window.LUX_IS_GUEST = true;
+    window.LUX_CARD_VARIANT = 'guest';
 </script>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/tenant-register-modal.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/guest-browse.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/house-filters.js"></script>
 <script
     async
     defer

@@ -393,3 +393,31 @@ CREATE TABLE consent_records (
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci;    
+
+
+-- LUX EMPIRE
+-- Migration: institutions table for "proximity to institution" filtering
+--
+-- houses.latitude/longitude already exist and are used to compute
+-- distance via the Haversine formula at query time — no need to
+-- pre-store distances, they'd go stale the moment either point moves.
+
+CREATE TABLE institutions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    type ENUM('university','college','training_institution','town','other') DEFAULT 'other',
+    latitude DOUBLE NOT NULL,
+    longitude DOUBLE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Starter seed (Nairobi area) — coordinates are approximate campus
+-- centers, replace/extend freely; this just makes the filter usable
+-- immediately instead of shipping an empty dropdown.
+INSERT INTO institutions (name, type, latitude, longitude) VALUES
+('University of Nairobi (Main Campus)', 'university', -1.2795, 36.8172),
+('Kenyatta University', 'university', -1.1794, 36.9337),
+('Strathmore University', 'university', -1.3095, 36.8122),
+('JKUAT (Juja)', 'university', -1.0936, 37.0138),
+('USIU-Africa', 'university', -1.2194, 36.8790),
+('Multimedia University of Kenya', 'university', -1.3773, 36.7476);

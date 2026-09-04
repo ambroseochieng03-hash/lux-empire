@@ -3,6 +3,50 @@
 
 require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/navbar.php';
+
+require_once __DIR__ . '/classes/House.php';
+
+$heroHouseModel = new House();
+$heroImageUrls  = [];
+$heroVideoUrl   = null;
+$heroTitle      = 'Modern Elite Residence';
+$heroLocation   = 'Nairobi';
+$heroPrice      = 120000;
+
+foreach ($heroHouseModel->getAllHouses() as $candidateHouse) {
+
+    if (($candidateHouse['status'] ?? '') === 'booked') {
+        continue; // don't showcase something no longer available
+    }
+
+    $candidateMedia = $heroHouseModel->getHouseMedia((int) $candidateHouse['id']);
+
+    if (empty($candidateMedia)) {
+        continue;
+    }
+
+    $candidateImages = [];
+    $candidateVideo  = null;
+
+    foreach ($candidateMedia as $mediaItem) {
+        $path = BASE_URL . '/assets/uploads/house_images/' . $mediaItem['image_path'];
+        if (preg_match('/\.mp4$/i', $mediaItem['image_path'])) {
+            $candidateVideo = $path;
+        } else {
+            $candidateImages[] = $path;
+        }
+    }
+
+    $heroImageUrls = $candidateImages;
+    $heroVideoUrl  = $candidateVideo;
+    $heroTitle     = $candidateHouse['title'];
+    $heroLocation  = $candidateHouse['location'];
+    $heroPrice     = $candidateHouse['price'];
+    break; // newest house with usable media
+}
+
+$heroHasRealMedia = ($heroVideoUrl !== null || !empty($heroImageUrls));
+
 ?>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/nav-menu.css">
@@ -55,59 +99,87 @@ require_once __DIR__ . '/includes/navbar.php';
             <!-- MAIN CARD -->
             <div class="lux-card home-hero-card">
 
-                <img src="assets/images/houses/luxury-house.jpg"
-                     alt="Luxury House"
-                     class="home-hero-img">
+                <div class="home-hero-media-wrap">
 
-                <!-- OVERLAY -->
-                <div class="home-hero-card-overlay"></div>
+                    <?php if ($heroHasRealMedia && $heroVideoUrl !== null): ?>
 
-                <!-- CONTENT -->
-                <div class="home-hero-card-content">
+                        <div class="media-frame"
+                            data-video="<?php echo htmlspecialchars($heroVideoUrl); ?>"
+                            data-caption="<?php echo htmlspecialchars($heroTitle); ?>">
 
-                    <div class="home-hero-card-top">
+                            <video class="media-video"
+                                src="<?php echo htmlspecialchars($heroVideoUrl); ?>"
+                                controls autoplay muted loop playsinline preload="metadata">
+                            </video>
 
-                        <span class="home-hero-card-tag">
-                            Premium Villa
-                        </span>
+                            <button type="button" class="media-enlarge-btn" aria-label="Enlarge video">⤢</button>
 
-                        <span class="home-hero-card-location">
-                            Nairobi
-                        </span>
+                        </div>
 
+                    <?php elseif ($heroHasRealMedia): ?>
+
+                        <?php $heroImagesJson = json_encode($heroImageUrls); ?>
+
+                        <div class="media-frame"
+                            data-images='<?php echo htmlspecialchars($heroImagesJson, ENT_QUOTES); ?>'
+                            data-caption="<?php echo htmlspecialchars($heroTitle); ?>"
+                            data-current-index="0">
+
+                            <div class="media-carousel">
+                                <div class="media-carousel-track">
+                                    <?php foreach ($heroImageUrls as $index => $url): ?>
+                                        <img class="media-slide<?php echo $index === 0 ? ' is-active' : ''; ?>"
+                                            src="<?php echo htmlspecialchars($url); ?>"
+                                            data-index="<?php echo $index; ?>"
+                                            alt="<?php echo htmlspecialchars($heroTitle); ?> <?php echo $index + 1; ?>">
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+
+                            <?php if (count($heroImageUrls) > 1): ?>
+                                <button type="button" class="media-carousel-btn media-carousel-prev" aria-label="Previous image">‹</button>
+                                <button type="button" class="media-carousel-btn media-carousel-next" aria-label="Next image">›</button>
+                                <div class="media-carousel-dots">
+                                    <?php foreach ($heroImageUrls as $index => $url): ?>
+                                        <span class="media-dot<?php echo $index === 0 ? ' is-active' : ''; ?>" data-index="<?php echo $index; ?>"></span>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <button type="button" class="media-enlarge-btn" aria-label="Enlarge image">⤢</button>
+
+                        </div>
+
+                    <?php else: ?>
+
+                        <img src="<?php echo BASE_URL; ?>/assets/images/houses/luxury-house.jpg"
+                            alt="Luxury House" class="home-hero-fallback-img">
+
+                    <?php endif; ?>
+
+                    <div class="home-hero-price-badge">
+                        KES <?php echo number_format($heroPrice); ?>
                     </div>
 
-                    <h2 class="home-hero-card-title">
-                        Modern Elite Residence
-                    </h2>
+                </div>
+
+                <!-- CONTENT — below the media now, never overlapping it -->
+                <div class="home-hero-card-body">
+
+                    <div class="home-hero-card-top">
+                        <span class="home-hero-card-tag">Premium Villa</span>
+                        <span class="home-hero-card-location"><?php echo htmlspecialchars($heroLocation); ?></span>
+                    </div>
+
+                    <h2 class="home-hero-card-title"><?php echo htmlspecialchars($heroTitle); ?></h2>
 
                     <p class="home-hero-card-desc">
                         Sophisticated architecture designed for luxury living and elite comfort.
                     </p>
 
-                    <div class="home-hero-card-bottom">
-
-                        <div>
-                            <small class="home-hero-card-price-label">
-                                Starting From
-                            </small>
-
-                            <h3 class="home-hero-card-price">
-                                KES 120,000
-                            </h3>
-                        </div>
-
-                        <!--
-                            This stays a plain link (not the nav menu) —
-                            it's a content CTA for this one property
-                            preview, not primary site navigation.
-                        -->
-                        <a href="<?php echo BASE_URL; ?>/browse"
-                           class="lux-btn home-hero-card-view-btn">
-                            View
-                        </a>
-
-                    </div>
+                    <a href="<?php echo BASE_URL; ?>/browse" class="lux-btn home-hero-card-view-btn">
+                        View Property
+                    </a>
 
                 </div>
 
@@ -248,5 +320,6 @@ require_once __DIR__ . '/includes/navbar.php';
 
 <script src="<?php echo BASE_URL; ?>/assets/js/nav-menu.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/home-typewriter.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

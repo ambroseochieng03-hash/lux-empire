@@ -13,10 +13,10 @@
 
                 if (count > 0) {
                     badge.textContent = count > 99 ? '99+' : count;
-                    badge.style.display = 'inline-flex';
+                    badge.classList.remove('is-hidden');
                     bellWrap.classList.add('has-unread');
                 } else {
-                    badge.style.display = 'none';
+                    badge.classList.add('is-hidden');
                     bellWrap.classList.remove('has-unread');
                 }
             })

@@ -93,6 +93,58 @@
         }
     });
 
+    // Start auto-sliding for every card that has more than one image.
+    document.querySelectorAll('.media-frame').forEach(function (frame) {
+        if (frame.querySelector('.media-carousel')) {
+            startAutoplay(frame);
+        }
+    });
+
+    // Cards can now be added/removed after page load (e.g. the
+    // filters modal replacing the results grid via AJAX). Keep
+    // autoplay lifecycle correct for those too: start it on frames
+    // that appear, and — importantly — stop it on frames that
+    // disappear, so a cleared grid doesn't leave orphaned
+    // setInterval timers running against detached nodes forever.
+    function collectFrames(node, results) {
+        if (node.nodeType !== 1) {
+            return;
+        }
+        if (node.matches && node.matches('.media-frame')) {
+            results.push(node);
+        }
+        if (node.querySelectorAll) {
+            node.querySelectorAll('.media-frame').forEach(function (frame) {
+                results.push(frame);
+            });
+        }
+    }
+
+    var frameObserver = new MutationObserver(function (mutations) {
+        mutations.forEach(function (mutation) {
+
+            mutation.addedNodes.forEach(function (node) {
+                var frames = [];
+                collectFrames(node, frames);
+                frames.forEach(function (frame) {
+                    if (frame.querySelector('.media-carousel')) {
+                        startAutoplay(frame);
+                    }
+                });
+            });
+
+            mutation.removedNodes.forEach(function (node) {
+                var frames = [];
+                collectFrames(node, frames);
+                frames.forEach(function (frame) {
+                    stopAutoplay(frame);
+                });
+            });
+        });
+    });
+
+    frameObserver.observe(document.body, { childList: true, subtree: true });
+
     // A touch on a carousel stops its auto-slide permanently for that
     // card. Manual prev/next/dot controls remain fully usable — they
     // are handled separately below and are never disabled.

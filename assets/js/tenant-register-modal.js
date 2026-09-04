@@ -248,6 +248,10 @@ googleClientId } to be set by the page before this script runs.
 
             hideError('trDetailsError');
 
+            if (window.LuxFormValidation && !LuxFormValidation.validateForm(steps.details)) {
+                return;
+            }
+
             const fullName = document.getElementById('trFullName').value.trim();
             const email = document.getElementById('trEmail').value.trim();
             const phone = document.getElementById('trPhone').value.trim();
@@ -328,6 +332,10 @@ googleClientId } to be set by the page before this script runs.
         document.getElementById('trSubmitGooglePassword').addEventListener('click', async () => {
 
             hideError('trGooglePasswordError');
+
+            if (window.LuxFormValidation && !LuxFormValidation.validateForm(steps.googlePassword)) {
+                return;
+            }
 
             const password = document.getElementById('trGooglePassword').value;
             const btn = document.getElementById('trSubmitGooglePassword');
