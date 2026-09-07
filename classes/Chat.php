@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/GroqClient.php';
+require_once __DIR__ . '/../config/security/RedisThrottle.php';
 
 class Chat
 {
@@ -269,6 +270,15 @@ class Chat
         $minutesSilent = (time() - $silentSince) / 60;
 
         if ($minutesSilent < CHAT_AI_SILENCE_MINUTES) {
+            return;
+        }
+
+        // Only one concurrent poller gets to actually call Groq for
+        // this conversation. Without this, N simultaneous pollers all
+        // pass the ai_notice_sent check above and all fire a 10s Groq
+        // call before any of them commits the flag that would have
+        // stopped the others.
+        if (!RedisThrottle::tryAcquire("chat:ai_claim:{$conversationId}", 30)) {
             return;
         }
 

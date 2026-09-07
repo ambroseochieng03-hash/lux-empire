@@ -1,14 +1,16 @@
 <?php
 
-session_start();
+declare(strict_types=1);
+
+require_once '../../includes/auth_check.php';
+requireRoleAccess('driver');
+
+require_once '../../config/db.php';
 
 header('Content-Type: application/json');
 
-require_once '../../config/db.php';
-require_once '../../includes/auth_check.php';
-
-// Only drivers
-requireRoleAccess('driver');
+$db = new Database();
+$pdo = $db->connect();
 
 try {
 

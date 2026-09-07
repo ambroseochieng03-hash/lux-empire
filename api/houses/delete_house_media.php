@@ -11,6 +11,7 @@ require_once '../../config/session.php';
 require_once '../../config/csrf.php';
 require_once '../../config/db.php';
 require_once '../../classes/House.php';
+require_once '../../config/security/DoSProtection.php';
 
 try {
 

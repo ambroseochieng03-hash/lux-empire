@@ -123,7 +123,8 @@ try {
     exit;
 }
 
-$_SESSION['pending_tenant_registration_id'] = $userId;
+$_SESSION['pending_registration_id'] = $userId;
+$_SESSION['pending_registration_role'] = 'tenant';
 
 echo json_encode([
     'success' => true,

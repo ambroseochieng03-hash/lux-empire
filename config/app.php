@@ -351,3 +351,28 @@ ini_set(
 error_reporting(
     E_ALL
 );
+
+
+define('NATS_HOST', $_ENV['NATS_HOST'] ?? 'localhost');
+define('NATS_PORT', (int) ($_ENV['NATS_PORT'] ?? 4222));
+define('NATS_USER', $_ENV['NATS_USER'] ?? '');
+define('NATS_PASS', $_ENV['NATS_PASS'] ?? '');
+
+/*
+|--------------------------------------------------------------------------
+| Media & Account Limits
+|--------------------------------------------------------------------------
+|
+| Sized for a 2 OCPU Oracle Ampere A1 instance with ~150GB usable disk.
+| MAX_LISTINGS_PER_LANDLORD is the free-tier cap — paid tiers (not yet
+| built) will override this per-account rather than change the constant.
+*/
+
+define('MAX_IMAGE_SIZE_BYTES', 15 * 1024 * 1024);       // 15MB per image
+define('MAX_IMAGES_PER_HOUSE', 10);
+define('MAX_VIDEO_SIZE_BYTES', 300 * 1024 * 1024);      // 300MB per video
+
+define('MAX_VIDEOS_PROCESSING_PER_LANDLORD', 1);         // concurrent in-flight
+define('MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY', 10);
+
+define('MAX_LISTINGS_PER_LANDLORD', 10);                 // free-tier cap

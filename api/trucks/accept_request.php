@@ -40,9 +40,21 @@ if (!$request) {
 $update = $pdo->prepare("
     UPDATE truck_requests
     SET driver_id = ?, status = 'accepted'
-    WHERE id = ?
+    WHERE id = ? AND status = 'pending'
 ");
-$success = $update->execute([$driver_id, $request_id]);
+$update->execute([$driver_id, $request_id]);
+
+// rowCount() is the real signal here — execute() returning true just
+// means the statement ran, not that a row actually matched. With the
+// status='pending' guard added above, a second driver's UPDATE now
+// matches zero rows instead of overwriting the first driver's claim.
+$success = $update->rowCount() > 0;
+
+if (!$success) {
+    $_SESSION['error'] = "This request was just accepted by another driver.";
+    header("Location: " . BASE_URL . "/dashboard/driver/available_requests.php");
+    exit;
+}
 
 if ($success) {
 
@@ -56,12 +68,12 @@ if ($success) {
     );
 
     $_SESSION['success'] = "Request accepted successfully.";
-    header("Location: ../../dashboard/driver/active_trip.php");
+    header("Location: " . BASE_URL . "/dashboard/driver/active_trip.php");
     exit;
 
 } else {
 
     $_SESSION['error'] = "Failed to accept request.";
-    header("Location: ../../dashboard/driver/available_requests.php");
+    header("Location: " . BASE_URL . "/dashboard/driver/available_requests.php");
     exit;
 }

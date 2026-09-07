@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/MediaService.php';
+require_once __DIR__ . '/MediaJobPublisher.php';
 
 class House
 {
@@ -48,6 +49,8 @@ class House
     public function createHouse(array $data): int
     {
         $createdFiles = [];
+
+        $stagedFiles = [];
 
         try {
 
@@ -200,6 +203,8 @@ class House
             * -----------------------------------------
             */
 
+            $imageJobs = [];
+
             if (!empty($images)) {
 
                 foreach ($images as $file) {
@@ -214,28 +219,37 @@ class House
                         continue;
                     }
 
-                    $filename =
-                        $this->media->processImage($file);
-
-                    $createdFiles[] = $filename;
+                    $staged = $this->media->stageImage($file);
+                    $stagedFiles[] = $staged['staged_path'];
 
                     $stmt = $this->conn->prepare("
                         INSERT INTO house_images
                         (
                             house_id,
-                            image_path
+                            image_path,
+                            status,
+                            staged_path
                         )
                         VALUES
                         (
                             :house_id,
-                            :image_path
+                            :image_path,
+                            'processing',
+                            :staged_path
                         )
                     ");
 
                     $stmt->execute([
                         ':house_id' => $houseId,
-                        ':image_path' => $filename
+                        ':image_path' => $staged['final_filename'],
+                        ':staged_path' => $staged['staged_path']
                     ]);
+
+                    $imageJobs[] = [
+                        'media_id'       => (int) $this->conn->lastInsertId(),
+                        'staged_path'    => $staged['staged_path'],
+                        'final_filename' => $staged['final_filename'],
+                    ];
                 }
             }
 
@@ -245,30 +259,51 @@ class House
             * -----------------------------------------
             */
 
+            $videoJob = null;
+
             if (!empty($video)) {
 
-                $filename =
-                    $this->media->processVideo($video);
+                $staged = $this->media->stageVideo($video);
 
-                $createdFiles[] = $filename;
+                // Staged files live outside the normal media directory,
+                // so they're cleaned up separately from $createdFiles
+                // (which the catch block below hands to
+                // MediaService::delete() — that only knows about the
+                // real upload directory, not staging).
+                $stagedFiles[] = $staged['staged_path'];
 
                 $stmt = $this->conn->prepare("
                     INSERT INTO house_images
                     (
                         house_id,
-                        image_path
+                        image_path,
+                        status,
+                        staged_path
                     )
                     VALUES
                     (
                         :house_id,
-                        :image_path
+                        :image_path,
+                        'processing',
+                        :staged_path
                     )
                 ");
 
                 $stmt->execute([
                     ':house_id' => $houseId,
-                    ':image_path' => $filename
+                    ':image_path' => $staged['final_filename'],
+                    ':staged_path' => $staged['staged_path']
                 ]);
+
+                // Queued AFTER commit, once we're certain the house
+                // and this row actually exist — see below.
+                $videoJob = [
+                    'media_id'       => (int) $this->conn->lastInsertId(),
+                    'house_id'       => $houseId,
+                    'landlord_id'    => $landlordId,
+                    'staged_path'    => $staged['staged_path'],
+                    'final_filename' => $staged['final_filename'],
+                ];
             }
 
             /*
@@ -278,6 +313,40 @@ class House
             */
 
             $this->conn->commit();
+
+            foreach ($imageJobs as $imageJob) {
+                try {
+                    MediaJobPublisher::publishImageJob($imageJob);
+                } catch (Throwable $e) {
+                    error_log('LUX EMPIRE image job publish failed: ' . $e->getMessage());
+
+                    $failStmt = $this->conn->prepare("UPDATE house_images SET status = 'failed' WHERE id = :id");
+                    $failStmt->execute([':id' => $imageJob['media_id']]);
+                }
+            }
+
+            // Publish AFTER commit — never before. If we published
+            // first and the transaction then rolled back, a worker
+            // could pick up a job referencing a media_id/house_id
+            // that no longer exists.
+            if ($videoJob !== null) {
+                try {
+                    MediaJobPublisher::publishVideoJob($videoJob);
+                } catch (Throwable $e) {
+                    // House creation already succeeded and is
+                    // committed — we do NOT fail the whole request
+                    // over a queue outage. Mark this one video slot
+                    // as failed so it's visible, and let the landlord
+                    // retry the video specifically later.
+                    error_log('LUX EMPIRE media job publish failed: ' . $e->getMessage());
+
+                    $failStmt = $this->conn->prepare("
+                        UPDATE house_images SET status = 'failed'
+                        WHERE id = :id
+                    ");
+                    $failStmt->execute([':id' => $videoJob['media_id']]);
+                }
+            }
 
             return $houseId;
 
@@ -315,6 +384,12 @@ class House
                         'LUX EMPIRE media cleanup failed: '
                         . $cleanupError->getMessage()
                     );
+                }
+            }
+
+            foreach ($stagedFiles as $stagedPath) {
+                if (is_file($stagedPath)) {
+                    @unlink($stagedPath);
                 }
             }
 
@@ -654,6 +729,22 @@ class House
     }
 
     /**
+     * How many houses this landlord currently has — used to enforce
+     * the free-tier listing cap. Houses are hard-deleted (not soft
+     * -deleted), so a plain COUNT(*) is correct: deleted ones are
+     * genuinely gone.
+     */
+    public function countListingsByLandlord(int $landlordId): int
+    {
+        $stmt = $this->conn->prepare("
+            SELECT COUNT(*) FROM {$this->table}
+            WHERE landlord_id = :landlord_id
+        ");
+        $stmt->execute([':landlord_id' => $landlordId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
      * UPDATE HOUSE
      */
     public function updateHouse(
@@ -686,6 +777,8 @@ class House
          */
 
         $createdFiles = [];
+
+        $stagedFiles = [];
 
         try {
 
@@ -737,6 +830,10 @@ class House
                     'Invalid property ID.'
                 );
             }
+
+            $ownerStmt = $this->conn->prepare("SELECT landlord_id FROM {$this->table} WHERE id = :id LIMIT 1");
+            $ownerStmt->execute([':id' => $id]);
+            $trueLandlordId = (int) $ownerStmt->fetchColumn();
 
             if ($title === '') {
                 throw new InvalidArgumentException(
@@ -883,23 +980,27 @@ class House
              * ----------------------------------------------------
              */
 
+            $imageJobs = [];
+
             if (!empty($images)) {
 
                 foreach ($images as $file) {
 
-                    $filename =
-                        $this->media->processImage($file);
+                    $staged = $this->media->stageImage($file);
+                    $stagedFiles[] = $staged['staged_path'];
 
-                    $createdFiles[] = $filename;
+                    $imageJobs[] = [
+                        'final_filename' => $staged['final_filename'],
+                        'staged_path'    => $staged['staged_path'],
+                    ];
                 }
             }
 
+            $stagedVideo = null;
+
             if ($video !== null) {
-
-                $filename =
-                    $this->media->processVideo($video);
-
-                $createdFiles[] = $filename;
+                $stagedVideo = $this->media->stageVideo($video);
+                $stagedFiles[] = $stagedVideo['staged_path'];
             }
 
             /*
@@ -986,58 +1087,78 @@ class House
                 ]);
 
                 /*
-                 * Insert processed images.
+                 * Insert image rows as "processing" — actual
+                 * compression queued after commit, below.
                  */
 
-                foreach ($images as $index => $file) {
-
-                    $filename = $createdFiles[$index];
+                foreach ($imageJobs as &$imageJob) {
 
                     $insert = $this->conn->prepare("
                         INSERT INTO house_images
                         (
                             house_id,
-                            image_path
+                            image_path,
+                            status,
+                            staged_path
                         )
                         VALUES
                         (
                             :house_id,
-                            :image_path
+                            :image_path,
+                            'processing',
+                            :staged_path
                         )
                     ");
 
                     $insert->execute([
                         ':house_id' => $id,
-                        ':image_path' => $filename
+                        ':image_path' => $imageJob['final_filename'],
+                        ':staged_path' => $imageJob['staged_path']
                     ]);
+
+                    $imageJob['media_id'] = (int) $this->conn->lastInsertId();
                 }
+                unset($imageJob);
 
                 /*
-                 * Insert processed video.
+                 * Insert video row as "processing" — the actual
+                 * transcode is queued after commit, below.
                  */
 
-                if ($video !== null) {
+                $videoJob = null;
 
-                    $videoFilename =
-                        $createdFiles[count($createdFiles) - 1];
+                if ($stagedVideo !== null) {
 
                     $insert = $this->conn->prepare("
                         INSERT INTO house_images
                         (
                             house_id,
-                            image_path
+                            image_path,
+                            status,
+                            staged_path
                         )
                         VALUES
                         (
                             :house_id,
-                            :image_path
+                            :image_path,
+                            'processing',
+                            :staged_path
                         )
                     ");
 
                     $insert->execute([
                         ':house_id' => $id,
-                        ':image_path' => $videoFilename
+                        ':image_path' => $stagedVideo['final_filename'],
+                        ':staged_path' => $stagedVideo['staged_path']
                     ]);
+
+                    $videoJob = [
+                        'media_id'       => (int) $this->conn->lastInsertId(),
+                        'house_id'       => $id,
+                        'landlord_id'    => $trueLandlordId,
+                        'staged_path'    => $stagedVideo['staged_path'],
+                        'final_filename' => $stagedVideo['final_filename'],
+                    ];
                 }
             }
 
@@ -1048,6 +1169,33 @@ class House
              */
 
             $this->conn->commit();
+
+            foreach ($imageJobs as $imageJob) {
+                if (!isset($imageJob['media_id'])) {
+                    continue; // no new images were actually part of this update
+                }
+                try {
+                    MediaJobPublisher::publishImageJob($imageJob);
+                } catch (Throwable $e) {
+                    error_log('LUX EMPIRE image job publish failed: ' . $e->getMessage());
+                    $failStmt = $this->conn->prepare("UPDATE house_images SET status = 'failed' WHERE id = :id");
+                    $failStmt->execute([':id' => $imageJob['media_id']]);
+                }
+            }
+
+            if (isset($videoJob) && $videoJob !== null) {
+                try {
+                    MediaJobPublisher::publishVideoJob($videoJob);
+                } catch (Throwable $e) {
+                    error_log('LUX EMPIRE media job publish failed: ' . $e->getMessage());
+
+                    $failStmt = $this->conn->prepare("
+                        UPDATE house_images SET status = 'failed'
+                        WHERE id = :id
+                    ");
+                    $failStmt->execute([':id' => $videoJob['media_id']]);
+                }
+            }
 
             /*
              * ----------------------------------------------------
@@ -1106,6 +1254,12 @@ class House
                         'LUX EMPIRE new media cleanup failed: '
                         . $cleanupError->getMessage()
                     );
+                }
+            }
+
+            foreach ($stagedFiles as $stagedPath) {
+                if (is_file($stagedPath)) {
+                    @unlink($stagedPath);
                 }
             }
 

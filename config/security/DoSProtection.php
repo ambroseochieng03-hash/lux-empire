@@ -4,148 +4,103 @@
  * LUX EMPIRE
  * Application-Level DoS Protection
  *
- * Responsible for detecting and limiting abusive request
- * patterns that could exhaust application resources.
+ * Responsible for detecting and limiting abusive request patterns
+ * that could exhaust application resources.
  *
  * This is NOT a network-level DDoS mitigation system.
+ *
+ * Backed by Redis, not MariaDB, because this runs on EVERY request —
+ * it needs to be fast, and losing counters on a Redis restart is an
+ * acceptable trade-off for a short-lived abuse signal.
+ *
+ * Multi-dimensional: a single shared public IP (campus Wi-Fi, office
+ * NAT, mobile carrier) can no longer trip the bucket for everyone
+ * behind it, because the IP+endpoint bucket and the per-user bucket
+ * (when a user is authenticated) are tracked independently.
  */
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/RateLimiter.php';
+require_once __DIR__ . '/RedisThrottle.php';
 require_once __DIR__ . '/Audit.php';
 
 final class DoSProtection
 {
-    /**
-     * Maximum requests permitted during the protection window.
-     */
     private const MAX_REQUESTS = 60;
-
-    /**
-     * Protection window in seconds.
-     */
     private const WINDOW_SECONDS = 60;
-
-    /**
-     * Block duration after the request threshold is exceeded.
-     */
     private const BLOCK_SECONDS = 300;
 
     /**
      * Protect the current request.
      *
-     * Returns true when the request may continue.
-     * Terminates the request when the client is blocked.
+     * @param int|null $userId Pass the authenticated user's id when
+     *                         known (from $_SESSION, after
+     *                         Session::start()) so their requests are
+     *                         tracked separately from others sharing
+     *                         their IP. Safe to omit — falls back to
+     *                         IP + endpoint only.
      */
-    public static function check(): bool
+    public static function check(?int $userId = null): bool
     {
         $ip = self::clientIp();
+        $endpoint = $_SERVER['SCRIPT_NAME'] ?? 'unknown';
 
-        $key = self::buildKey($ip);
+        $dimensions = [
+            'ip'          => hash('sha256', $ip),
+            'ip_endpoint' => hash('sha256', $ip . '|' . $endpoint),
+        ];
 
-        /*
-         * Existing block.
-         */
-        if (RateLimiter::isBlocked($key)) {
-            self::reject(
-                RateLimiter::retryAfter($key)
-            );
-
-            return false;
+        if ($userId !== null) {
+            $dimensions['user'] = (string) $userId;
         }
 
-        /*
-         * Register this request.
-         */
-        $attempts = RateLimiter::hit(
-            $key,
-            self::WINDOW_SECONDS
-        );
+        // Check existing blocks across all dimensions before counting anything.
+        foreach ($dimensions as $name => $suffix) {
+            $blockKey = "dos:block:{$name}:{$suffix}";
 
-        /*
-         * Threshold has not been exceeded.
-         */
-        if ($attempts <= self::MAX_REQUESTS) {
-            return true;
+            if (RedisThrottle::isBlocked($blockKey)) {
+                self::reject(RedisThrottle::retryAfter($blockKey));
+                return false;
+            }
         }
 
-        /*
-         * Client exceeded the application-level
-         * request threshold.
-         */
-        RateLimiter::block(
-            $key,
-            self::BLOCK_SECONDS
-        );
+        // Register this request against every dimension.
+        foreach ($dimensions as $name => $suffix) {
+            $countKey = "dos:cnt:{$name}:{$suffix}";
+            $attempts = RedisThrottle::incrWithExpiry($countKey, self::WINDOW_SECONDS);
 
-        Audit::log(
-            'Application DoS protection triggered for IP: '
-            . $ip
-        );
+            if ($attempts > self::MAX_REQUESTS) {
+                RedisThrottle::block("dos:block:{$name}:{$suffix}", self::BLOCK_SECONDS);
 
-        self::reject(
-            self::BLOCK_SECONDS
-        );
+                Audit::log("Application DoS protection triggered ({$name}) for IP: {$ip}");
 
-        return false;
+                self::reject(self::BLOCK_SECONDS);
+                return false;
+            }
+        }
+
+        return true;
     }
 
-    /**
-     * Build an isolated rate-limit key.
-     */
-    private static function buildKey(string $ip): string
-    {
-        return 'dos:' . hash(
-            'sha256',
-            $ip
-        );
-    }
-
-    /**
-     * Reject an abusive request.
-     */
     private static function reject(int $retryAfter): void
     {
         http_response_code(429);
-
-        header(
-            'Content-Type: application/json'
-        );
-
-        header(
-            'Retry-After: ' . max(1, $retryAfter)
-        );
+        header('Content-Type: application/json');
+        header('Retry-After: ' . max(1, $retryAfter));
 
         echo json_encode(
-            [
-                'success' => false,
-                'error'   => 'Too many requests. Please try again later.',
-            ],
+            ['success' => false, 'error' => 'Too many requests. Please try again later.'],
             JSON_UNESCAPED_SLASHES
         );
 
         exit;
     }
 
-    /**
-     * Obtain the client IP address.
-     *
-     * We intentionally do not blindly trust
-     * X-Forwarded-For.
-     */
     private static function clientIp(): string
     {
         $ip = $_SERVER['REMOTE_ADDR'] ?? '';
 
-        if (
-            !is_string($ip)
-            || $ip === ''
-            || filter_var(
-                $ip,
-                FILTER_VALIDATE_IP
-            ) === false
-        ) {
+        if (!is_string($ip) || $ip === '' || filter_var($ip, FILTER_VALIDATE_IP) === false) {
             return 'unknown';
         }
 

@@ -10,6 +10,7 @@ header('Content-Type: application/json');
 require_once '../../config/session.php';
 require_once '../../config/csrf.php';
 require_once '../../classes/House.php';
+require_once '../../config/security/DoSProtection.php';
 
 try {
 
@@ -113,6 +114,8 @@ try {
 
         exit;
     }
+
+    DoSProtection::check($currentUser);
 
     /*
      * ============================================================
@@ -343,6 +346,51 @@ try {
         ]);
 
         exit;
+    }
+
+    if ($hasImages) {
+        $imageCount = 0;
+        foreach ($files['images']['error'] as $error) {
+            if ($error !== UPLOAD_ERR_NO_FILE) {
+                $imageCount++;
+            }
+        }
+
+        if ($imageCount > MAX_IMAGES_PER_HOUSE) {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'You can upload up to ' . MAX_IMAGES_PER_HOUSE . ' images per property.'
+            ]);
+            exit;
+        }
+    }
+
+    if ($hasVideo) {
+        require_once '../../config/security/RedisThrottle.php';
+
+        $inFlightKey = "video:inflight:{$currentUser}";
+        $dailyKey = "video:daily:{$currentUser}:" . date('Y-m-d');
+
+        if (RedisThrottle::getCount($inFlightKey) >= MAX_VIDEOS_PROCESSING_PER_LANDLORD) {
+            http_response_code(429);
+            echo json_encode([
+                'success' => false,
+                'message' => 'You already have a video being processed. Please wait for it to finish before uploading another.'
+            ]);
+            exit;
+        }
+
+        if (RedisThrottle::incrWithExpiry($dailyKey, 86400) > MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY) {
+            http_response_code(429);
+            echo json_encode([
+                'success' => false,
+                'message' => "You've reached today's video upload limit (" . MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY . "). Please try again tomorrow."
+            ]);
+            exit;
+        }
+
+        RedisThrottle::increment($inFlightKey);
     }
 
     /*

@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 Csrf::requireValid($_POST['csrf_token'] ?? null);
 
-$userId = $_SESSION['pending_tenant_registration_id'] ?? null;
+$userId = $_SESSION['pending_registration_id'] ?? null;
 
 if (!$userId) {
     http_response_code(400);
@@ -51,7 +51,7 @@ if (!RedisThrottle::tryAcquire($cooldownKey, 45)) {
     exit;
 }
 
-$hourlyKey = 'resend_tenant_otp:' . $userId;
+$hourlyKey = 'resend_registration_otp:' . $userId;
 
 if (RateLimiter::isBlocked($hourlyKey)) {
     http_response_code(429);
@@ -83,18 +83,9 @@ $code = $otp->generate((int) $userId, 'registration');
 try {
     OtpDelivery::sendOtpEmail($user['email'], $user['full_name'], $code);
 } catch (Throwable $e) {
-    error_log(
-        'LUX EMPIRE OTP resend (NATS publish) failed: ' .
-        $e->getMessage()
-    );
-
+    error_log('LUX EMPIRE OTP resend (NATS publish) failed: ' . $e->getMessage());
     http_response_code(500);
-
-    echo json_encode([
-        'success' => false,
-        'message' => 'Could not send verification email. Please try again.'
-    ]);
-
+    echo json_encode(['success' => false, 'message' => 'Could not send verification email. Please try again.']);
     exit;
 }
 

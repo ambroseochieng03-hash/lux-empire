@@ -265,9 +265,166 @@ class User {
     }
 
     /**
-     * ACTIVATE TENANT after successful OTP verification.
+     * REGISTER LANDLORD (pending — awaiting OTP email verification)
+     *
+     * Same shape as registerLandlord() but leaves status='pending'
+     * instead of 'active' — the account cannot log in until
+     * activatePendingAccount() runs after OTP success. This is the
+     * one actually used by the current registration flow; the old
+     * registerLandlord() above is kept only for reference/rollback,
+     * do not wire new code to it.
      */
-    public function activateTenant(int $userId): bool
+    public function registerLandlordPending(
+        string $fullName,
+        string $email,
+        string $phone,
+        string $nationalId,
+        string $password
+    ) {
+        if ($this->emailExists($email)) {
+            return "Email already belongs to an Empire member.";
+        }
+
+        if ($this->phoneExists($phone)) {
+            return "Phone number already registered.";
+        }
+
+        $hashedPassword = password_hash($password, PASSWORD_ARGON2ID);
+        $encryptedNationalId = Crypto::encrypt($nationalId);
+
+        $query = "INSERT INTO " . $this->table . "
+            (full_name, email, phone, national_id_encrypted, password, role, status)
+            VALUES
+            (:full_name, :email, :phone, :national_id_encrypted, :password, 'landlord', 'pending')";
+
+        $stmt = $this->conn->prepare($query);
+
+        $stmt->execute([
+            ':full_name' => $fullName,
+            ':email' => $email,
+            ':phone' => $phone,
+            ':national_id_encrypted' => $encryptedNationalId,
+            ':password' => $hashedPassword
+        ]);
+
+        if ($stmt->rowCount() === 0) {
+            return "Empire registration failed. Please try again.";
+        }
+
+        return (int) $this->conn->lastInsertId();
+    }
+
+    /**
+     * REGISTER DRIVER (pending — awaiting OTP email verification)
+     *
+     * Same shape as registerDriver() but leaves status='pending'.
+     * $identityType is 'national_id' or 'license' (validated by the
+     * caller via Validator::isValidDriverIdentity() before this is
+     * ever called) — stored in drivers.identity_type so it's known
+     * later which kind of value is sitting (encrypted) in
+     * drivers.license_number.
+     *
+     * Defensive logging added around both encrypted inserts: if a
+     * value comes back empty/short after Crypto::encrypt(), that's
+     * loud in the error log instead of silently landing in the DB
+     * as an empty/corrupt value.
+     */
+    public function registerDriverPending(
+        string $fullName,
+        string $email,
+        string $phone,
+        string $password,
+        string $identityValue,
+        string $identityType,
+        string $vehiclePlate,
+        string $vehicleType
+    ) {
+        if ($this->emailExists($email)) {
+            return "Email already belongs to an Empire member.";
+        }
+
+        if ($this->phoneExists($phone)) {
+            return "Phone number already registered.";
+        }
+
+        $hashedPassword = password_hash($password, PASSWORD_ARGON2ID);
+        $encryptedIdentity = Crypto::encrypt($identityValue);
+        $encryptedPlate = Crypto::encrypt($vehiclePlate);
+
+        if (strlen($encryptedIdentity) < 20 || strlen($encryptedPlate) < 20) {
+            // A real encrypted value (nonce + ciphertext, base64) is
+            // always well over 20 chars — anything shorter means
+            // encryption silently produced garbage. Fail loudly
+            // instead of inserting it.
+            error_log(
+                'LUX EMPIRE driver registration: suspiciously short encrypted value(s) — ' .
+                'identity len=' . strlen($encryptedIdentity) . ', plate len=' . strlen($encryptedPlate)
+            );
+            return "Empire registration failed. Please try again.";
+        }
+
+        try {
+
+            $this->conn->beginTransaction();
+
+            $userStmt = $this->conn->prepare("
+                INSERT INTO " . $this->table . "
+                    (full_name, email, phone, password, role, status)
+                VALUES
+                    (:full_name, :email, :phone, :password, 'driver', 'pending')
+            ");
+
+            $userStmt->execute([
+                ':full_name' => $fullName,
+                ':email' => $email,
+                ':phone' => $phone,
+                ':password' => $hashedPassword
+            ]);
+
+            $userId = (int) $this->conn->lastInsertId();
+
+            $driverStmt = $this->conn->prepare("
+                INSERT INTO drivers
+                    (user_id, vehicle_type, vehicle_plate, license_number, identity_type, is_available)
+                VALUES
+                    (:user_id, :vehicle_type, :vehicle_plate, :license_number, :identity_type, 0)
+            ");
+
+            $driverStmt->execute([
+                ':user_id' => $userId,
+                ':vehicle_type' => $vehicleType,
+                ':vehicle_plate' => $encryptedPlate,
+                ':license_number' => $encryptedIdentity,
+                ':identity_type' => $identityType
+            ]);
+
+            if ($driverStmt->rowCount() === 0) {
+                throw new RuntimeException('drivers row insert affected 0 rows.');
+            }
+
+            $this->conn->commit();
+
+            return $userId;
+
+        } catch (Throwable $e) {
+
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
+
+            error_log('LUX EMPIRE driver registration failed: ' . $e->getMessage());
+
+            return "Empire registration failed. Please try again.";
+        }
+    }
+
+    /**
+     * ACTIVATE ANY PENDING ACCOUNT after successful OTP verification
+     * — role-agnostic (tenant/landlord/driver all use the same
+     * status/email_verified_at columns). activateTenant() below is
+     * kept as a thin wrapper for backward compatibility.
+     */
+    public function activatePendingAccount(int $userId): bool
     {
         $stmt = $this->conn->prepare("
             UPDATE " . $this->table . "
@@ -279,6 +436,18 @@ class User {
         $stmt->execute([':id' => $userId]);
 
         return $stmt->rowCount() > 0;
+    }
+
+    /**
+     * ACTIVATE TENANT after successful OTP verification.
+     *
+     * @deprecated kept as a wrapper — new code should call
+     * activatePendingAccount() directly, which is identical but not
+     * named as if it's tenant-only.
+     */
+    public function activateTenant(int $userId): bool
+    {
+        return $this->activatePendingAccount($userId);
     }
 
     /**

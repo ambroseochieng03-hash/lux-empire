@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 require_once '../../config/app.php';
 require_once '../../config/session.php';
-require_once '../../config/csrf.php';
 require_once '../../classes/User.php';
 require_once '../../classes/Otp.php';
 require_once '../../classes/OtpDelivery.php';
+require_once '../../classes/Consent.php';
 require_once '../../classes/Validator.php';
 require_once '../../config/security/DoSProtection.php';
 require_once '../../config/security/RateLimiter.php';
@@ -23,10 +23,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-Csrf::requireValid($_POST['csrf_token'] ?? null);
-
+/*
+ * No CSRF here — same precedent as login/registration elsewhere in
+ * this app (no pre-existing authenticated session to protect).
+ * DoSProtection + this rate limit are the abuse guards instead.
+ */
 $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-$rateKey = 'register_tenant:' . $ip;
+$rateKey = 'register_landlord:' . $ip;
 
 if (RateLimiter::isBlocked($rateKey)) {
     http_response_code(429);
@@ -46,62 +49,49 @@ if ($attempts > 10) {
 $fullName = trim($_POST['full_name'] ?? '');
 $email = trim($_POST['email'] ?? '');
 $phone = trim($_POST['phone'] ?? '');
+$nationalId = trim($_POST['national_id'] ?? '');
 $password = $_POST['password'] ?? '';
+$consentAccepted = ($_POST['consent_accepted'] ?? '') === '1';
 
-/*
- * Field-by-field validation with field-specific error messages, so
- * the frontend can highlight exactly which input is wrong — not just
- * a generic "invalid input" message.
- */
+if (!$consentAccepted) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'field' => 'consent', 'message' => 'You must accept the data processing notice to register.']);
+    exit;
+}
 
 if (!Validator::isValidFullName($fullName)) {
     http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'field' => 'full_name',
-        'message' => 'Enter a valid full name (letters only, at least 2 characters).'
-    ]);
+    echo json_encode(['success' => false, 'field' => 'full_name', 'message' => 'Enter a valid full name (letters only, at least 2 characters).']);
     exit;
 }
 
 if (!Validator::isValidEmail($email)) {
     http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'field' => 'email',
-        'message' => 'Enter a valid email address.'
-    ]);
+    echo json_encode(['success' => false, 'field' => 'email', 'message' => 'Enter a valid email address.']);
     exit;
 }
 
-/*
- * Phone is optional on the tenant modal (per the original field
- * label), so only validate its FORMAT if something was entered —
- * an empty string is allowed through.
- */
-if ($phone !== '' && !Validator::isValidKenyanPhone($phone)) {
+if (!Validator::isValidKenyanPhone($phone)) {
     http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'field' => 'phone',
-        'message' => 'Enter a valid Kenyan phone number (e.g. 0712345678 or +254712345678).'
-    ]);
+    echo json_encode(['success' => false, 'field' => 'phone', 'message' => 'Enter a valid Kenyan phone number (e.g. 0712345678 or +254712345678).']);
+    exit;
+}
+
+if (!Validator::isValidNationalId($nationalId)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'field' => 'national_id', 'message' => 'National ID must be 7-9 digits, numbers only.']);
     exit;
 }
 
 if (!Validator::isValidPassword($password)) {
     http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'field' => 'password',
-        'message' => 'Password must be at least 8 characters.'
-    ]);
+    echo json_encode(['success' => false, 'field' => 'password', 'message' => 'Password must be at least 8 characters.']);
     exit;
 }
 
 $userModel = new User();
 
-$result = $userModel->registerTenantPending($fullName, $email, $phone, $password);
+$result = $userModel->registerLandlordPending($fullName, $email, $phone, $nationalId, $password);
 
 if (!is_int($result)) {
     http_response_code(409);
@@ -110,6 +100,14 @@ if (!is_int($result)) {
 }
 
 $userId = $result;
+
+$consent = new Consent();
+
+try {
+    $consent->record($userId, 'landlord', 'accepted', $ip);
+} catch (Throwable $e) {
+    error_log('LUX EMPIRE consent recording failed for user ' . $userId . ': ' . $e->getMessage());
+}
 
 $otp = new Otp();
 $code = $otp->generate($userId, 'registration');
@@ -123,7 +121,8 @@ try {
     exit;
 }
 
-$_SESSION['pending_tenant_registration_id'] = $userId;
+$_SESSION['pending_registration_id'] = $userId;
+$_SESSION['pending_registration_role'] = 'landlord';
 
 echo json_encode([
     'success' => true,

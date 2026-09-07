@@ -19,7 +19,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
     <!-- BRAND HEADER -->
     <div class="sidebar-brand">
-        <div class="brand-icon"><i class="fa-solid fa-crown"></i></div>
+        
         <h2>LUX EMPIRE</h2>
         <p><?php echo htmlspecialchars(strtoupper($userRole)); ?> PORTAL</p>
     </div>

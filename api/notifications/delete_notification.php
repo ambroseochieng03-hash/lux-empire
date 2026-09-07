@@ -5,6 +5,7 @@ require_once '../../includes/init.php';
 require_once '../../config/session.php';
 require_once '../../config/csrf.php';
 require_once '../../classes/Notification.php';
+require_once '../../config/security/DoSProtection.php';
 
 Session::start();
 header('Content-Type: application/json');
@@ -18,6 +19,7 @@ if (!Session::isAuthenticated()) {
 Csrf::requireValid($_POST['csrf_token'] ?? null);
 
 $user = Session::user();
+DoSProtection::check((int) $user['id']);
 $id = (int) ($_POST['id'] ?? 0);
 
 $notification = new Notification();

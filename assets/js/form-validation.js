@@ -61,6 +61,13 @@ enforced; this is UX only, never trusted as the real gate.
             message: 'National ID must be 7–9 digits, numbers only.'
         },
 
+        driver_license: {
+            test(value) {
+                return /^[A-Za-z0-9]{5,15}$/.test(value.trim());
+            },
+            message: 'Enter a valid license number (letters/numbers, 5-15 characters).'
+        },
+
         password: {
             test(value) {
                 return value.length >= 8;

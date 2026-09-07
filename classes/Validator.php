@@ -114,4 +114,40 @@ final class Validator
 
         return (bool) preg_match('/^[A-Z]{3} \d{3}[A-Z]$/i', $plate);
     }
+
+    /**
+     * Driving license number.
+     *
+     * IMPORTANT CAVEAT: no authoritative public specification of the
+     * Kenyan NTSA driving license NUMBER format could be confirmed
+     * (the vehicle PLATE format above is well-documented; the DL
+     * number itself is not published anywhere verifiable). This is
+     * therefore a permissive best-effort rule — alphanumeric,
+     * 5-15 characters, no spaces or special characters — not a
+     * verified official spec. Tighten this once you can check it
+     * against a real license.
+     */
+    public static function isValidDriverLicense(string $license): bool
+    {
+        $license = trim($license);
+
+        return (bool) preg_match('/^[A-Za-z0-9]{5,15}$/', $license);
+    }
+
+    /**
+     * Dispatches to the correct rule for the driver's single
+     * identity field, based on which radio option was selected.
+     */
+    public static function isValidDriverIdentity(string $value, string $identityType): bool
+    {
+        if ($identityType === 'national_id') {
+            return self::isValidNationalId($value);
+        }
+
+        if ($identityType === 'license') {
+            return self::isValidDriverLicense($value);
+        }
+
+        return false;
+    }
 }

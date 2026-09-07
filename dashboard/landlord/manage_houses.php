@@ -285,7 +285,8 @@ $csrfToken = Csrf::token();
                         }
                     ?>
 
-                    <div class="lux-card house-card">
+                    <div class="lux-card house-card"
+                         id="houseCard-<?php echo (int) $house['id']; ?>">
 
                         <!-- MEDIA -->
                         <div class="house-image">
@@ -504,7 +505,6 @@ $csrfToken = Csrf::token();
             <?php endif; ?>
 
         </div>
-        <div class="lux-card house-card" id="houseCard-<?php echo (int) $house['id']; ?>">
 
     </main>
 

@@ -8,6 +8,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/session.php';
+require_once __DIR__ . '/../config/security/DoSProtection.php';
 
 
 /**
@@ -27,6 +28,16 @@ if (!Session::isAuthenticated()) {
 
     exit();
 }
+
+
+/**
+ * Now that we know who this is, run DoS protection with the
+ * authenticated user's id — so their requests are tracked
+ * separately from anyone else sharing their IP (campus Wi-Fi,
+ * office NAT, etc.), instead of everyone behind that IP sharing
+ * one bucket.
+ */
+DoSProtection::check(Session::user()['id'] ?? null);
 
 
 /**

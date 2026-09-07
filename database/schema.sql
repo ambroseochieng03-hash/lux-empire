@@ -421,3 +421,19 @@ INSERT INTO institutions (name, type, latitude, longitude) VALUES
 ('JKUAT (Juja)', 'university', -1.0936, 37.0138),
 ('USIU-Africa', 'university', -1.2194, 36.8790),
 ('Multimedia University of Kenya', 'university', -1.3773, 36.7476);
+
+-- LUX EMPIRE
+-- Migration: driver identity type (National ID vs Driving License)
+--
+-- The driver form has ONE identity field that can be either a
+-- National ID or a Driving License number — this column records
+-- which one was actually submitted, since drivers.license_number
+-- (unchanged name, for minimal disruption) now holds whichever
+-- value was provided, encrypted, regardless of type.
+
+ALTER TABLE drivers
+    ADD COLUMN identity_type ENUM('national_id', 'license') NOT NULL DEFAULT 'national_id' AFTER license_number;
+
+ALTER TABLE house_images
+  ADD COLUMN status ENUM('ready','processing','failed') NOT NULL DEFAULT 'ready' AFTER image_path,
+  ADD COLUMN staged_path VARCHAR(500) NULL AFTER status;    

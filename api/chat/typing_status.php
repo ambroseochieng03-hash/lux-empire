@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once '../../includes/init.php';
 require_once '../../config/session.php';
 require_once '../../classes/Chat.php';
+require_once '../../config/security/DoSProtection.php';
 
 Session::start();
 header('Content-Type: application/json');
@@ -14,6 +15,8 @@ if (!Session::isAuthenticated()) {
 }
 
 $user = Session::user();
+DoSProtection::check((int) $user['id']);
+
 $conversationId = (int) ($_POST['conversation_id'] ?? 0);
 
 $chat = new Chat();

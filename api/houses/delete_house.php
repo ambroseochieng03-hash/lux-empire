@@ -12,6 +12,7 @@ require_once '../../config/session.php';
 require_once '../../config/csrf.php';
 require_once '../../config/db.php';
 require_once '../../classes/House.php';
+require_once '../../config/security/DoSProtection.php';
 
 try {
 
@@ -45,6 +46,8 @@ try {
 
     $role = $user['role'] ?? '';
     $currentUser = (int) ($user['id'] ?? 0);
+
+    DoSProtection::check($currentUser);
 
     if ($role !== 'landlord' && $role !== 'admin') {
         http_response_code(403);

@@ -7,6 +7,7 @@ error_reporting(E_ALL);
 
 require_once '../../config/session.php';
 require_once '../../classes/House.php';
+require_once '../../config/security/DoSProtection.php';
 
 /**
  * ============================================================
@@ -42,6 +43,8 @@ if (
 }
 
 $landlordId = (int) $user['id'];
+
+DoSProtection::check($landlordId);
 
 /**
  * ============================================================
@@ -118,7 +121,7 @@ if (
 ) {
 
     header(
-        "Location: ../../dashboard/landlord/add_house.php?error="
+        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
         . urlencode('Title, price and location are required.')
     );
 
@@ -128,7 +131,7 @@ if (
 if (!is_numeric($price) || (float) $price <= 0) {
 
     header(
-        "Location: ../../dashboard/landlord/add_house.php?error="
+        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
         . urlencode('Invalid property price.')
     );
 
@@ -215,6 +218,10 @@ if (
             continue;
         }
 
+        if ($imageFiles['error'][$index] === UPLOAD_ERR_NO_FILE) {
+            continue;
+        }
+
         $images[] = [
             'name' => $imageFiles['name'][$index],
             'type' => $imageFiles['type'][$index] ?? '',
@@ -265,13 +272,68 @@ if (
 if (!empty($images) && $video !== null) {
 
     header(
-        "Location: ../../dashboard/landlord/add_house.php?error="
+        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
         . urlencode(
             'A property can contain multiple images or one video, not both.'
         )
     );
 
     exit();
+}
+
+if (count($images) > MAX_IMAGES_PER_HOUSE) {
+
+    header(
+        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
+        . urlencode(
+            'You can upload up to ' . MAX_IMAGES_PER_HOUSE . ' images per property.'
+        )
+    );
+
+    exit();
+}
+
+require_once '../../classes/House.php';
+require_once '../../config/security/RedisThrottle.php';
+
+$houseModelForLimits = new House();
+
+if ($houseModelForLimits->countListingsByLandlord($landlordId) >= MAX_LISTINGS_PER_LANDLORD) {
+
+    header(
+        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
+        . urlencode(
+            "You've reached the " . MAX_LISTINGS_PER_LANDLORD . "-listing limit for free accounts. Upgrade your account to add more properties."
+        )
+    );
+
+    exit();
+}
+
+if ($video !== null) {
+
+    $inFlightKey = "video:inflight:{$landlordId}";
+    $dailyKey = "video:daily:{$landlordId}:" . date('Y-m-d');
+
+    if (RedisThrottle::getCount($inFlightKey) >= MAX_VIDEOS_PROCESSING_PER_LANDLORD) {
+
+        header(
+            "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
+            . urlencode('You already have a video being processed. Please wait for it to finish before uploading another.')
+        );
+
+        exit();
+    }
+
+    if (RedisThrottle::incrWithExpiry($dailyKey, 86400) > MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY) {
+
+        header(
+            "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
+            . urlencode("You've reached today's video upload limit (" . MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY . "). Please try again tomorrow.")
+        );
+
+        exit();
+    }
 }
 
 
@@ -284,6 +346,10 @@ if (!empty($images) && $video !== null) {
 try {
 
     $house = new House();
+
+    if ($video !== null) {
+        RedisThrottle::increment("video:inflight:{$landlordId}");
+    }
 
     $houseId = $house->createHouse([
 
@@ -325,7 +391,7 @@ try {
     if ($houseId > 0) {
 
         header(
-            "Location: ../../dashboard/landlord/manage_houses.php?success="
+            "Location: " . BASE_URL . "/dashboard/landlord/manage_houses.php?success="
             . urlencode(
                 'Luxury property published successfully.'
             )
@@ -342,7 +408,7 @@ try {
      */
 
     header(
-        "Location: ../../dashboard/landlord/add_house.php?error="
+        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
         . urlencode(
             'Failed to publish property.'
         )
@@ -359,7 +425,7 @@ try {
     );
 
     header(
-        "Location: ../../dashboard/landlord/add_house.php?error="
+        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
         . urlencode(
             $e->getMessage()
         )
