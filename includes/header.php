@@ -42,11 +42,13 @@ require_once __DIR__ . '/../config/app.php';
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/navbar.css">
 
     <!-- LUX EMPIRE Favicon -->
-    <link
-        rel="icon"
-        type="image/svg+xml"
-        href="<?php echo BASE_URL . '/' . APP_FAVICON; ?>"
-    >
+    <!-- SVG first: modern browsers (Chrome, Firefox, Edge) use this and ignore the rest. -->
+    <link rel="icon" type="image/svg+xml" href="<?php echo BASE_URL . '/' . APP_FAVICON; ?>">
+    <!-- Safari (and anything else without SVG favicon support) falls back to these. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="<?php echo BASE_URL . '/' . APP_FAVICON_PNG_32; ?>">
+    <link rel="icon" type="image/png" sizes="16x16" href="<?php echo BASE_URL . '/' . APP_FAVICON_PNG_16; ?>">
+    <!-- iOS "Add to Home Screen" icon. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="<?php echo BASE_URL . '/' . APP_APPLE_TOUCH_ICON; ?>">
 
     <!-- Premium Meta -->
     <meta name="theme-color" content="#0A0A0A">

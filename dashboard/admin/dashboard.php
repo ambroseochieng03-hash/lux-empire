@@ -109,7 +109,7 @@ $recentTrips = $recentTripsStmt->fetchAll();
     <div class="lux-hero">
 
         <h1 class="lux-title">
-            👑 LUX EMPIRE Control Center
+            LUX EMPIRE Control Center
         </h1>
 
         <p class="lux-subtitle">

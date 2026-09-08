@@ -436,4 +436,40 @@ ALTER TABLE drivers
 
 ALTER TABLE house_images
   ADD COLUMN status ENUM('ready','processing','failed') NOT NULL DEFAULT 'ready' AFTER image_path,
-  ADD COLUMN staged_path VARCHAR(500) NULL AFTER status;    
+  ADD COLUMN staged_path VARCHAR(500) NULL AFTER status;
+
+-- LUX EMPIRE
+-- Migration: admin moderation columns + action-reason audit trail
+--
+-- Adds moderation state to users and houses (flagging, verification)
+-- and a generic table for capturing the "reason" text behind
+-- dangerous admin actions (permanent deletes), separate from the
+-- free-text activity_logs table so reasons stay queryable per record.
+--
+-- Does NOT touch classes/House.php or any existing column.
+
+ALTER TABLE users
+    ADD COLUMN is_flagged TINYINT(1) NOT NULL DEFAULT 0 AFTER status,
+    ADD COLUMN flag_reason VARCHAR(255) NULL AFTER is_flagged,
+    ADD COLUMN verified_at TIMESTAMP NULL AFTER flag_reason,
+    ADD COLUMN verified_by INT NULL AFTER verified_at,
+    ADD CONSTRAINT fk_users_verified_by FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL;
+
+ALTER TABLE houses
+    ADD COLUMN is_hidden TINYINT(1) NOT NULL DEFAULT 0 AFTER status,
+    ADD COLUMN is_flagged TINYINT(1) NOT NULL DEFAULT 0 AFTER is_hidden,
+    ADD COLUMN flag_reason VARCHAR(255) NULL AFTER is_flagged,
+    ADD COLUMN verified_at TIMESTAMP NULL AFTER flag_reason,
+    ADD COLUMN verified_by INT NULL AFTER verified_at,
+    ADD CONSTRAINT fk_houses_verified_by FOREIGN KEY (verified_by) REFERENCES users(id) ON DELETE SET NULL;
+
+CREATE TABLE admin_action_reasons (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    admin_id INT NOT NULL,
+    action_type VARCHAR(50) NOT NULL,
+    target_table VARCHAR(50) NOT NULL,
+    target_id INT NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;     

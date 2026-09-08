@@ -51,7 +51,7 @@ $houses = $stmt->fetchAll();
     <div class="lux-page-header">
 
         <h1 class="lux-page-title">
-            🏠 Property Oversight
+            Property Oversight
         </h1>
 
         <p class="lux-page-subtitle">

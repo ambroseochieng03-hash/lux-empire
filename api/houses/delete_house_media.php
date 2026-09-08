@@ -46,6 +46,8 @@ try {
     $currentUser = (int) ($user['id'] ?? 0);
     $role = $user['role'] ?? '';
 
+    DoSProtection::check($currentUser);
+
     $houseId = (int) ($_POST['house_id'] ?? 0);
     $mediaId = (int) ($_POST['media_id'] ?? 0);
 

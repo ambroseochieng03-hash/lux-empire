@@ -1,0 +1,221 @@
+<?php
+
+declare(strict_types=1);
+
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/security/Audit.php';
+
+/**
+ * LUX EMPIRE
+ * Admin moderation actions on users (tenants, landlords, drivers).
+ * Kept entirely separate from classes/User.php — this class owns
+ * admin-only mutations: suspend, activate, flag, verify, permanent
+ * delete, and listing users for the admin dashboard.
+ */
+final class AdminUserService
+{
+    private PDO $conn;
+
+    public function __construct()
+    {
+        $database = new Database();
+        $this->conn = $database->connect();
+    }
+
+    public function listUsers(?string $role = null): array
+    {
+        $sql = "SELECT
+                    id, full_name, email, phone, role, status,
+                    is_flagged, flag_reason, verified_at, verified_by,
+                    created_at
+                FROM users";
+
+        $params = [];
+
+        if ($role !== null) {
+            $sql .= " WHERE role = :role";
+            $params[':role'] = $role;
+        }
+
+        $sql .= " ORDER BY created_at DESC";
+
+        $stmt = $this->conn->prepare($sql);
+        $stmt->execute($params);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getUserById(int $id): ?array
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $id]);
+
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $user ?: null;
+    }
+
+    public function getDriverProfile(int $userId): ?array
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM drivers WHERE user_id = :user_id LIMIT 1");
+        $stmt->execute([':user_id' => $userId]);
+
+        $driver = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $driver ?: null;
+    }
+
+    public function suspendUser(int $userId, int $adminId): bool
+    {
+        $stmt = $this->conn->prepare("
+            UPDATE users SET status = 'suspended'
+            WHERE id = :id AND role <> 'admin'
+        ");
+        $stmt->execute([':id' => $userId]);
+
+        if ($stmt->rowCount() > 0) {
+            Audit::log("Admin #{$adminId} suspended user #{$userId}", $adminId);
+            return true;
+        }
+
+        return false;
+    }
+
+    public function activateUser(int $userId, int $adminId): bool
+    {
+        $stmt = $this->conn->prepare("
+            UPDATE users SET status = 'active'
+            WHERE id = :id AND role <> 'admin'
+        ");
+        $stmt->execute([':id' => $userId]);
+
+        if ($stmt->rowCount() > 0) {
+            Audit::log("Admin #{$adminId} activated user #{$userId}", $adminId);
+            return true;
+        }
+
+        return false;
+    }
+
+    public function flagUser(int $userId, ?string $reason, int $adminId): bool
+    {
+        $stmt = $this->conn->prepare("
+            UPDATE users SET is_flagged = 1, flag_reason = :reason
+            WHERE id = :id AND role <> 'admin'
+        ");
+        $stmt->execute([':reason' => $reason, ':id' => $userId]);
+
+        if ($stmt->rowCount() > 0) {
+            Audit::log("Admin #{$adminId} flagged user #{$userId}" . ($reason ? " ({$reason})" : ''), $adminId);
+            return true;
+        }
+
+        return false;
+    }
+
+    public function unflagUser(int $userId, int $adminId): bool
+    {
+        $stmt = $this->conn->prepare("
+            UPDATE users SET is_flagged = 0, flag_reason = NULL
+            WHERE id = :id AND role <> 'admin'
+        ");
+        $stmt->execute([':id' => $userId]);
+
+        if ($stmt->rowCount() > 0) {
+            Audit::log("Admin #{$adminId} cleared flag on user #{$userId}", $adminId);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Verify a landlord or driver account. Returns false if the
+     * user does not exist or is not a landlord/driver.
+     */
+    public function verifyUser(int $userId, int $adminId): bool
+    {
+        $stmt = $this->conn->prepare("
+            UPDATE users
+            SET verified_at = NOW(), verified_by = :admin_id
+            WHERE id = :id AND role IN ('landlord', 'driver')
+        ");
+        $stmt->execute([':admin_id' => $adminId, ':id' => $userId]);
+
+        if ($stmt->rowCount() > 0) {
+            Audit::log("Admin #{$adminId} verified user #{$userId}", $adminId);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Permanently delete a user. Refuses to delete admin accounts.
+     * Relies on the existing ON DELETE CASCADE foreign keys for
+     * cleanup of dependent rows (houses, bookings, drivers, etc.).
+     */
+    public function deleteUser(int $userId, int $adminId, ?string $reason = null): bool
+    {
+        $check = $this->conn->prepare("SELECT role FROM users WHERE id = :id LIMIT 1");
+        $check->execute([':id' => $userId]);
+        $target = $check->fetch(PDO::FETCH_ASSOC);
+
+        if (!$target) {
+            return false;
+        }
+
+        if ($target['role'] === 'admin') {
+            throw new RuntimeException('Admin accounts cannot be deleted.');
+        }
+
+        $stmt = $this->conn->prepare("DELETE FROM users WHERE id = :id AND role <> 'admin'");
+        $stmt->execute([':id' => $userId]);
+
+        if ($stmt->rowCount() === 0) {
+            return false;
+        }
+
+        if ($reason !== null && $reason !== '') {
+            $this->recordActionReason($adminId, 'delete_user', 'users', $userId, $reason);
+        }
+
+        Audit::log("Admin #{$adminId} permanently deleted user #{$userId}" . ($reason ? " ({$reason})" : ''), $adminId);
+
+        return true;
+    }
+
+    /**
+     * Listings owned by a landlord — for the admin "view this
+     * landlord's listings" drill-down. Reads houses directly; does
+     * not touch classes/House.php.
+     */
+    public function getListingsForLandlord(int $landlordId): array
+    {
+        $stmt = $this->conn->prepare("
+            SELECT id, title, location, price, status, house_type,
+                   is_hidden, is_flagged, flag_reason, verified_at, created_at
+            FROM houses
+            WHERE landlord_id = :landlord_id
+            ORDER BY created_at DESC
+        ");
+        $stmt->execute([':landlord_id' => $landlordId]);
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    private function recordActionReason(int $adminId, string $actionType, string $targetTable, int $targetId, string $reason): void
+    {
+        $stmt = $this->conn->prepare("
+            INSERT INTO admin_action_reasons (admin_id, action_type, target_table, target_id, reason)
+            VALUES (:admin_id, :action_type, :target_table, :target_id, :reason)
+        ");
+        $stmt->execute([
+            ':admin_id' => $adminId,
+            ':action_type' => $actionType,
+            ':target_table' => $targetTable,
+            ':target_id' => $targetId,
+            ':reason' => $reason,
+        ]);
+    }
+}

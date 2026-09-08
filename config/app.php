@@ -41,9 +41,37 @@ define(
     'Luxury Living. Elite Movement. One Empire.'
 );
 
+/*
+ * Primary favicon. SVG is what modern browsers (Chrome, Firefox,
+ * Edge) will actually use — scales cleanly at any size/DPI.
+ *
+ * Safari and older browsers don't support SVG favicons and will
+ * silently show nothing unless a raster fallback is also listed.
+ * See APP_FAVICON_PNG_32 / APP_FAVICON_PNG_16 / APP_APPLE_TOUCH_ICON
+ * below, wired in via the <link> stack in header.php.
+ */
 define(
     'APP_FAVICON',
-    'assets/images/lux-favicon.svg'
+    'assets/images/logo.svg'
+);
+
+define(
+    'APP_FAVICON_PNG_32',
+    'assets/images/favicon-32.png'
+);
+
+define(
+    'APP_FAVICON_PNG_16',
+    'assets/images/favicon-16.png'
+);
+
+/*
+ * Used for "Add to Home Screen" on iOS — Safari ignores both the
+ * SVG and the 16/32px PNGs for this and looks for this specifically.
+ */
+define(
+    'APP_APPLE_TOUCH_ICON',
+    'assets/images/apple-touch-icon.png'
 );
 
 
