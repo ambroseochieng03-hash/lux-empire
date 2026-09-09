@@ -142,6 +142,10 @@ require_once __DIR__ . '/../includes/navbar.php';
 </section>
 
 <script>
+    window.LUX_OFFLINE_MODAL_CONFIG = { baseUrl: "<?php echo BASE_URL; ?>" };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/offline-required-modal.js"></script>
+<script>
     window.LUX_CONSENT_CONFIG = {
         baseUrl: "<?php echo BASE_URL; ?>",
         csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>",
@@ -222,6 +226,11 @@ require_once __DIR__ . '/../includes/navbar.php';
     form.addEventListener('submit', async (event) => {
 
         event.preventDefault();
+
+        if (!window.LuxOfflineRequiredModal.check('You need to be online to register. Please check your connection and try again.')) {
+            return;
+        }
+
         hideTopError();
 
         if (window.LuxFormValidation && !LuxFormValidation.validateForm(fieldsWrapper)) {

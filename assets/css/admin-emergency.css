@@ -1,0 +1,28 @@
+.lux-emergency-stats-bar{ display:flex; gap:15px; flex-wrap:wrap; margin-bottom:30px; }
+.lux-emergency-stat{ padding:15px 20px; border-radius:16px; font-weight:bold; }
+.lux-emergency-stat-active{ background:#ff4d4d22; color:#ff4d4d; }
+.lux-emergency-stat-responding{ background:#ffae4222; color:#ffae42; }
+.lux-emergency-stat-resolved{ background:#00cc6622; color:#00cc66; }
+
+.lux-emergency-border-active{ border-left:5px solid #ff4d4d; }
+.lux-emergency-border-responding{ border-left:5px solid #ffae42; }
+.lux-emergency-border-resolved{ border-left:5px solid #00cc66; }
+.lux-emergency-border-dismissed{ border-left:5px solid #999; }
+
+.lux-emergency-message{ color:var(--gold); font-weight:bold; margin:12px 0; word-break:break-word; }
+
+.lux-emergency-status-active{ background:#ff4d4d22; color:#ff4d4d; }
+.lux-emergency-status-responding{ background:#ffae4222; color:#ffae42; }
+.lux-emergency-status-resolved{ background:#00cc6622; color:#00cc66; }
+.lux-emergency-status-dismissed{ background:#99999922; color:#999; }
+
+.lux-intelligence-box{ margin:15px 0; padding:15px; background:rgba(255,255,255,0.03); border-radius:14px; overflow-wrap:anywhere; }
+.lux-intelligence-heading{ color:gold; font-weight:bold; margin-bottom:10px; }
+.lux-intelligence-subheading{ font-weight:bold; margin-bottom:8px; }
+.lux-intelligence-tenant{ color:#00cc66; }
+.lux-intelligence-driver{ color:#4da6ff; }
+.lux-intelligence-divider{ border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0; }
+
+@media (max-width:768px){
+    .lux-emergency-stats-bar{ flex-direction:column; }
+}

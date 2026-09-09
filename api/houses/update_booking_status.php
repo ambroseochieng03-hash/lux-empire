@@ -12,6 +12,7 @@ require_once '../../config/app.php';
 require_once '../../config/csrf.php';
 require_once '../../config/security/DoSProtection.php';
 require_once '../../config/security/RateLimiter.php';
+require_once '../../config/EmailJobPublisher.php';
 
 header('Content-Type: application/json');
 
@@ -90,6 +91,18 @@ if ($action === 'accept') {
         BASE_URL . '/tenant/my-bookings'
     );
 
+    $tenantLookup = (new Database())->connect()->prepare("SELECT full_name, email FROM users WHERE id = ?");
+    $tenantLookup->execute([$result['tenant_id']]);
+    $tenantRow = $tenantLookup->fetch();
+
+    if ($tenantRow) {
+        EmailJobPublisher::publish('email.booking_accepted', [
+            'email' => $tenantRow['email'],
+            'name' => $tenantRow['full_name'],
+            'house_title' => $houseTitle,
+        ]);
+    }
+
     foreach ($result['rejected'] as $competitor) {
         $notification->create(
             $competitor['tenant_id'],
@@ -98,6 +111,18 @@ if ($action === 'accept') {
             'Your booking request for "' . $houseTitle . '" was not accepted because another tenant\'s request was accepted by the landlord.',
             BASE_URL . '/tenant/my-bookings'
         );
+
+        $competitorLookup = (new Database())->connect()->prepare("SELECT full_name, email FROM users WHERE id = ?");
+        $competitorLookup->execute([$competitor['tenant_id']]);
+        $competitorRow = $competitorLookup->fetch();
+
+        if ($competitorRow) {
+            EmailJobPublisher::publish('email.booking_rejected', [
+                'email' => $competitorRow['email'],
+                'name' => $competitorRow['full_name'],
+                'house_title' => $houseTitle,
+            ]);
+        }
     }
 
     $notification->create(
@@ -144,6 +169,18 @@ if ($action === 'reject') {
         'Your booking request for "' . $houseTitle . '" was declined by the landlord.',
         BASE_URL . '/tenant/my-bookings'
     );
+
+    $tenantLookup = (new Database())->connect()->prepare("SELECT full_name, email FROM users WHERE id = ?");
+    $tenantLookup->execute([$result['tenant_id']]);
+    $tenantRow = $tenantLookup->fetch();
+
+    if ($tenantRow) {
+        EmailJobPublisher::publish('email.booking_rejected', [
+            'email' => $tenantRow['email'],
+            'name' => $tenantRow['full_name'],
+            'house_title' => $houseTitle,
+        ]);
+    }
 
     echo json_encode([
         'success' => true,

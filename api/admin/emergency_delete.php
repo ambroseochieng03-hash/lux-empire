@@ -10,22 +10,21 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
-$status = $_POST['status'] ?? '';
+$reason = trim((string) ($_POST['reason'] ?? ''));
 
-if (!$id || $status === '') {
-    adminJsonError('Invalid request.');
+if (!$id) {
+    adminJsonError('Invalid alert id.');
+}
+
+if ($reason === '') {
+    adminJsonError('A reason is required to delete an emergency alert.');
 }
 
 $service = new AdminEmergencyService();
-
-try {
-    $ok = $service->updateStatus($id, $status, $currentAdminId);
-} catch (InvalidArgumentException $e) {
-    adminJsonError($e->getMessage());
-}
+$ok = $service->deleteAlert($id, $currentAdminId, $reason);
 
 if (!$ok) {
     adminJsonError('Alert not found.', 404);
 }
 
-adminJsonResponse(['status' => strtolower(trim($status))]);
+adminJsonResponse(['status' => 'deleted']);

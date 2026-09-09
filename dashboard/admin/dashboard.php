@@ -11,6 +11,8 @@ $pdo = $db->connect();
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
+require_once '../../config/csrf.php';
+$csrfToken = Csrf::token();
 
 // =====================================
 // COUNTS
@@ -64,7 +66,7 @@ $totalLandlords = $pdo->query("
 // =====================================
 
 $recentUsersStmt = $pdo->query("
-    SELECT full_name, email, role, created_at
+    SELECT id, full_name, email, role, status, created_at
     FROM users
     ORDER BY created_at DESC
     LIMIT 5
@@ -100,6 +102,14 @@ $recentTrips = $recentTripsStmt->fetchAll();
 ?>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/auth.css">
+
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/admin-cards.css">
+<script>
+    window.LUX_ADMIN = {
+        csrfToken: "<?php echo htmlspecialchars($csrfToken, ENT_QUOTES); ?>",
+        baseUrl: "<?php echo BASE_URL; ?>"
+    };
+</script>
 
 <div class="lux-dashboard-layout">
 
@@ -320,6 +330,13 @@ $recentTrips = $recentTripsStmt->fetchAll();
                         <?= ucfirst($user['role']) ?>
                     </div>
 
+                    <?php if ($user['role'] !== 'admin'): ?>
+                    <button class="lux-btn lux-btn-outline-danger" style="margin-top:10px;"
+                            data-dashboard-action="delete-user" data-user-id="<?= (int) $user['id'] ?>">
+                        Delete
+                    </button>
+                    <?php endif; ?>
+
                 </div>
 
             <?php endforeach; ?>
@@ -378,5 +395,9 @@ $recentTrips = $recentTripsStmt->fetchAll();
 </main>
 
 </div>
+
+<?php require __DIR__ . '/../../includes/admin/confirm_modal.php'; ?>
+<script src="<?php echo BASE_URL; ?>/assets/js/admin/admin-core.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/admin/dashboard.js"></script>
 
 <?php require_once '../../includes/footer.php'; ?>

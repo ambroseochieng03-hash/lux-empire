@@ -24,6 +24,14 @@ require_once __DIR__ . '/../config/app.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Open Graph / Social Media Link Previews (Fixes WhatsApp Preview) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="<?php echo BASE_URL; ?>">
+    <meta property="og:title" content="<?php echo APP_NAME; ?> | <?php echo APP_TAGLINE; ?>">
+    <meta property="og:description" content="Luxury Living. Elite Movement. One Empire. y">
+    <!-- Point Open Graph image to logo.svg or your preview asset -->
+    <meta property="og:image" content="<?php echo BASE_URL . '/' . APP_FAVICON; ?>">
+    
     
     <title><?php echo APP_NAME; ?> | <?php echo APP_TAGLINE; ?></title>
 
@@ -49,6 +57,9 @@ require_once __DIR__ . '/../config/app.php';
     <link rel="icon" type="image/png" sizes="16x16" href="<?php echo BASE_URL . '/' . APP_FAVICON_PNG_16; ?>">
     <!-- iOS "Add to Home Screen" icon. -->
     <link rel="apple-touch-icon" sizes="180x180" href="<?php echo BASE_URL . '/' . APP_APPLE_TOUCH_ICON; ?>">
+
+    <!-- PWA manifest — enables offline support / "Add to Home Screen". -->
+    <link rel="manifest" href="<?php echo BASE_URL; ?>/manifest.json">
 
     <!-- Premium Meta -->
     <meta name="theme-color" content="#0A0A0A">

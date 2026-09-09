@@ -290,6 +290,10 @@ Works on any page that includes:
                 return;
             }
 
+            if (window.LuxOfflineDB && Array.isArray(data.houses)) {
+                window.LuxOfflineDB.upsertHouses(data.houses);
+            }
+
             if (reset) {
                 grid.innerHTML = '';
                 state.mode = data.exact_match ? 'exact' : 'relaxed';
@@ -317,7 +321,36 @@ Works on any page that includes:
             }
 
         } catch (e) {
-            grid.innerHTML = '<div class="hf-results-empty">Network error. Please try again.</div>';
+
+            if (window.LuxOfflineDB) {
+
+                const cachedHouses = await window.LuxOfflineDB.searchCachedHouses(state.filters);
+
+                if (reset) {
+                    grid.innerHTML = '';
+                }
+
+                removeLoadMoreButton();
+
+                if (cachedHouses.length === 0) {
+                    grid.innerHTML = '<div class="hf-results-empty">' +
+                        'You\'re offline. No previously viewed properties match this search.' +
+                        '</div>';
+                    return;
+                }
+
+                const banner = document.createElement('div');
+                banner.className = 'hf-broad-banner';
+                banner.textContent = 'You\'re offline — showing previously viewed properties only.';
+                grid.appendChild(banner);
+
+                cachedHouses.forEach((house) => grid.appendChild(buildCard(house)));
+
+                // No "Load More" offline — this is everything cached, not a page of a larger set.
+
+            } else {
+                grid.innerHTML = '<div class="hf-results-empty">Network error. Please try again.</div>';
+            }
         }
     }
 

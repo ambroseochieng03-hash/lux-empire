@@ -75,21 +75,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <span class="sidebar-badge" id="sidebarNotifBadge" style="display:none;"></span>
             </a>
 
-            <form method="POST" action="<?php echo BASE_URL; ?>/api/emergency/trigger_alert.php">
-
-                <input type="hidden" name="message" value="Tenant emergency alert">
-
-                <button style="
-                    background:red;
-                    color:white;
-                    padding:14px 20px;
-                    border-radius:14px;
-                    font-weight:bold;
-                ">
-                    EMERGENCY
-                </button>
-
-            </form>
+            <button type="button" class="lux-emergency-trigger-btn" data-open-emergency-modal>
+                EMERGENCY
+            </button>
 
         <?php elseif ($userRole === 'landlord'): ?>
 
@@ -124,6 +112,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             </a>
 
             <a href="<?php echo BASE_URL; ?>/driver/active-trip"><i class="fa-solid fa-truck-fast"></i> Active Trip</a>
+
+            <button type="button" class="lux-emergency-trigger-btn" data-open-emergency-modal>
+                EMERGENCY
+            </button>
+
             <a href="<?php echo BASE_URL; ?>/driver/location-tracker"><i class="fa-solid fa-location-dot"></i> Live Tracker</a>
             
 
@@ -135,12 +128,36 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             <a href="<?php echo BASE_URL; ?>/admin/truck-requests"><i class="fa-solid fa-truck-fast"></i> Logistics</a>
             <a href="<?php echo BASE_URL; ?>/admin/reports"><i class="fa-solid fa-chart-column"></i> Reports</a>
             <a href="<?php echo BASE_URL; ?>/admin/emergency"><i class="fa-solid fa-triangle-exclamation"></i> Emergencies</a>
+            <a href="<?php echo BASE_URL; ?>/admin/bookings"><i class="fa-solid fa-calendar-check"></i> Bookings</a>
+            <a href="<?php echo BASE_URL; ?>/admin/messages"><i class="fa-solid fa-envelope"></i> Broadcast</a>
 
         <?php endif; ?>
 
         <a href="<?php echo BASE_URL; ?>/logout" class="logout-link">
             <i class="fa-solid fa-right-from-bracket"></i> Exit Empire
         </a>
+
+        <?php if (in_array($userRole, ['tenant', 'driver'], true)): ?>
+
+            <?php
+                require_once __DIR__ . '/../config/csrf.php';
+                $emergencyCsrf = Csrf::token();
+            ?>
+
+            <script>
+                window.LUX_EMERGENCY = {
+                    csrfToken: "<?php echo htmlspecialchars($emergencyCsrf, ENT_QUOTES); ?>",
+                    baseUrl: "<?php echo BASE_URL; ?>"
+                };
+            </script>
+
+            <?php require __DIR__ . '/emergency_alert_modal.php'; ?>
+
+            <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/admin-cards.css">
+            <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/emergency-alert.css">
+            <script src="<?php echo BASE_URL; ?>/assets/js/emergency-alert.js"></script>
+
+        <?php endif; ?>
 
     </nav>
 

@@ -47,7 +47,7 @@ require_once '../includes/navbar.php';
         <?php endif; ?>
 
         <!-- Form -->
-        <form action="<?php echo BASE_URL; ?>/forgot-handler" method="POST">
+        <form id="forgotPasswordForm" action="<?php echo BASE_URL; ?>/forgot-handler" method="POST">
 
             <div style="margin-bottom:25px;">
                 <label>Email Address</label>
@@ -83,5 +83,28 @@ require_once '../includes/navbar.php';
     </div>
 
 </section>
+
+<script>
+    window.LUX_OFFLINE_MODAL_CONFIG = { baseUrl: "<?php echo BASE_URL; ?>" };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/offline-required-modal.js"></script>
+<script>
+(function () {
+    const form = document.getElementById('forgotPasswordForm');
+    if (!form) return;
+
+    form.addEventListener('submit', function (e) {
+        if (!navigator.onLine) {
+            e.preventDefault();
+            window.LuxOfflineRequiredModal.show(
+                'You need to be online to request a password reset link. Please check your connection and try again.'
+            );
+        }
+        // If online, let the form submit normally to forgot-handler —
+        // that endpoint redirects rather than returning JSON, and
+        // there's nothing to gain from intercepting a successful case.
+    });
+})();
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

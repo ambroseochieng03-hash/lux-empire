@@ -1,0 +1,37 @@
+{
+    "name": "LUX EMPIRE",
+    "short_name": "LUX EMPIRE",
+    "description": "Luxury Living. Elite Movement. One Empire.",
+    "start_url": "/luxempire/",
+    "scope": "/luxempire/",
+    "display": "standalone",
+    "background_color": "#0A0A0A",
+    "theme_color": "#0A0A0A",
+    "icons": [
+        {
+            "src": "/luxempire/assets/images/favicon-16.png",
+            "sizes": "16x16",
+            "type": "image/png"
+        },
+        {
+            "src": "/luxempire/assets/images/favicon-32.png",
+            "sizes": "32x32",
+            "type": "image/png"
+        },
+        {
+            "src": "/luxempire/assets/images/favicon-48.png",
+            "sizes": "48x48",
+            "type": "image/png"
+        },
+        {
+            "src": "/luxempire/assets/images/apple-touch-icon.png",
+            "sizes": "180x180",
+            "type": "image/png"
+        },
+        {
+            "src": "/luxempire/assets/images/logo.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}

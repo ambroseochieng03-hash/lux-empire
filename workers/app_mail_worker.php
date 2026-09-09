@@ -11,6 +11,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../classes/Mailer.php';
+require_once __DIR__ . '/../classes/EmailTemplate.php';
 
 use Basis\Nats\Client;
 use Basis\Nats\Configuration;
@@ -33,6 +34,7 @@ $consumerNames = [
     'email.truck_request_accepted'  => 'app_email_truck_request_accepted',
     'email.admin_broadcast'         => 'app_email_admin_broadcast',
     'email.admin_direct_message'    => 'app_email_admin_direct_message',
+    'email.emergency_acknowledged' => 'app_email_emergency_acknowledged'
 ];
 
 $queues = [];
@@ -60,36 +62,74 @@ function buildEmail(string $subject, array $job): ?array
             $role = ucfirst($job['role'] ?? 'account');
             return [
                 'subject' => 'Your LUX EMPIRE ' . $role . ' account has been verified',
-                'body' => 'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                'body' => EmailTemplate::render(
+                    'Account Verified',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
                     'Your ' . $role . ' account has been verified by LUX EMPIRE administration. You now have full access to your dashboard.',
+                    'Go to your dashboard',
+                    BASE_URL . '/' . strtolower($job['role'] ?? '')
+                ),
             ];
 
         case 'email.booking_accepted':
             return [
                 'subject' => 'Your booking request has been accepted',
-                'body' => 'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                'body' => EmailTemplate::render(
+                    'Booking Accepted',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
                     'Great news — your booking request for "' . htmlspecialchars($job['house_title'] ?? 'the property') . '" has been accepted.',
+                    'View my bookings',
+                    BASE_URL . '/tenant/my-bookings'
+                ),
             ];
 
         case 'email.booking_rejected':
             return [
                 'subject' => 'Update on your booking request',
-                'body' => 'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                'body' => EmailTemplate::render(
+                    'Booking Update',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
                     'Your booking request for "' . htmlspecialchars($job['house_title'] ?? 'the property') . '" was not accepted this time.',
+                    'Browse more homes',
+                    BASE_URL . '/browse'
+                ),
             ];
 
         case 'email.truck_request_accepted':
             return [
                 'subject' => 'A driver has accepted your move request',
-                'body' => 'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                'body' => EmailTemplate::render(
+                    'Driver Assigned',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
                     htmlspecialchars($job['driver_name'] ?? 'A driver') . ' has accepted your truck request and will be in touch.',
+                    'Track your driver',
+                    BASE_URL . '/tenant/track-driver'
+                ),
+            ];
+
+        case 'email.emergency_acknowledged':
+            return [
+                'subject' => 'We\'ve received your emergency alert',
+                'body' => EmailTemplate::render(
+                    'Your Alert Has Been Received',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                    'We\'ve received your emergency alert and it is being reviewed right now by the LUX EMPIRE safety team.' .
+                    (!empty($job['message']) ? '<br><br><em>Your message: "' . htmlspecialchars($job['message']) . '"</em>' : '') .
+                    '<br><br>If your situation is life-threatening, please also contact local emergency services immediately. ' .
+                    'We will follow up as soon as possible.',
+                    'View my notifications',
+                    BASE_URL . '/' . strtolower($job['role'] ?? 'tenant') . '/notifications'
+                ),
             ];
 
         case 'email.admin_broadcast':
         case 'email.admin_direct_message':
             return [
                 'subject' => $job['subject'] ?? 'A message from LUX EMPIRE',
-                'body' => nl2br(htmlspecialchars($job['body'] ?? '')),
+                'body' => EmailTemplate::render(
+                    $job['subject'] ?? 'A message from LUX EMPIRE',
+                    nl2br(htmlspecialchars($job['body'] ?? ''))
+                ),
             ];
 
         default:

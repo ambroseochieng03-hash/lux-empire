@@ -131,6 +131,12 @@ $csrfToken = Csrf::token();
                         </button>
                     <?php endif; ?>
 
+                    <?php if (in_array($user['role'], ['landlord', 'driver'], true)): ?>
+                        <button class="lux-btn lux-btn-ghost" data-action="reveal-identity" data-user-id="<?php echo (int) $user['id']; ?>">
+                            Reveal Identity
+                        </button>
+                    <?php endif; ?>
+
                     <?php if ($user['role'] === 'landlord'): ?>
                         <button class="lux-btn lux-btn-ghost" data-action="view-listings"
                                 data-landlord-id="<?php echo (int) $user['id']; ?>"
@@ -142,6 +148,14 @@ $csrfToken = Csrf::token();
                     <button class="lux-btn lux-btn-outline-danger" data-action="delete" data-user-id="<?php echo (int) $user['id']; ?>">
                         Delete
                     </button>
+
+                    <button class="lux-btn lux-btn-info" data-action="message" data-user-id="<?php echo (int) $user['id']; ?>">
+                        Message
+                    </button>
+
+                    <?php if (in_array($user['role'], ['landlord', 'driver'], true)): ?>
+                        <div class="lux-identity-panel" id="luxIdentityPanel-<?php echo (int) $user['id']; ?>" hidden></div>
+                    <?php endif; ?>
 
                 </div>
 
@@ -177,6 +191,20 @@ $csrfToken = Csrf::token();
         <div class="lux-landlord-listings-grid" id="luxLandlordListingsGrid"></div>
         <div class="lux-modal-actions">
             <button class="lux-btn lux-btn-ghost" data-landlord-modal-close>Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="lux-modal-overlay" id="luxDirectMessageModal" aria-hidden="true">
+    <div class="lux-modal-box">
+        <h3 class="lux-confirm-title">Send a message</h3>
+        <input type="text" id="luxDmSubject" placeholder="Subject" maxlength="150"
+               style="width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:white; padding:12px 14px; border-radius:12px; margin-bottom:14px;">
+        <textarea id="luxDmBody" placeholder="Message" maxlength="5000"
+                  style="width:100%; min-height:140px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:white; padding:12px 14px; border-radius:12px; resize:vertical; margin-bottom:18px;"></textarea>
+        <div class="lux-modal-actions">
+            <button class="lux-btn lux-btn-ghost" data-dm-close>Cancel</button>
+            <button class="lux-btn lux-btn-success" id="luxDmSend">Send</button>
         </div>
     </div>
 </div>

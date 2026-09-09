@@ -398,6 +398,8 @@ require_once '../../includes/sidebar.php';
     window.LUX_CARD_VARIANT = 'tenant';
 </script>
 
+<script src="<?php echo BASE_URL; ?>/assets/js/offline-db.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/offline-drafts.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/bookings.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/house-filters.js"></script>

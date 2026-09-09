@@ -1,0 +1,20 @@
+.lux-emergency-trigger-btn{
+    background:#ff4d4d;
+    color:white;
+    border:none;
+    padding:14px 20px;
+    border-radius:14px;
+    font-weight:bold;
+    cursor:pointer;
+    width:100%;
+    font-size:0.95rem;
+    transition:0.25s;
+}
+
+.lux-emergency-trigger-btn:hover{
+    background:#e63e3e;
+}
+
+#luxEmergencyMessage{
+    min-height:100px;
+}

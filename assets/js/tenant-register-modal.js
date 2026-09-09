@@ -246,6 +246,10 @@ googleClientId } to be set by the page before this script runs.
         // ---- STEP 1: submit details ----
         document.getElementById('trSubmitDetails').addEventListener('click', async () => {
 
+            if (window.LuxOfflineRequiredModal && !window.LuxOfflineRequiredModal.check('You need to be online to register. Please check your connection and try again.')) {
+                return;
+            }
+
             hideError('trDetailsError');
 
             if (window.LuxFormValidation && !LuxFormValidation.validateForm(steps.details)) {
@@ -283,6 +287,10 @@ googleClientId } to be set by the page before this script runs.
         // ---- STEP 2a: verify OTP ----
         document.getElementById('trSubmitOtp').addEventListener('click', async () => {
 
+            if (window.LuxOfflineRequiredModal && !window.LuxOfflineRequiredModal.check('You need to be online to verify your code. Please check your connection and try again.')) {
+                return;
+            }
+
             hideError('trOtpError');
 
             const code = document.getElementById('trOtpCode').value.trim();
@@ -307,6 +315,10 @@ googleClientId } to be set by the page before this script runs.
         // ---- Resend OTP ----
         document.getElementById('trResendOtp').addEventListener('click', async () => {
 
+            if (window.LuxOfflineRequiredModal && !window.LuxOfflineRequiredModal.check('You need to be online to resend a code. Please check your connection and try again.')) {
+                return;
+            }
+
             hideError('trOtpError');
 
             const data = await postForm(`${cfg.baseUrl}/api/auth/resend_tenant_otp.php`, {
@@ -330,6 +342,10 @@ googleClientId } to be set by the page before this script runs.
 
         // ---- STEP 2b: Google — set password ----
         document.getElementById('trSubmitGooglePassword').addEventListener('click', async () => {
+
+            if (window.LuxOfflineRequiredModal && !window.LuxOfflineRequiredModal.check('You need to be online to continue. Please check your connection and try again.')) {
+                return;
+            }
 
             hideError('trGooglePasswordError');
 

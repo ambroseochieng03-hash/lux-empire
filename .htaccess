@@ -111,6 +111,8 @@ RewriteRule ^admin/houses/?$ dashboard/admin/houses.php [END]
 RewriteRule ^admin/truck-requests/?$ dashboard/admin/truck_requests.php [END]
 RewriteRule ^admin/reports/?$ dashboard/admin/reports.php [END]
 RewriteRule ^admin/emergency/?$ dashboard/admin/emergency.php [END]
+RewriteRule ^admin/bookings/?$ dashboard/admin/bookings.php [END]
+RewriteRule ^admin/messages/?$ dashboard/admin/messages.php [END]
 
 
 # ================================================================

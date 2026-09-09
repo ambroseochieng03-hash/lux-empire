@@ -53,3 +53,28 @@
     .lux-card-grid{ grid-template-columns:1fr; }
     .lux-modal-box{ padding:22px; }
 }
+
+.lux-identity-panel{
+    margin-top:12px;
+    padding:14px 16px;
+    background:rgba(212,175,55,0.08);
+    border:1px solid rgba(212,175,55,0.3);
+    border-radius:14px;
+}
+
+.lux-identity-panel-label{
+    color:var(--gold);
+    font-size:0.78rem;
+    font-weight:bold;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    margin-bottom:6px;
+}
+
+.lux-identity-panel-value{
+    color:white;
+    font-size:1rem;
+    font-family:monospace;
+    letter-spacing:1px;
+    word-break:break-all;
+}

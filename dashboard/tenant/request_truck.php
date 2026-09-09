@@ -146,6 +146,7 @@ require_once '../../includes/sidebar.php';
                 </h2>
 
                 <form
+                    id="requestTruckForm"
                     action="<?php echo BASE_URL; ?>/api/trucks/request_truck.php"
                     method="POST"
                 >
@@ -314,6 +315,86 @@ require_once '../../includes/sidebar.php';
 </div>
 
 <script src="<?php echo BASE_URL; ?>/assets/js/request-truck-location.js"></script>
+
+<script src="<?php echo BASE_URL; ?>/assets/js/offline-db.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/offline-drafts.js"></script>
+<script>
+(function () {
+    const form = document.getElementById('requestTruckForm');
+    if (!form) return;
+
+    form.addEventListener('submit', async function (e) {
+
+        e.preventDefault();
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        const originalHtml = submitButton.innerHTML;
+        submitButton.disabled = true;
+        submitButton.textContent = 'Submitting...';
+
+        const payload = {
+            pickup_location: document.getElementById('pickupLocationInput').value,
+            destination: document.getElementById('destinationInput').value,
+            price: form.querySelector('input[name="price"]').value,
+            pickup_lat: document.getElementById('pickupLatInput').value,
+            pickup_lng: document.getElementById('pickupLngInput').value,
+            destination_lat: document.getElementById('destinationLatInput').value,
+            destination_lng: document.getElementById('destinationLngInput').value
+        };
+
+        try {
+
+            const body = new URLSearchParams(payload);
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body,
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin'
+            });
+
+            // request_truck.php currently redirects rather than
+            // returning JSON — treat any successful HTTP response as
+            // success and just follow through to my_bookings.php,
+            // matching today's post-submit behavior.
+            if (response.ok) {
+                window.location.href = 'my_bookings.php?success=' + encodeURIComponent('Truck request submitted successfully!');
+                return;
+            }
+
+            throw new Error('Request failed.');
+
+        } catch (error) {
+
+            // No network (or a genuine failure indistinguishable from
+            // one at this layer) — save as a draft instead of losing
+            // what the person typed.
+            if (window.LuxOfflineDB) {
+
+                await window.LuxOfflineDB.saveDraft({
+                    type: 'truck_request',
+                    endpoint: form.action,
+                    payload: payload
+                });
+
+                if (window.LuxOfflineSync) {
+                    window.LuxOfflineSync.refreshBanner();
+                }
+
+                alert('You appear to be offline. Your truck request has been saved and will be submitted automatically once you\'re back online.');
+
+                form.reset();
+
+            } else {
+                alert('Unable to submit right now. Please check your connection and try again.');
+            }
+        }
+
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalHtml;
+    });
+})();
+</script>
+
 <script
     async
     defer

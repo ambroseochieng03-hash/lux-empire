@@ -353,6 +353,8 @@ require_once __DIR__ . '/../includes/navbar.php';
 </script>
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/offline-db.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/offline-drafts.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/tenant-register-modal.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/guest-browse.js"></script>

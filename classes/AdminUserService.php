@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/security/Audit.php';
+require_once __DIR__ . '/Crypto.php';
 
 /**
  * LUX EMPIRE
@@ -217,5 +218,52 @@ final class AdminUserService
             ':target_id' => $targetId,
             ':reason' => $reason,
         ]);
+    }
+
+    /**
+     * Decrypt and return a landlord/driver's sensitive identity
+     * value for admin review. Every call is audited — viewing this
+     * data is itself a sensitive action worth a permanent record,
+     * separate from verifying the account.
+     *
+     * Returns null if the user isn't found or has no encrypted
+     * identity on file for their role.
+     */
+    public function revealIdentity(int $userId, int $adminId): ?array
+    {
+        $user = $this->getUserById($userId);
+
+        if (!$user) {
+            return null;
+        }
+
+        if ($user['role'] === 'landlord') {
+            if (empty($user['national_id_encrypted'])) {
+                return null;
+            }
+
+            $value = Crypto::decrypt($user['national_id_encrypted']);
+
+            Audit::log("Admin #{$adminId} viewed decrypted national ID for landlord #{$userId}", $adminId);
+
+            return ['type' => 'National ID', 'value' => $value];
+        }
+
+        if ($user['role'] === 'driver') {
+            $driver = $this->getDriverProfile($userId);
+
+            if (!$driver || empty($driver['license_number'])) {
+                return null;
+            }
+
+            $value = Crypto::decrypt($driver['license_number']);
+            $label = $driver['identity_type'] === 'license' ? 'Driving License' : 'National ID';
+
+            Audit::log("Admin #{$adminId} viewed decrypted {$label} for driver #{$userId}", $adminId);
+
+            return ['type' => $label, 'value' => $value];
+        }
+
+        return null;
     }
 }

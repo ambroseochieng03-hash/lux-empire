@@ -5,6 +5,7 @@ requireRoleAccess('driver');
 
 require_once '../../config/db.php';
 require_once '../../classes/Notification.php';
+require_once '../../classes/EmailJobPublisher.php';
 
 $db = new Database();
 $pdo = $db->connect();
@@ -66,6 +67,18 @@ if ($success) {
         $driver_name . ' has accepted your move request and is heading to your pickup location.',
         BASE_URL . '/tenant/track-driver'
     );
+
+    $tenantLookup = $pdo->prepare("SELECT full_name, email FROM users WHERE id = ?");
+    $tenantLookup->execute([$request['tenant_id']]);
+    $tenantRow = $tenantLookup->fetch();
+
+    if ($tenantRow) {
+        EmailJobPublisher::publish('email.truck_request_accepted', [
+            'email' => $tenantRow['email'],
+            'name' => $tenantRow['full_name'],
+            'driver_name' => $driver_name,
+        ]);
+    }
 
     $_SESSION['success'] = "Request accepted successfully.";
     header("Location: " . BASE_URL . "/dashboard/driver/active_trip.php");

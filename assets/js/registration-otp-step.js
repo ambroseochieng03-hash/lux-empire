@@ -102,6 +102,10 @@ function initRegistrationOtpStep(config) {
 
     config.verifyBtnEl.addEventListener('click', async () => {
 
+        if (window.LuxOfflineRequiredModal && !window.LuxOfflineRequiredModal.check('You need to be online to verify your code. Please check your connection and try again.')) {
+            return;
+        }
+
         hideError();
 
         const code = config.otpInputEl.value.trim();
@@ -123,6 +127,10 @@ function initRegistrationOtpStep(config) {
     });
 
     config.resendBtnEl.addEventListener('click', async () => {
+
+        if (window.LuxOfflineRequiredModal && !window.LuxOfflineRequiredModal.check('You need to be online to resend a code. Please check your connection and try again.')) {
+            return;
+        }
 
         hideError();
 

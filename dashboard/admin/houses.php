@@ -1,254 +1,152 @@
 <?php
+
+declare(strict_types=1);
+
 require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
 requireRoleAccess('admin');
 
-require_once '../../config/db.php';
-
-$db = new Database();
-$pdo = $db->connect();
+require_once '../../config/csrf.php';
+require_once '../../classes/AdminListingService.php';
 
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
 
-// =====================================
-// FETCH HOUSES
-// =====================================
+$listingService = new AdminListingService();
+$listings = $listingService->listListings();
 
-$stmt = $pdo->query("
-    SELECT
-        houses.id,
-        houses.title,
-        houses.location,
-        houses.price,
-        houses.status,
-        houses.house_type,
-        houses.created_at,
+foreach ($listings as &$listing) {
+    $listing['media'] = $listingService->getListingMedia((int) $listing['id']);
+}
+unset($listing);
 
-        users.full_name AS landlord_name,
-        users.email AS landlord_email
-
-    FROM houses
-
-    JOIN users
-    ON houses.landlord_id = users.id
-
-    ORDER BY houses.created_at DESC
-");
-
-$houses = $stmt->fetchAll();
-
+$csrfToken = Csrf::token();
 ?>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/admin.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/admin-cards.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
+
+<script>
+    window.LUX_ADMIN = {
+        csrfToken: "<?php echo htmlspecialchars($csrfToken, ENT_QUOTES); ?>",
+        baseUrl: "<?php echo BASE_URL; ?>"
+    };
+</script>
 
 <div class="lux-dashboard-layout">
 
 <main class="lux-dashboard-main">
 
-    <!-- HEADER -->
     <div class="lux-page-header">
-
-        <h1 class="lux-page-title">
-            Property Oversight
-        </h1>
-
+        <h1 class="lux-page-title">Property Oversight</h1>
         <p class="lux-page-subtitle">
-            Monitor listed properties across the
-            LUX EMPIRE ecosystem, supervise landlord
-            activity, review pricing, and oversee
-            housing operations platform-wide.
+            Monitor listed properties, remove fraudulent listings,
+            verify legitimate ones, and supervise housing operations
+            platform-wide.
         </p>
-
     </div>
 
-    <!-- TABLE -->
-    <div class="lux-card lux-table-wrapper">
+    <div class="lux-card-grid" id="luxListingGrid">
 
-        <table class="lux-table">
+        <?php foreach ($listings as $listing): ?>
+            <?php
+                $cardClasses = 'lux-entity-card';
+                if (!empty($listing['is_flagged'])) { $cardClasses .= ' is-flagged'; }
+                if ((int) $listing['is_hidden'] === 1) { $cardClasses .= ' is-hidden'; }
 
-            <thead>
+                $mediaJson = json_encode($listing['media']);
+            ?>
 
-                <tr style="
-                    border-bottom:1px solid rgba(255,255,255,0.1);
-                ">
+            <div class="<?php echo $cardClasses; ?>" data-listing-card="<?php echo (int) $listing['id']; ?>">
 
-                    <th style="padding:18px; color:gold; text-align:left;">
-                        ID
-                    </th>
+                <div class="lux-listing-card-media" data-media="<?php echo htmlspecialchars($mediaJson, ENT_QUOTES); ?>" data-caption="<?php echo htmlspecialchars($listing['title'], ENT_QUOTES); ?>"></div>
 
-                    <th style="padding:18px; color:gold; text-align:left;">
-                        Property
-                    </th>
+                <div class="lux-entity-card-header">
+                    <div>
+                        <div class="lux-entity-name"><?php echo htmlspecialchars($listing['title']); ?></div>
+                        <div class="lux-entity-meta">
+                            <?php echo htmlspecialchars($listing['location']); ?><br>
+                            KES <?php echo number_format((float) $listing['price']); ?>
+                        </div>
+                    </div>
+                </div>
 
-                    <th style="padding:18px; color:gold; text-align:left;">
-                        Type
-                    </th>
+                <div class="lux-entity-meta">
+                    Landlord: <?php echo htmlspecialchars($listing['landlord_name']); ?><br>
+                    <?php echo htmlspecialchars($listing['landlord_email']); ?>
+                </div>
 
-                    <th style="padding:18px; color:gold; text-align:left;">
-                        Location
-                    </th>
+                <div>
+                    <?php if (!empty($listing['is_flagged'])): ?>
+                        <span class="lux-badge lux-badge-flagged">Flagged</span>
+                    <?php endif; ?>
+                    <?php if ((int) $listing['is_hidden'] === 1): ?>
+                        <span class="lux-badge lux-badge-suspended">Hidden</span>
+                    <?php endif; ?>
+                    <?php if (!empty($listing['verified_at'])): ?>
+                        <span class="lux-badge lux-badge-verified">Verified</span>
+                    <?php endif; ?>
+                </div>
 
-                    <th style="padding:18px; color:gold; text-align:left;">
-                        Price
-                    </th>
+                <div class="lux-entity-actions">
+                    <button class="lux-btn lux-btn-ghost" data-action="toggle-hidden" data-listing-id="<?php echo (int) $listing['id']; ?>">
+                        <?php echo (int) $listing['is_hidden'] === 1 ? 'Restore' : 'Hide'; ?>
+                    </button>
 
-                    <th style="padding:18px; color:gold; text-align:left;">
-                        Landlord
-                    </th>
+                    <?php if (empty($listing['verified_at'])): ?>
+                        <button class="lux-btn lux-btn-info" data-action="verify" data-listing-id="<?php echo (int) $listing['id']; ?>">Verify</button>
+                    <?php endif; ?>
 
-                    <th style="padding:18px; color:gold; text-align:left;">
-                        Status
-                    </th>
+                    <?php if (!empty($listing['is_flagged'])): ?>
+                        <button class="lux-btn lux-btn-ghost" data-action="unflag" data-listing-id="<?php echo (int) $listing['id']; ?>">Unmark Suspicious</button>
+                    <?php else: ?>
+                        <button class="lux-btn lux-btn-warning" data-action="flag" data-listing-id="<?php echo (int) $listing['id']; ?>">Mark Suspicious</button>
+                    <?php endif; ?>
 
-                    <th style="padding:18px; color:gold; text-align:left;">
-                        Added
-                    </th>
+                    <button class="lux-btn lux-btn-outline-danger" data-action="delete" data-listing-id="<?php echo (int) $listing['id']; ?>">Delete</button>
+                </div>
 
-                </tr>
+            </div>
 
-            </thead>
-
-            <tbody>
-
-                <?php foreach($houses as $house): ?>
-
-                    <tr style="
-                        border-bottom:1px solid rgba(255,255,255,0.05);
-                        transition:0.3s;
-                    ">
-
-                        <!-- ID -->
-                        <td data-label="ID" style="
-                            padding:20px;
-                            color:white;
-                        ">
-                            #<?= $house['id'] ?>
-                        </td>
-
-                        <!-- TITLE -->
-                        <td data-label="Property" style="
-                            padding:20px;
-                        ">
-
-                            <div style="
-                                color:white;
-                                font-weight:bold;
-                                margin-bottom:6px;
-                            ">
-                                <?= htmlspecialchars($house['title']) ?>
-                            </div>
-
-                            <div style="
-                                color:var(--gray);
-                                font-size:0.9rem;
-                            ">
-                                Premium Listing
-                            </div>
-
-                        </td>
-
-                        <!-- TYPE -->
-                        <td data-label="Type" style="
-                            padding:20px;
-                            color:gold;
-                        ">
-                            <?= htmlspecialchars($house['house_type'] ?? 'N/A') ?>
-                        </td>
-
-                        <!-- LOCATION -->
-                        <td data-label="Location" style="
-                            padding:20px;
-                            color:var(--gray);
-                        ">
-                            <?= htmlspecialchars($house['location']) ?>
-                        </td>
-
-                        <!-- PRICE -->
-                        <td data-label="Price" style="
-                            padding:20px;
-                            color:white;
-                            font-weight:bold;
-                        ">
-                            KES <?= number_format($house['price']) ?>
-                        </td>
-
-                        <!-- LANDLORD -->
-                        <td data-label="Landlord" style="padding:20px;">
-
-                            <div style="
-                                color:white;
-                                font-weight:bold;
-                            ">
-                                <?= htmlspecialchars($house['landlord_name']) ?>
-                            </div>
-
-                            <div style="
-                                color:var(--gray);
-                                margin-top:5px;
-                                font-size:0.9rem;
-                            ">
-                                <?= htmlspecialchars($house['landlord_email']) ?>
-                            </div>
-
-                        </td>
-
-                        <!-- STATUS -->
-                        <td data-label="Status" style="padding:20px;">
-
-                            <?php
-
-                            $statusColor = match($house['status']) {
-
-                                'available' =>
-                                    '#00cc66',
-
-                                'booked' =>
-                                    '#ffae42',
-
-                                default =>
-                                    '#ff4d4d'
-                            };
-
-                            ?>
-
-                            <span style="
-                                background:<?= $statusColor ?>22;
-                                color:<?= $statusColor ?>;
-                                padding:8px 14px;
-                                border-radius:14px;
-                                font-size:0.9rem;
-                                font-weight:bold;
-                            ">
-                                <?= ucfirst($house['status']) ?>
-                            </span>
-
-                        </td>
-
-                        <!-- DATE -->
-                        <td data-label="Added" style="
-                            padding:20px;
-                            color:var(--gray);
-                        ">
-                            <?= date(
-                                "d M Y",
-                                strtotime($house['created_at'])
-                            ) ?>
-                        </td>
-
-                    </tr>
-
-                <?php endforeach; ?>
-
-            </tbody>
-
-        </table>
+        <?php endforeach; ?>
 
     </div>
 
 </main>
 
 </div>
+
+<div class="lux-modal-overlay" id="luxConfirmModal" aria-hidden="true">
+    <div class="lux-modal-box">
+        <h3 class="lux-confirm-title">Are you sure?</h3>
+        <p class="lux-confirm-message"></p>
+        <div class="lux-confirm-reason-wrap" hidden>
+            <textarea class="lux-confirm-reason-input" placeholder="Reason (required)"></textarea>
+        </div>
+        <div class="lux-modal-actions">
+            <button class="lux-btn lux-btn-ghost" data-confirm-close>Cancel</button>
+            <button class="lux-btn lux-btn-danger lux-confirm-accept">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div id="mediaLightbox" class="media-lightbox" aria-hidden="true">
+    <div class="media-lightbox-overlay" data-media-close></div>
+    <div class="media-lightbox-content">
+        <button class="media-lightbox-close" data-media-close>&times;</button>
+        <button class="media-lightbox-nav media-lightbox-prev">&#8249;</button>
+        <div class="media-lightbox-stage">
+            <img class="media-lightbox-image" alt="">
+        </div>
+        <button class="media-lightbox-nav media-lightbox-next">&#8250;</button>
+        <div class="media-lightbox-counter"></div>
+    </div>
+</div>
+
+<script src="<?php echo BASE_URL; ?>/assets/js/admin/admin-core.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/admin/houses.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
 
 <?php require_once '../../includes/footer.php'; ?>

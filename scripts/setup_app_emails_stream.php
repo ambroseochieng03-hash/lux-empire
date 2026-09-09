@@ -46,6 +46,7 @@ $consumers = [
     'email.truck_request_accepted'  => 'app_email_truck_request_accepted',
     'email.admin_broadcast'         => 'app_email_admin_broadcast',
     'email.admin_direct_message'    => 'app_email_admin_direct_message',
+    'email.emergency_acknowledged' => 'app_email_emergency_acknowledged'
 ];
 
 $stream = $client->getApi()->getStream('APP_EMAILS');

@@ -112,9 +112,86 @@
             return;
         }
 
+        if (action === 'reveal-identity') {
+            var panel = document.getElementById('luxIdentityPanel-' + userId);
+
+            if (!panel) { return; }
+
+            // Toggle closed if already open and populated.
+            if (!panel.hidden) {
+                panel.hidden = true;
+                panel.innerHTML = '';
+                btn.textContent = 'Reveal Identity';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+
+            LuxAdmin.request(baseUrl + '/api/admin/user_reveal_identity.php', { body: { user_id: userId } })
+                .then(function (data) {
+                    panel.innerHTML =
+                        '<div class="lux-identity-panel-label">' + data.identity.type + '</div>' +
+                        '<div class="lux-identity-panel-value"></div>';
+                    panel.querySelector('.lux-identity-panel-value').textContent = data.identity.value;
+                    panel.hidden = false;
+                    btn.disabled = false;
+                    btn.textContent = 'Hide Identity';
+                })
+                .catch(function (err) {
+                    LuxAdmin.toast(err.message, 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Reveal Identity';
+                });
+            return;
+        }
+
         if (action === 'view-listings') {
             openLandlordListings(btn.getAttribute('data-landlord-id'), btn.getAttribute('data-landlord-name'));
         }
+    });
+
+    var dmModal = document.getElementById('luxDirectMessageModal');
+    var dmSubject = document.getElementById('luxDmSubject');
+    var dmBody = document.getElementById('luxDmBody');
+    var dmTargetUserId = null;
+
+    grid.addEventListener('click', function (event) {
+        var btn = event.target.closest('[data-action="message"]');
+        if (!btn) { return; }
+
+        dmTargetUserId = btn.getAttribute('data-user-id');
+        dmSubject.value = '';
+        dmBody.value = '';
+        dmModal.classList.add('is-open');
+        dmModal.setAttribute('aria-hidden', 'false');
+    });
+
+    document.querySelectorAll('[data-dm-close]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            dmModal.classList.remove('is-open');
+            dmModal.setAttribute('aria-hidden', 'true');
+        });
+    });
+
+    document.getElementById('luxDmSend').addEventListener('click', function () {
+        var subject = dmSubject.value.trim();
+        var body = dmBody.value.trim();
+
+        if (!subject || !body || !dmTargetUserId) {
+            LuxAdmin.toast('Subject and message are required.', 'error');
+            return;
+        }
+
+        LuxAdmin.request(baseUrl + '/api/admin/direct_message_send.php', {
+            body: { user_id: dmTargetUserId, subject: subject, body: body }
+        }).then(function () {
+            LuxAdmin.toast('Message sent.', 'success');
+            dmModal.classList.remove('is-open');
+            dmModal.setAttribute('aria-hidden', 'true');
+        }).catch(function (err) {
+            LuxAdmin.toast(err.message, 'error');
+        });
     });
 
     function openLandlordListings(landlordId, landlordName) {

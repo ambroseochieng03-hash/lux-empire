@@ -55,5 +55,14 @@ $isLoggedIn = Session::isAuthenticated();
 
 </div> <!-- End lux-site-container -->
 
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('<?php echo BASE_URL; ?>/sw.js')
+            .catch((err) => console.error('LUX EMPIRE: service worker registration failed', err));
+    });
+}
+</script>
+
 </body>
 </html>

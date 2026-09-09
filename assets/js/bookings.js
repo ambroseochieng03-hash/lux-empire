@@ -212,8 +212,31 @@ without re-binding handlers.
 
             } catch (error) {
 
-                setLoading(button, false);
-                showBookingModal('Network error. Please try again.', 'error');
+                if (window.LuxOfflineDB) {
+
+                    await window.LuxOfflineDB.saveDraft({
+                        type: 'booking',
+                        endpoint: `${cfg.baseUrl}/api/houses/book_house.php`,
+                        payload: { house_id: houseId },
+                        csrfToken: cfg.csrfToken
+                    });
+
+                    if (window.LuxOfflineSync) {
+                        window.LuxOfflineSync.refreshBanner();
+                    }
+
+                    button.textContent = 'Saved — will submit when online';
+                    button.classList.remove('book-now-btn');
+                    button.classList.add('lux-explore-btn-pending');
+                    button.disabled = true;
+
+                    showBookingModal('You appear to be offline. Your booking request has been saved and will be submitted automatically once you\'re back online.', 'success');
+
+                } else {
+
+                    setLoading(button, false);
+                    showBookingModal('Network error. Please try again.', 'error');
+                }
             }
         });
     }
