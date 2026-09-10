@@ -24,6 +24,9 @@ Session::start();
 
 $csrfToken = Csrf::token();
 
+$currentUser = Session::isAuthenticated() ? Session::user() : null;
+$currentRole = $currentUser['role'] ?? null;
+
 $houseModel = new House();
 
 $search = trim($_GET['search'] ?? '');
@@ -347,8 +350,9 @@ require_once __DIR__ . '/../includes/navbar.php';
         googleClientId: "<?php echo htmlspecialchars(GOOGLE_OAUTH_CLIENT_ID); ?>"
     };
     window.LUX_TENANT_BOOKING_STATUS = {};
-    window.LUX_CURRENT_TENANT_ID = null;
-    window.LUX_IS_GUEST = true;
+    window.LUX_CURRENT_TENANT_ID = <?php echo ($currentRole === 'tenant') ? (int) $currentUser['id'] : 'null'; ?>;
+    window.LUX_IS_GUEST = <?php echo $currentUser === null ? 'true' : 'false'; ?>;
+    window.LUX_CURRENT_USER_ROLE = <?php echo json_encode($currentRole); ?>;
     window.LUX_CARD_VARIANT = 'guest';
 </script>
 

@@ -133,7 +133,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
         <?php endif; ?>
 
-        <a href="<?php echo BASE_URL; ?>/logout" class="logout-link">
+        <a href="<?php echo BASE_URL; ?>/logout" class="logout-link" id="luxLogoutTrigger">
             <i class="fa-solid fa-right-from-bracket"></i> Exit Empire
         </a>
 
@@ -168,3 +168,137 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         onclick="document.getElementById('luxSidebar').classList.toggle('active')">
     <i class="fa-solid fa-bars"></i>
 </button>
+
+<!-- LOGOUT CONFIRMATION MODAL — inline styles deliberately, so this
+     renders correctly regardless of what's already defined in
+     dashboard.css/style.css, rather than assuming a class name that
+     might not exist. -->
+<div id="luxLogoutModal" style="
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:2000;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+">
+    <div id="luxLogoutModalOverlay" style="
+        position:absolute;
+        inset:0;
+        background:rgba(0,0,0,0.75);
+        backdrop-filter:blur(4px);
+    "></div>
+
+    <div style="
+        position:relative;
+        max-width:440px;
+        width:100%;
+        background:rgba(15,15,20,0.97);
+        border:1px solid rgba(212,175,55,0.3);
+        border-radius:22px;
+        padding:32px 28px;
+        box-shadow:0 0 40px rgba(212,175,55,0.15);
+        text-align:center;
+    ">
+        <div style="font-size:2.2rem; color:gold; margin-bottom:14px;">
+            <i class="fa-solid fa-right-from-bracket"></i>
+        </div>
+
+        <h2 style="color:gold; font-family:'Cinzel', serif; font-size:1.5rem; margin-bottom:14px;">
+            Sign Out of LUX EMPIRE?
+        </h2>
+
+        <p style="color:#ccc; line-height:1.7; margin-bottom:26px; font-size:0.95rem;">
+            You're about to sign out of this device. Your account and all your
+            data stay exactly as they are, nothing is deleted. However, this
+            device will no longer be remembered, so the next time you sign in
+            here you'll need to verify with a one-time code sent to your email,
+            in addition to your password.
+        </p>
+
+        <div style="display:flex; flex-direction:column; gap:12px;">
+
+            <button type="button" id="luxLogoutConfirmBtn" style="
+                background:linear-gradient(135deg, gold, #8f6b00);
+                color:black;
+                border:none;
+                border-radius:14px;
+                padding:14px;
+                font-weight:700;
+                cursor:pointer;
+                font-size:0.95rem;
+            ">
+                Yes, Sign Me Out
+            </button>
+
+            <button type="button" id="luxLogoutStayBtn" style="
+                background:rgba(255,255,255,0.06);
+                color:white;
+                border:1px solid rgba(255,255,255,0.15);
+                border-radius:14px;
+                padding:14px;
+                font-weight:600;
+                cursor:pointer;
+                font-size:0.95rem;
+            ">
+                Stay Signed In
+            </button>
+
+            <button type="button" id="luxLogoutHomeBtn" style="
+                background:none;
+                color:#999;
+                border:none;
+                padding:8px;
+                cursor:pointer;
+                font-size:0.85rem;
+                text-decoration:underline;
+            ">
+                Leave Without Signing Out
+            </button>
+
+        </div>
+
+    </div>
+</div>
+
+<script>
+(function () {
+
+    const trigger = document.getElementById('luxLogoutTrigger');
+    const modal = document.getElementById('luxLogoutModal');
+
+    if (!trigger || !modal) {
+        return;
+    }
+
+    const overlay = document.getElementById('luxLogoutModalOverlay');
+    const confirmBtn = document.getElementById('luxLogoutConfirmBtn');
+    const stayBtn = document.getElementById('luxLogoutStayBtn');
+    const homeBtn = document.getElementById('luxLogoutHomeBtn');
+
+    function openModal() {
+        modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        modal.style.display = 'none';
+    }
+
+    trigger.addEventListener('click', function (event) {
+        event.preventDefault();
+        openModal();
+    });
+
+    overlay.addEventListener('click', closeModal);
+    stayBtn.addEventListener('click', closeModal);
+
+    confirmBtn.addEventListener('click', function () {
+        window.location.href = trigger.getAttribute('href');
+    });
+
+    homeBtn.addEventListener('click', function () {
+        window.location.href = <?php echo json_encode(BASE_URL . '/'); ?>;
+    });
+
+})();
+</script>

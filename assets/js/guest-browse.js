@@ -162,6 +162,43 @@ assets/js/tenant-register-modal.js, which must load before this file).
         }
     }
 
+    /**
+     * Three-way gate for a guest-page action that requires being a
+     * tenant:
+     *   - already logged in AS a tenant -> complete immediately,
+     *     using the page's own (already-authenticated) CSRF token —
+     *     no extra request, no modal, ever.
+     *   - already logged in as something else (landlord/driver/
+     *     admin) -> refuse plainly, no silent action, no modal.
+     *   - not logged in at all -> try trusted-device silent login;
+     *     fall back to the registration modal if that doesn't apply.
+     */
+    async function completeAsTenantOrGate(fallbackRedirect) {
+
+        if (!window.LUX_IS_GUEST) {
+
+            if (window.LUX_CURRENT_USER_ROLE === 'tenant') {
+                window.LuxCompletePendingGuestAction(fallbackRedirect, cfg.csrfToken);
+            } else {
+                alert('This action is only available to tenant accounts.');
+                sessionStorage.removeItem('luxPendingGuestAction');
+            }
+
+            return;
+        }
+
+        const silent = await trySilentTenantLogin();
+
+        if (silent && silent.csrf_token && typeof window.LuxCompletePendingGuestAction === 'function') {
+            window.LuxCompletePendingGuestAction(fallbackRedirect, silent.csrf_token);
+            return;
+        }
+
+        if (typeof window.openTenantRegisterModal === 'function') {
+            window.openTenantRegisterModal();
+        }
+    }
+
     function initBookNowGate() {
 
         document.addEventListener('click', async (event) => {
@@ -177,16 +214,7 @@ assets/js/tenant-register-modal.js, which must load before this file).
                 houseId: btn.dataset.houseId
             }));
 
-            const silent = await trySilentTenantLogin();
-
-            if (silent && silent.csrf_token && typeof window.LuxCompletePendingGuestAction === 'function') {
-                window.LuxCompletePendingGuestAction(`${cfg.baseUrl}/tenant`, silent.csrf_token);
-                return;
-            }
-
-            if (typeof window.openTenantRegisterModal === 'function') {
-                window.openTenantRegisterModal();
-            }
+            await completeAsTenantOrGate(`${cfg.baseUrl}/tenant`);
         });
     }
 
@@ -227,16 +255,7 @@ assets/js/tenant-register-modal.js, which must load before this file).
                 fields: fields
             }));
 
-            const silent = await trySilentTenantLogin();
-
-            if (silent && silent.csrf_token && typeof window.LuxCompletePendingGuestAction === 'function') {
-                window.LuxCompletePendingGuestAction(`${cfg.baseUrl}/tenant`, silent.csrf_token);
-                return;
-            }
-
-            if (typeof window.openTenantRegisterModal === 'function') {
-                window.openTenantRegisterModal();
-            }
+            await completeAsTenantOrGate(`${cfg.baseUrl}/tenant`);
         });
     }
 
