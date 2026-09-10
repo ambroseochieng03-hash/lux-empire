@@ -67,14 +67,13 @@ $consentRoleLabel = $consentRole === 'landlord' ? 'landlord' : 'driver';
                 <strong>How it's stored:</strong> your password is never stored in
                 plain text — it's hashed. Sensitive identification numbers
                 (National ID / license / vehicle plate) are encrypted before
-                they're saved, so even someone with direct database access
-                cannot read them without the separate encryption key.
+                they're saved, and the encryption key is stored separately from the database.
             </p>
 
             <p>
                 <strong>Your rights:</strong> you can request access to, correction
-                of, or deletion of your data at any time by contacting Empire
-                support.
+                of, or deletion of your personal data, subject to applicable legal and operational 
+                requirements by contacting LUX EMPIRE support.
             </p>
 
         </div>

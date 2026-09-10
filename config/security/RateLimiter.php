@@ -4,255 +4,84 @@
  * LUX EMPIRE
  * Rate Limiting
  *
- * Responsible only for generic request rate limiting.
+ * Same public interface as the original MariaDB-backed version
+ * (isBlocked, retryAfter, hit, block, reset) — every existing caller
+ * (BruteForce.php, and anything else) keeps working unchanged.
+ * Backend is now Redis: a rolling attempt counter and an explicit
+ * block are separate keys, each with its own TTL, so an expired
+ * block simply stops existing rather than needing to be manually
+ * noticed and cleared (the old clearBlock() is gone — Redis's own
+ * expiry does that job for free).
  *
  * Login-specific brute-force policy belongs in BruteForce.php.
  */
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../RedisConnection.php';
+require_once __DIR__ . '/RedisThrottle.php';
 
 final class RateLimiter
 {
+    private const COUNT_PREFIX = 'ratelimit:cnt:';
+    private const BLOCK_PREFIX = 'ratelimit:block:';
+
     /**
      * Determine whether a rate-limit bucket is currently blocked.
      */
-    public static function isBlocked(
-        string $key
-    ): bool {
-        $database = new Database();
-        $pdo = $database->connect();
-
-        $stmt = $pdo->prepare(
-            "SELECT blocked_until
-             FROM rate_limits
-             WHERE rate_key = ?
-             LIMIT 1"
-        );
-
-        $stmt->execute([$key]);
-
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$row || $row['blocked_until'] === null) {
-            return false;
-        }
-
-        $blockedUntil = strtotime(
-            $row['blocked_until']
-        );
-
-        if ($blockedUntil === false) {
-            return false;
-        }
-
-        /*
-         * The block has expired.
-         */
-        if ($blockedUntil <= time()) {
-            self::clearBlock($key);
-
-            return false;
-        }
-
-        return true;
+    public static function isBlocked(string $key): bool
+    {
+        return RedisThrottle::isBlocked(self::BLOCK_PREFIX . $key);
     }
 
     /**
      * Get the number of seconds remaining on a block.
      */
-    public static function retryAfter(
-        string $key
-    ): int {
-        $database = new Database();
-        $pdo = $database->connect();
-
-        $stmt = $pdo->prepare(
-            "SELECT blocked_until
-             FROM rate_limits
-             WHERE rate_key = ?
-             LIMIT 1"
-        );
-
-        $stmt->execute([$key]);
-
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$row || $row['blocked_until'] === null) {
-            return 0;
-        }
-
-        $blockedUntil = strtotime(
-            $row['blocked_until']
-        );
-
-        if ($blockedUntil === false) {
-            return 0;
-        }
-
-        return max(
-            0,
-            $blockedUntil - time()
-        );
+    public static function retryAfter(string $key): int
+    {
+        return RedisThrottle::retryAfter(self::BLOCK_PREFIX . $key);
     }
 
     /**
      * Register an attempt inside a rate-limit window.
      *
-     * Returns the resulting attempt count.
+     * Returns the resulting attempt count. INCR + conditional EXPIRE
+     * (only set on the very first increment) is atomic per-key in
+     * Redis — no race between two simultaneous callers on the same
+     * key, same guarantee the old single UPDATE statement gave.
      */
-    public static function hit(
-        string $key,
-        int $windowSeconds
-    ): int {
+    public static function hit(string $key, int $windowSeconds): int
+    {
         if ($windowSeconds <= 0) {
             throw new InvalidArgumentException(
                 'Rate-limit window must be greater than zero.'
             );
         }
 
-        $database = new Database();
-        $pdo = $database->connect();
-
-        $now = time();
-
-        $windowStartedAt = date(
-            'Y-m-d H:i:s',
-            $now
-        );
-
-        /*
-         * Insert the bucket if it does not exist.
-         */
-        $stmt = $pdo->prepare(
-            "INSERT INTO rate_limits
-                (
-                    rate_key,
-                    attempts,
-                    window_started_at,
-                    blocked_until
-                )
-             VALUES
-                (?, 1, ?, NULL)
-             ON DUPLICATE KEY UPDATE
-                attempts = IF(
-                    UNIX_TIMESTAMP(window_started_at)
-                    + ?
-                    <= UNIX_TIMESTAMP(?),
-                    1,
-                    attempts + 1
-                ),
-                window_started_at = IF(
-                    UNIX_TIMESTAMP(window_started_at)
-                    + ?
-                    <= UNIX_TIMESTAMP(?),
-                    ?,
-                    window_started_at
-                )"
-        );
-
-        $stmt->execute([
-            $key,
-            $windowStartedAt,
-            $windowSeconds,
-            $windowStartedAt,
-            $windowSeconds,
-            $windowStartedAt,
-            $windowStartedAt
-        ]);
-
-        /*
-         * Retrieve the resulting counter.
-         */
-        $stmt = $pdo->prepare(
-            "SELECT attempts
-             FROM rate_limits
-             WHERE rate_key = ?
-             LIMIT 1"
-        );
-
-        $stmt->execute([$key]);
-
-        return (int) $stmt->fetchColumn();
+        return RedisThrottle::incrWithExpiry(self::COUNT_PREFIX . $key, $windowSeconds);
     }
 
     /**
      * Block a rate-limit bucket.
      */
-    public static function block(
-        string $key,
-        int $seconds
-    ): void {
+    public static function block(string $key, int $seconds): void
+    {
         if ($seconds <= 0) {
             throw new InvalidArgumentException(
                 'Block duration must be greater than zero.'
             );
         }
 
-        $database = new Database();
-        $pdo = $database->connect();
-
-        $blockedUntil = date(
-            'Y-m-d H:i:s',
-            time() + $seconds
-        );
-
-        $stmt = $pdo->prepare(
-            "INSERT INTO rate_limits
-                (
-                    rate_key,
-                    attempts,
-                    window_started_at,
-                    blocked_until
-                )
-             VALUES
-                (?, 0, NOW(), ?)
-             ON DUPLICATE KEY UPDATE
-                blocked_until = ?"
-        );
-
-        $stmt->execute([
-            $key,
-            $blockedUntil,
-            $blockedUntil
-        ]);
+        RedisThrottle::block(self::BLOCK_PREFIX . $key, $seconds);
     }
 
     /**
      * Clear a rate-limit bucket's block and attempts.
      */
-    public static function reset(
-        string $key
-    ): void {
-        $database = new Database();
-        $pdo = $database->connect();
-
-        $stmt = $pdo->prepare(
-            "DELETE FROM rate_limits
-             WHERE rate_key = ?"
-        );
-
-        $stmt->execute([$key]);
-    }
-
-    /**
-     * Remove only an expired block.
-     */
-    private static function clearBlock(
-        string $key
-    ): void {
-        $database = new Database();
-        $pdo = $database->connect();
-
-        $stmt = $pdo->prepare(
-            "UPDATE rate_limits
-             SET blocked_until = NULL
-             WHERE rate_key = ?
-             AND blocked_until IS NOT NULL
-             AND blocked_until <= NOW()"
-        );
-
-        $stmt->execute([$key]);
+    public static function reset(string $key): void
+    {
+        $redis = RedisConnection::get();
+        $redis->del(self::COUNT_PREFIX . $key);
+        $redis->del(self::BLOCK_PREFIX . $key);
     }
 }

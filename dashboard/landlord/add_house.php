@@ -312,7 +312,8 @@ require_once '../../includes/sidebar.php';
 
         <div class="lux-card landlord-form-card">
 
-            <form action="<?php echo BASE_URL; ?>/api/houses/create_house.php" method="POST" enctype="multipart/form-data">
+            <form id="landlordAddHouseForm" action="<?php echo BASE_URL; ?>/api/houses/create_house.php" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="idempotency_key" id="addHouseIdemKey" value="">
 
                 <!-- =====================================
                      PROPERTY TITLE
@@ -623,6 +624,13 @@ require_once '../../includes/sidebar.php';
                     </div>
 
                 </div>
+
+                <script src="<?php echo BASE_URL; ?>/assets/js/idempotency.js"></script>
+                <script>
+                document.getElementById('landlordAddHouseForm').addEventListener('submit', function () {
+                    document.getElementById('addHouseIdemKey').value = window.LuxIdempotency.get(this);
+                });
+                </script>
 
                 <script>
                 (function () {

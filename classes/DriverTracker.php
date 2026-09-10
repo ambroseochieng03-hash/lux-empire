@@ -19,49 +19,15 @@ class DriverTracker
     ): bool {
 
         $stmt = $this->pdo->prepare("
-            SELECT id
-            FROM driver_locations
-            WHERE driver_id = ?
-            LIMIT 1
-        ");
-
-        $stmt->execute([$driverId]);
-
-        $existing = $stmt->fetch();
-
-        if ($existing) {
-
-            $update = $this->pdo->prepare("
-                UPDATE driver_locations
-                SET
-                    latitude = ?,
-                    longitude = ?,
-                    updated_at = NOW()
-                WHERE driver_id = ?
-            ");
-
-            return $update->execute([
-                $latitude,
-                $longitude,
-                $driverId
-            ]);
-        }
-
-        $insert = $this->pdo->prepare("
-            INSERT INTO driver_locations
-            (
-                driver_id,
-                latitude,
-                longitude
-            )
+            INSERT INTO driver_locations (driver_id, latitude, longitude)
             VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                latitude = VALUES(latitude),
+                longitude = VALUES(longitude),
+                updated_at = NOW()
         ");
 
-        return $insert->execute([
-            $driverId,
-            $latitude,
-            $longitude
-        ]);
+        return $stmt->execute([$driverId, $latitude, $longitude]);
     }
 
     /**

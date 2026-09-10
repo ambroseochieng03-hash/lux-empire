@@ -473,3 +473,18 @@ CREATE TABLE admin_action_reasons (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;     
+
+ALTER TABLE driver_locations ADD UNIQUE KEY uniq_driver_id (driver_id);
+ALTER TABLE tenant_locations ADD UNIQUE KEY uniq_tenant_id (tenant_id);
+
+CREATE TABLE idempotency_keys (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    idempotency_key VARCHAR(64) NOT NULL,
+    endpoint VARCHAR(100) NOT NULL,
+    user_id INT NOT NULL,
+    status ENUM('processing','completed','failed') NOT NULL DEFAULT 'processing',
+    response_code INT NULL,
+    response_body MEDIUMTEXT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_key_endpoint (idempotency_key, endpoint)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

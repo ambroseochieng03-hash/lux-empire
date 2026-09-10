@@ -343,6 +343,29 @@ if ($video !== null) {
  * ============================================================
  */
 
+require_once '../../classes/IdempotencyGuard.php';
+
+$idempotencyKey = trim($_POST['idempotency_key'] ?? '');
+
+if ($idempotencyKey === '') {
+    header("Location: ../../dashboard/landlord/add_house.php?error=" . urlencode('Invalid request.'));
+    exit();
+}
+
+$idempotency = new IdempotencyGuard();
+$guardResult = $idempotency->begin($idempotencyKey, 'create_house', $landlordId);
+
+if ($guardResult['status'] === 'processing') {
+    header("Location: ../../dashboard/landlord/add_house.php?error=" . urlencode('This listing is already being submitted.'));
+    exit();
+}
+
+if ($guardResult['status'] === 'completed') {
+    // Replay the original outcome rather than creating a second listing.
+    header('Location: ' . $guardResult['response_body']);
+    exit();
+}
+
 try {
 
     $house = new House();
@@ -390,13 +413,12 @@ try {
 
     if ($houseId > 0) {
 
-        header(
-            "Location: " . BASE_URL . "/dashboard/landlord/manage_houses.php?success="
-            . urlencode(
-                'Luxury property published successfully.'
-            )
-        );
+        $redirectUrl = BASE_URL . "/dashboard/landlord/manage_houses.php?success="
+            . urlencode('Luxury property published successfully.');
 
+        $idempotency->complete($idempotencyKey, 'create_house', 200, $redirectUrl);
+
+        header("Location: " . $redirectUrl);
         exit();
     }
 
@@ -407,13 +429,12 @@ try {
      * ========================================================
      */
 
-    header(
-        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
-        . urlencode(
-            'Failed to publish property.'
-        )
-    );
+    $redirectUrl = BASE_URL . "/dashboard/landlord/add_house.php?error="
+        . urlencode('Failed to publish property.');
 
+    $idempotency->complete($idempotencyKey, 'create_house', 500, $redirectUrl);
+
+    header("Location: " . $redirectUrl);
     exit();
 
 } catch (Throwable $e) {
@@ -424,12 +445,10 @@ try {
         . $e->getMessage()
     );
 
-    header(
-        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
-        . urlencode(
-            $e->getMessage()
-        )
-    );
+    $redirectUrl = BASE_URL . "/dashboard/landlord/add_house.php?error=" . urlencode($e->getMessage());
 
+    $idempotency->complete($idempotencyKey, 'create_house', 500, $redirectUrl);
+
+    header("Location: " . $redirectUrl);
     exit();
 }

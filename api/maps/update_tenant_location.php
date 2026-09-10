@@ -59,51 +59,16 @@ try {
     |--------------------------------------------------------------------------
     */
 
-    $check = $pdo->prepare("
-        SELECT id
-        FROM tenant_locations
-        WHERE tenant_id = ?
-        LIMIT 1
+    $upsert = $pdo->prepare("
+        INSERT INTO tenant_locations (tenant_id, latitude, longitude)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            latitude = VALUES(latitude),
+            longitude = VALUES(longitude),
+            updated_at = CURRENT_TIMESTAMP
     ");
 
-    $check->execute([$tenant_id]);
-
-    $existing = $check->fetch();
-
-    if ($existing) {
-
-        $update = $pdo->prepare("
-            UPDATE tenant_locations
-            SET
-                latitude = ?,
-                longitude = ?,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE tenant_id = ?
-        ");
-
-        $update->execute([
-            $latitude,
-            $longitude,
-            $tenant_id
-        ]);
-
-    } else {
-
-        $insert = $pdo->prepare("
-            INSERT INTO tenant_locations (
-                tenant_id,
-                latitude,
-                longitude
-            )
-            VALUES (?, ?, ?)
-        ");
-
-        $insert->execute([
-            $tenant_id,
-            $latitude,
-            $longitude
-        ]);
-    }
+    $upsert->execute([$tenant_id, $latitude, $longitude]);
 
     /*
     |--------------------------------------------------------------------------

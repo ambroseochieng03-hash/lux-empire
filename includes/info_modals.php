@@ -39,8 +39,8 @@
         <ul class="info-modal-contact-list">
             <li><i class="fa-solid fa-envelope"></i> <span>ambroseochieng03@gmail.com</span></li>
             <li><i class="fa-solid fa-phone"></i> <span>0116268903</span></li>
-            <li><i class="fa-solid fa-location-dot"></i> <span>00100 Nairobi</span></li>
-            <li><i class="fa-solid fa-clock"></i> <span>9:00 AM - 6:00 PM EST</span></li>
+            <li><i class="fa-solid fa-location-dot"></i> <span>Nairobi, Kenya - 00100</span></li>
+            <li><i class="fa-solid fa-clock"></i> <span>9:00 AM - 6:00 PM EAT</span></li>
         </ul>
         <p class="info-modal-note">Placeholder contact details — will be replaced with real values before launch.</p>
     </div>
@@ -61,7 +61,7 @@
         <p>If you are a driver on an active trip, or a tenant tracking a driver, your location is shared temporarily to power live tracking on the map. This data is used only for the duration of the relevant trip.</p>
 
         <h3>Communications</h3>
-        <p>We send a one-time verification code by email when you register, to confirm you own the email address you signed up with. If you sign up using Google, we verify your identity through Google's sign-in service instead.</p>
+        <p>We send a one-time verification code by email when you register, to confirm you own the email address you signed up with. If you sign up using Google, we authenticate your account through Google's sign-in service instead.</p>
 
         <h3>Cookies and sessions</h3>
         <p>We use a session cookie to keep you signed in. It is required for the platform to function and is not used for advertising or third-party tracking.</p>

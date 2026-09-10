@@ -185,13 +185,16 @@ without re-binding handlers.
 
             setLoading(button, true);
 
+            const idemKey = window.LuxIdempotency ? window.LuxIdempotency.get(button) : null;
+
             try {
 
                 const data = await postForm(
                     `${cfg.baseUrl}/api/houses/book_house.php`,
                     {
                         house_id: houseId,
-                        csrf_token: cfg.csrfToken
+                        csrf_token: cfg.csrfToken,
+                        idempotency_key: idemKey
                     }
                 );
 
@@ -207,6 +210,16 @@ without re-binding handlers.
                 } else {
 
                     setLoading(button, false);
+
+                    // A real, definitive failure (property already
+                    // booked, validation error, etc.) — clear the key
+                    // so a deliberate retry click is treated as a
+                    // genuinely new attempt, not a replay of this
+                    // same failure.
+                    if (window.LuxIdempotency) {
+                        window.LuxIdempotency.reset(button);
+                    }
+
                     showBookingModal(data.message || 'Unable to submit booking request.', 'error');
                 }
 
@@ -217,7 +230,7 @@ without re-binding handlers.
                     await window.LuxOfflineDB.saveDraft({
                         type: 'booking',
                         endpoint: `${cfg.baseUrl}/api/houses/book_house.php`,
-                        payload: { house_id: houseId },
+                        payload: { house_id: houseId, idempotency_key: idemKey },
                         csrfToken: cfg.csrfToken
                     });
 

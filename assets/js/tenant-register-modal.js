@@ -136,8 +136,10 @@ googleClientId } to be set by the page before this script runs.
                 try {
                     const result = await postForm(`${cfg.baseUrl}/api/houses/book_house.php`, {
                         house_id: pending.houseId,
-                        csrf_token: cfg.csrfToken
+                        csrf_token: cfg.csrfToken,
+                        idempotency_key: window.LuxIdempotency ? window.LuxIdempotency.generate() : ''
                     });
+
                     if (!result.success) {
                         sessionStorage.setItem('luxBookingFailedMessage', result.message || 'Booking could not be completed automatically.');
                     }
@@ -399,17 +401,47 @@ googleClientId } to be set by the page before this script runs.
             });
         }
 
-        if (cfg.googleClientId && window.google && window.google.accounts) {
+        if (cfg.googleClientId) {
+            initGoogleSignInWhenReady();
+        }
 
-            google.accounts.id.initialize({
-                client_id: cfg.googleClientId,
-                callback: handleGoogleCredentialResponse
-            });
+        /*
+         * The Google Identity Services script loads with async/defer
+         * (see guest/browse.php's <script src=".../gsi/client">), so
+         * there is NO guarantee it finishes loading before this
+         * DOMContentLoaded handler runs — on a slower connection or
+         * device, window.google simply doesn't exist yet at this
+         * exact moment, and a one-shot check here would silently
+         * never render the button at all. Polling briefly instead of
+         * checking once removes the race: whichever finishes first,
+         * this always ends up calling render once Google is actually
+         * ready, rather than gambling on load order.
+         */
+        function initGoogleSignInWhenReady(attemptsLeft = 50) {
 
-            google.accounts.id.renderButton(
-                document.getElementById('googleSignInButton'),
-                { theme: 'outline', size: 'large', width: 320 }
-            );
+            if (window.google && window.google.accounts && window.google.accounts.id) {
+
+                google.accounts.id.initialize({
+                    client_id: cfg.googleClientId,
+                    callback: handleGoogleCredentialResponse
+                });
+
+                google.accounts.id.renderButton(
+                    document.getElementById('googleSignInButton'),
+                    { theme: 'outline', size: 'large', width: 320 }
+                );
+
+                return;
+            }
+
+            if (attemptsLeft <= 0) {
+                // Give up quietly after ~10s — the email/password
+                // path below still works fully without Google.
+                console.warn('LUX EMPIRE: Google Identity Services did not load in time.');
+                return;
+            }
+
+            setTimeout(() => initGoogleSignInWhenReady(attemptsLeft - 1), 200);
         }
     });
 

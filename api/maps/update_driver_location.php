@@ -29,24 +29,15 @@ if (empty($latitude) || empty($longitude)) {
 
 try {
 
-    $check = $pdo->prepare("SELECT id FROM driver_locations WHERE driver_id = ? LIMIT 1");
-    $check->execute([$driver_id]);
-    $existing = $check->fetch();
-
-    if ($existing) {
-        $update = $pdo->prepare("
-            UPDATE driver_locations
-            SET latitude = ?, longitude = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE driver_id = ?
-        ");
-        $update->execute([$latitude, $longitude, $driver_id]);
-    } else {
-        $insert = $pdo->prepare("
-            INSERT INTO driver_locations (driver_id, latitude, longitude)
-            VALUES (?, ?, ?)
-        ");
-        $insert->execute([$driver_id, $latitude, $longitude]);
-    }
+    $upsert = $pdo->prepare("
+        INSERT INTO driver_locations (driver_id, latitude, longitude)
+        VALUES (?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+            latitude = VALUES(latitude),
+            longitude = VALUES(longitude),
+            updated_at = CURRENT_TIMESTAMP
+    ");
+    $upsert->execute([$driver_id, $latitude, $longitude]);
 
     $tripStmt = $pdo->prepare("
         SELECT id FROM truck_requests

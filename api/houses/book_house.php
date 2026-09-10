@@ -8,6 +8,7 @@ requireRoleAccess('tenant');
 require_once '../../classes/House.php';
 require_once '../../classes/Booking.php';
 require_once '../../classes/Notification.php';
+require_once '../../classes/IdempotencyGuard.php';
 require_once '../../config/app.php';
 require_once '../../config/csrf.php';
 require_once '../../config/security/DoSProtection.php';
@@ -15,14 +16,8 @@ require_once '../../config/security/RateLimiter.php';
 
 header('Content-Type: application/json');
 
-/**
- * General application-level abuse protection (existing, IP-based).
- */
 DoSProtection::check();
 
-/**
- * This is now a state-changing AJAX action — POST only.
- */
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
@@ -34,16 +29,6 @@ Csrf::requireValid($_POST['csrf_token'] ?? null);
 $tenant_id = (int) Session::user()['id'];
 $tenant_name = Session::user()['full_name'] ?? 'A tenant';
 
-/**
- * Booking-specific throttle, in addition to the general DoS
- * protection above. This is deliberately tighter and scoped per
- * authenticated tenant (rather than per IP), since a single
- * misbehaving/looping client could otherwise stay under the
- * IP-wide DoS threshold while still hammering this one endpoint.
- * 15 attempts / 60s, then a 2 minute cool-down — generous enough
- * for normal use (nobody legitimately submits more than a couple
- * of booking requests a minute) while stopping automated flooding.
- */
 $rateKey = 'book_house:' . $tenant_id;
 
 if (RateLimiter::isBlocked($rateKey)) {
@@ -61,42 +46,63 @@ if ($attempts > 15) {
     exit;
 }
 
-/**
- * Validate house ID
- */
+$idempotencyKey = trim($_POST['idempotency_key'] ?? '');
+
+if ($idempotencyKey === '') {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Invalid request.']);
+    exit;
+}
+
+$idempotency = new IdempotencyGuard();
+$guardResult = $idempotency->begin($idempotencyKey, 'book_house', $tenant_id);
+
+if ($guardResult['status'] === 'processing') {
+    http_response_code(409);
+    echo json_encode(['success' => false, 'message' => 'This booking is already being processed.']);
+    exit;
+}
+
+if ($guardResult['status'] === 'completed') {
+    // Already ran to completion — replay the ORIGINAL response
+    // verbatim rather than creating a second booking.
+    http_response_code($guardResult['response_code']);
+    echo $guardResult['response_body'];
+    exit;
+}
+
 $house_id = filter_input(INPUT_POST, 'house_id', FILTER_VALIDATE_INT);
 
 if (!$house_id) {
-    http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Invalid property.']);
+    $responseCode = 400;
+    $responseBody = json_encode(['success' => false, 'message' => 'Invalid property.']);
+    $idempotency->complete($idempotencyKey, 'book_house', $responseCode, $responseBody);
+    http_response_code($responseCode);
+    echo $responseBody;
     exit;
 }
 
-/**
- * Get house
- */
 $houseModel = new House();
-
 $house = $houseModel->getHouseById($house_id);
 
 if (!$house) {
-    http_response_code(404);
-    echo json_encode(['success' => false, 'message' => 'Property not found.']);
+    $responseCode = 404;
+    $responseBody = json_encode(['success' => false, 'message' => 'Property not found.']);
+    $idempotency->complete($idempotencyKey, 'book_house', $responseCode, $responseBody);
+    http_response_code($responseCode);
+    echo $responseBody;
     exit;
 }
 
-/**
- * Prevent landlord booking own house
- */
 if ((int) $house['landlord_id'] === $tenant_id) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'You cannot book your own property.']);
+    $responseCode = 403;
+    $responseBody = json_encode(['success' => false, 'message' => 'You cannot book your own property.']);
+    $idempotency->complete($idempotencyKey, 'book_house', $responseCode, $responseBody);
+    http_response_code($responseCode);
+    echo $responseBody;
     exit;
 }
 
-/**
- * Create booking (transactional — see Booking::createBooking()).
- */
 $bookingModel = new Booking();
 
 $result = $bookingModel->createBooking(
@@ -105,9 +111,6 @@ $result = $bookingModel->createBooking(
     (int) $house['landlord_id']
 );
 
-/**
- * Handle response
- */
 if ($result === true) {
 
     $notification = new Notification();
@@ -120,19 +123,26 @@ if ($result === true) {
         BASE_URL . '/booking-requests'
     );
 
-    echo json_encode([
+    $responseCode = 200;
+    $responseBody = json_encode([
         'success' => true,
         'message' => 'Your booking request has been submitted.',
         'status' => 'pending',
         'house_id' => $house_id
     ]);
-    exit;
 
+    $idempotency->complete($idempotencyKey, 'book_house', $responseCode, $responseBody);
+
+    http_response_code($responseCode);
+    echo $responseBody;
+    exit;
 }
 
-/**
- * $result is a user-safe error string returned by Booking::createBooking().
- */
-http_response_code(409);
-echo json_encode(['success' => false, 'message' => $result]);
+$responseCode = 409;
+$responseBody = json_encode(['success' => false, 'message' => $result]);
+
+$idempotency->complete($idempotencyKey, 'book_house', $responseCode, $responseBody);
+
+http_response_code($responseCode);
+echo $responseBody;
 exit;

@@ -287,6 +287,18 @@ final class TrustedDevice
     {
         return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
             || (isset($_SERVER['SERVER_PORT']) && (int) $_SERVER['SERVER_PORT'] === 443)
+            || (
+                // Reverse proxy / load balancer terminated TLS and
+                // forwarded plain HTTP internally — same check as
+                // config/session.php, kept identical on purpose so
+                // the session cookie and the trusted-device cookie
+                // never disagree about whether the connection is
+                // secure. Only trustworthy once Apache itself is
+                // firewalled off from direct internet access — see
+                // the fuller caveat already left in session.php.
+                isset($_SERVER['HTTP_X_FORWARDED_PROTO'])
+                && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https'
+            )
             || str_contains($_SERVER['HTTP_HOST'] ?? '', 'ngrok');
     }
 }

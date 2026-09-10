@@ -146,10 +146,11 @@ require_once '../../includes/sidebar.php';
                 </h2>
 
                 <form
-                    id="requestTruckForm"
+                    id="requestTruckPlainForm"
                     action="<?php echo BASE_URL; ?>/api/trucks/request_truck.php"
                     method="POST"
                 >
+                    <input type="hidden" name="idempotency_key" id="requestTruckIdemKey" value="">
 
                     <!-- PICKUP -->
                     <div style="margin-bottom:22px;">
@@ -316,11 +317,18 @@ require_once '../../includes/sidebar.php';
 
 <script src="<?php echo BASE_URL; ?>/assets/js/request-truck-location.js"></script>
 
+<script src="<?php echo BASE_URL; ?>/assets/js/idempotency.js"></script>
+<script>
+document.getElementById('requestTruckPlainForm').addEventListener('submit', function () {
+    document.getElementById('requestTruckIdemKey').value = window.LuxIdempotency.get(this);
+});
+</script>
+
 <script src="<?php echo BASE_URL; ?>/assets/js/offline-db.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/offline-drafts.js"></script>
 <script>
 (function () {
-    const form = document.getElementById('requestTruckForm');
+    const form = document.getElementById('requestTruckPlainForm');
     if (!form) return;
 
     form.addEventListener('submit', async function (e) {
@@ -339,7 +347,8 @@ require_once '../../includes/sidebar.php';
             pickup_lat: document.getElementById('pickupLatInput').value,
             pickup_lng: document.getElementById('pickupLngInput').value,
             destination_lat: document.getElementById('destinationLatInput').value,
-            destination_lng: document.getElementById('destinationLngInput').value
+            destination_lng: document.getElementById('destinationLngInput').value,
+            idempotency_key: window.LuxIdempotency.get(form)
         };
 
         try {
