@@ -176,6 +176,85 @@ final class TrustedDevice
         $this->clearCookie();
     }
 
+    /**
+     * Identify a trusted device by its cookie ALONE, with no prior
+     * knowledge of which user it belongs to — used for the guest
+     * "silently log me in if I've been here before" flow, where
+     * there's no session yet to know a user_id from.
+     *
+     * Applies the exact same expiry/absolute-cap/rotation rules as
+     * isTrusted() — this is not a separate, looser check, just an
+     * entry point that doesn't require the caller to already know
+     * the user_id.
+     *
+     * Returns the user_id on success (and rotates the cookie, same
+     * as isTrusted()), or null if there's no valid trusted device
+     * for this browser at all.
+     */
+    public function identifyTrustedUser(): ?int
+    {
+        $rawToken = $_COOKIE[self::COOKIE_NAME] ?? '';
+
+        if ($rawToken === '') {
+            return null;
+        }
+
+        $tokenHash = hash('sha256', $rawToken);
+
+        $stmt = $this->conn->prepare("
+            SELECT id, user_id, created_at, expires_at
+            FROM trusted_devices
+            WHERE token_hash = :token_hash
+            LIMIT 1
+        ");
+
+        $stmt->execute([':token_hash' => $tokenHash]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row) {
+            return null;
+        }
+
+        $now = time();
+        $createdAt = strtotime($row['created_at']);
+        $absoluteCapAt = $createdAt + (self::ABSOLUTE_CAP_DAYS * 86400);
+
+        if (strtotime($row['expires_at']) < $now || $absoluteCapAt < $now) {
+
+            $delete = $this->conn->prepare("DELETE FROM trusted_devices WHERE id = :id");
+            $delete->execute([':id' => $row['id']]);
+
+            $this->clearCookie();
+
+            return null;
+        }
+
+        $slidingExpiry = $now + (self::SLIDING_WINDOW_DAYS * 86400);
+        $newExpiresAt = min($slidingExpiry, $absoluteCapAt);
+
+        $newRawToken = bin2hex(random_bytes(32));
+        $newTokenHash = hash('sha256', $newRawToken);
+
+        $update = $this->conn->prepare("
+            UPDATE trusted_devices
+            SET token_hash = :token_hash,
+                expires_at = :expires_at,
+                last_used_at = NOW()
+            WHERE id = :id
+        ");
+
+        $update->execute([
+            ':token_hash' => $newTokenHash,
+            ':expires_at' => date('Y-m-d H:i:s', $newExpiresAt),
+            ':id' => $row['id']
+        ]);
+
+        $this->setCookie($newRawToken, $newExpiresAt);
+
+        return (int) $row['user_id'];
+    }
+
     private function setCookie(string $rawToken, int $expiresAtTimestamp): void
     {
         setcookie(self::COOKIE_NAME, $rawToken, [

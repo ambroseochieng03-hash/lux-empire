@@ -4,11 +4,25 @@ declare(strict_types=1);
 
 require_once '../config/app.php';
 require_once '../config/session.php';
+require_once '../classes/TrustedDevice.php';
+
+Session::start();
 
 /**
- * Start the current session so it can be completely destroyed.
+ * Revoke this device's trust before the session (which holds the
+ * user id TrustedDevice needs) is destroyed. If nothing was ever
+ * trusted for this device, revokeCurrent() is a safe no-op — it just
+ * won't find a matching row to delete.
  */
-Session::start();
+if (Session::isAuthenticated()) {
+
+    $user = Session::user();
+
+    if ($user !== null && isset($user['id'])) {
+        $trustedDevice = new TrustedDevice();
+        $trustedDevice->revokeCurrent((int) $user['id']);
+    }
+}
 
 /**
  * Completely destroy the authenticated session.

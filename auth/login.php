@@ -1,4 +1,31 @@
 <?php
+require_once __DIR__ . '/../config/app.php';
+require_once __DIR__ . '/../config/session.php';
+require_once __DIR__ . '/../config/csrf.php';
+
+Session::start();
+
+if (Session::isAuthenticated()) {
+
+    $currentUser = Session::user();
+
+    $roleDashboardRoutes = [
+        'tenant'   => '/tenant',
+        'landlord' => '/landlord',
+        'driver'   => '/driver',
+        'admin'    => '/admin',
+    ];
+
+    $dashboardPath = $roleDashboardRoutes[$currentUser['role'] ?? ''] ?? null;
+
+    if ($dashboardPath !== null) {
+        header('Location: ' . BASE_URL . $dashboardPath);
+        exit;
+    }
+}
+
+$csrfToken = Csrf::token();
+
 require_once '../includes/header.php';
 require_once '../includes/navbar.php';
 ?>
@@ -20,29 +47,56 @@ require_once '../includes/navbar.php';
             </div>
         <?php endif; ?>
 
-        <?php if (isset($_GET['error'])): ?>
-            <div class="auth-alert auth-alert-error">
-                <?php echo htmlspecialchars($_GET['error']); ?>
+        <div class="auth-alert auth-alert-error" id="loginTopError" hidden></div>
+
+        <form id="loginForm" action="<?php echo BASE_URL; ?>/login-handler" method="POST">
+
+            <div class="auth-form-fields" id="loginFields">
+
+                <div class="auth-field">
+                    <label for="loginEmail">Email Address</label>
+                    <input type="email" id="loginEmail" name="email" required
+                           placeholder="Enter your empire email">
+                </div>
+
+                <div class="auth-field">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" name="password" required
+                           placeholder="Your secure empire key">
+                </div>
+
+                <button type="submit" class="lux-btn auth-submit-btn" id="loginSubmitBtn">
+                    <i class="fa-solid fa-right-to-bracket"></i> Enter Now
+                </button>
+
             </div>
-        <?php endif; ?>
 
-        <form action="<?php echo BASE_URL; ?>/login-handler" method="POST">
+            <!-- NEW-DEVICE OTP STEP — hidden unless login_handler.php
+                 signals this device isn't trusted yet. -->
+            <div class="auth-otp-step" id="authOtpStep" hidden>
 
-            <div class="auth-field">
-                <label for="loginEmail">Email Address</label>
-                <input type="email" id="loginEmail" name="email" required
-                       placeholder="Enter your empire email">
+                <h2 class="auth-otp-title">Verify This Device</h2>
+                <p class="auth-otp-subtitle">
+                    We don't recognize this device. Enter the 6-digit code we sent you.
+                </p>
+
+                <div class="auth-alert auth-alert-error" id="authOtpError" hidden></div>
+
+                <div class="auth-field">
+                    <label for="authOtpCode">Verification Code</label>
+                    <input type="text" id="authOtpCode" inputmode="numeric" maxlength="6" placeholder="000000">
+                </div>
+
+                <button type="button" class="lux-btn auth-submit-btn" id="authOtpVerifyBtn">
+                    Verify &amp; Enter
+                </button>
+
+                <div class="auth-resend-row">
+                    <span id="authOtpTimer">Code expires in 5:00</span>
+                    <button type="button" id="authOtpResendBtn" disabled>Resend Code</button>
+                </div>
+
             </div>
-
-            <div class="auth-field">
-                <label for="loginPassword">Password</label>
-                <input type="password" id="loginPassword" name="password" required
-                       placeholder="Your secure empire key">
-            </div>
-
-            <button type="submit" class="lux-btn auth-submit-btn">
-                <i class="fa-solid fa-right-to-bracket"></i> Enter Now
-            </button>
 
         </form>
 
@@ -62,5 +116,87 @@ require_once '../includes/navbar.php';
     </div>
 
 </section>
+
+<script>
+    window.LUX_OFFLINE_MODAL_CONFIG = { baseUrl: "<?php echo BASE_URL; ?>" };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/offline-required-modal.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/registration-otp-step.js"></script>
+<script>
+(function () {
+
+    const baseUrl = "<?php echo BASE_URL; ?>";
+    let csrfToken = "<?php echo htmlspecialchars($csrfToken); ?>";
+
+    const form = document.getElementById('loginForm');
+    const fieldsWrapper = document.getElementById('loginFields');
+    const submitBtn = document.getElementById('loginSubmitBtn');
+    const topError = document.getElementById('loginTopError');
+
+    function showTopError(message) {
+        topError.textContent = message;
+        topError.hidden = false;
+    }
+
+    function hideTopError() {
+        topError.hidden = true;
+    }
+
+    const otpStep = initRegistrationOtpStep({
+        baseUrl: baseUrl,
+        csrfToken: csrfToken,
+        verifyEndpoint: baseUrl + '/api/auth/verify_login_otp.php',
+        resendEndpoint: baseUrl + '/api/auth/resend_login_otp.php',
+        detailsSectionEl: fieldsWrapper,
+        otpSectionEl: document.getElementById('authOtpStep'),
+        otpInputEl: document.getElementById('authOtpCode'),
+        otpTimerEl: document.getElementById('authOtpTimer'),
+        resendBtnEl: document.getElementById('authOtpResendBtn'),
+        verifyBtnEl: document.getElementById('authOtpVerifyBtn'),
+        errorEl: document.getElementById('authOtpError')
+    });
+
+    form.addEventListener('submit', async (event) => {
+
+        event.preventDefault();
+
+        if (!window.LuxOfflineRequiredModal.check('You need to be online to log in. Please check your connection and try again.')) {
+            return;
+        }
+
+        hideTopError();
+        submitBtn.disabled = true;
+
+        const formData = new URLSearchParams(new FormData(form));
+        formData.set('csrf_token', csrfToken);
+
+        try {
+
+            const response = await fetch(form.action, { method: 'POST', body: formData });
+            const data = await response.json();
+
+            if (!data.success) {
+                showTopError(data.message || 'Login failed.');
+                submitBtn.disabled = false;
+                return;
+            }
+
+            if (data.needs_otp) {
+                otpStep.enterOtpStep(data.expires_in);
+                submitBtn.disabled = false;
+                return;
+            }
+
+            window.location.href = data.redirect || baseUrl + '/';
+
+        } catch (error) {
+
+            showTopError('Network error. Please try again.');
+            submitBtn.disabled = false;
+        }
+    });
+
+})();
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

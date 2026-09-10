@@ -151,9 +151,20 @@ assets/js/tenant-register-modal.js, which must load before this file).
     =========================================
     */
 
+    async function trySilentTenantLogin() {
+
+        try {
+            const response = await fetch(`${cfg.baseUrl}/api/auth/silent_trusted_login.php`);
+            const data = await response.json();
+            return data.success ? data : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
     function initBookNowGate() {
 
-        document.addEventListener('click', (event) => {
+        document.addEventListener('click', async (event) => {
 
             const btn = event.target.closest('.guest-book-btn');
 
@@ -165,6 +176,13 @@ assets/js/tenant-register-modal.js, which must load before this file).
                 type: 'book_house',
                 houseId: btn.dataset.houseId
             }));
+
+            const silent = await trySilentTenantLogin();
+
+            if (silent && silent.csrf_token && typeof window.LuxCompletePendingGuestAction === 'function') {
+                window.LuxCompletePendingGuestAction(`${cfg.baseUrl}/tenant`, silent.csrf_token);
+                return;
+            }
 
             if (typeof window.openTenantRegisterModal === 'function') {
                 window.openTenantRegisterModal();
@@ -186,7 +204,7 @@ assets/js/tenant-register-modal.js, which must load before this file).
             return;
         }
 
-        form.addEventListener('submit', (event) => {
+        form.addEventListener('submit', async (event) => {
 
             event.preventDefault();
 
@@ -208,6 +226,13 @@ assets/js/tenant-register-modal.js, which must load before this file).
                 type: 'request_truck',
                 fields: fields
             }));
+
+            const silent = await trySilentTenantLogin();
+
+            if (silent && silent.csrf_token && typeof window.LuxCompletePendingGuestAction === 'function') {
+                window.LuxCompletePendingGuestAction(`${cfg.baseUrl}/tenant`, silent.csrf_token);
+                return;
+            }
 
             if (typeof window.openTenantRegisterModal === 'function') {
                 window.openTenantRegisterModal();

@@ -20,9 +20,9 @@
 }
 
 .lux-nav-menu-popover{
-    position:absolute;
-    top:calc(100% + 10px);
-    right:0;
+    /* position:fixed + exact top/left are set by nav-menu.js at
+       open time — this is just the resting/visual style now. */
+    position:fixed;
     width:160px;
     background:#0f0f0f;
     border:1px solid rgba(212,175,55,0.3);
@@ -35,7 +35,7 @@
     z-index:1200;
 }
 
-.lux-nav-menu.is-open .lux-nav-menu-popover{
+.lux-nav-menu-popover.is-open{
     display:flex;
 }
 

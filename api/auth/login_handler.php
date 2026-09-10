@@ -4,240 +4,142 @@ declare(strict_types=1);
 
 require_once '../../config/db.php';
 require_once '../../config/session.php';
+require_once '../../config/csrf.php';
 require_once '../../classes/Auth.php';
+require_once '../../classes/Otp.php';
+require_once '../../classes/OtpDelivery.php';
+require_once '../../classes/TrustedDevice.php';
 require_once '../../config/security/LoginSecurity.php';
 
 Session::start();
-
-
-/*
-|--------------------------------------------------------------------------
-| Only POST requests
-|--------------------------------------------------------------------------
-*/
+header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    header('Location: ' . BASE_URL . '/login');
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
     exit;
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| Collect inputs
-|--------------------------------------------------------------------------
-*/
+Csrf::requireValid($_POST['csrf_token'] ?? null);
 
 $email = trim($_POST['email'] ?? '');
 $password = $_POST['password'] ?? '';
 
-
-/*
-|--------------------------------------------------------------------------
-| Validate input
-|--------------------------------------------------------------------------
-*/
-
 if ($email === '' || $password === '') {
-    header(
-        'Location: ' . BASE_URL . '/login?error='
-        . urlencode('Email and password are required.')
-    );
-
+    echo json_encode(['success' => false, 'message' => 'Email and password are required.']);
     exit;
 }
-
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    header(
-        'Location: ' . BASE_URL . '/login?error='
-        . urlencode('Invalid email format.')
-    );
-
+    echo json_encode(['success' => false, 'message' => 'Invalid email format.']);
     exit;
 }
-
-/*
-|--------------------------------------------------------------------------
-| Login Security
-|--------------------------------------------------------------------------
-*/
 
 $ip = LoginSecurity::clientIp();
 
-LoginSecurity::beforeAuthentication(
-    $email,
-    $ip
-);
-
-/*
-|--------------------------------------------------------------------------
-| Database
-|--------------------------------------------------------------------------
-*/
+LoginSecurity::beforeAuthentication($email, $ip);
 
 $database = new Database();
 $pdo = $database->connect();
 
-
-/*
-|--------------------------------------------------------------------------
-| Authentication
-|--------------------------------------------------------------------------
-*/
-
 $auth = new Auth($pdo);
-
-$user = $auth->login(
-    $email,
-    $password
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| Authentication failed
-|--------------------------------------------------------------------------
-*/
+$user = $auth->login($email, $password);
 
 if ($user === null) {
-
-    LoginSecurity::authenticationFailed(
-        $email,
-        $ip
-    );
-
-    header(
-        'Location: ' . BASE_URL . '/login?error='
-        . urlencode('Incorrect empire credentials.')
-    );
-
+    LoginSecurity::authenticationFailed($email, $ip);
+    echo json_encode(['success' => false, 'message' => 'Incorrect empire credentials.']);
     exit;
 }
-
-
-/*
-|--------------------------------------------------------------------------
-| Account status
-|--------------------------------------------------------------------------
-*/
 
 if (isset($user['status'])) {
 
     if ($user['status'] === 'suspended') {
-
-        header(
-            'Location: ' . BASE_URL . '/login?error='
-            . urlencode(
-                'Kindly contact Empire support for assistance.'
-            )
-        );
-
+        echo json_encode(['success' => false, 'message' => 'Kindly contact Empire support for assistance.']);
         exit;
     }
 
     if ($user['status'] === 'blocked') {
-
-        header(
-            'Location: ' . BASE_URL . '/login?error='
-            . urlencode(
-                'Account blocked from platform access.'
-            )
-        );
-
+        echo json_encode(['success' => false, 'message' => 'Account blocked from platform access.']);
         exit;
     }
 
     if ($user['status'] !== 'active') {
-
-        header(
-            'Location: ' . BASE_URL . '/login?error='
-            . urlencode(
-                'Account inactive.'
-            )
-        );
-
+        echo json_encode(['success' => false, 'message' => 'Account inactive.']);
         exit;
     }
 }
 
-/*
-|--------------------------------------------------------------------------
-| Clear authentication abuse state
-|--------------------------------------------------------------------------
-*/
+LoginSecurity::authenticationSucceeded($email, $ip);
 
-LoginSecurity::authenticationSucceeded(
-    $email,
-    $ip
-);
+$userId = (int) $user['id'];
 
+$trustedDevice = new TrustedDevice();
 
-/*
-|--------------------------------------------------------------------------
-| Regenerate session after authentication
-|--------------------------------------------------------------------------
-*/
+if ($trustedDevice->isTrusted($userId)) {
 
-Session::regenerateAfterLogin();
-
-
-/*
-|--------------------------------------------------------------------------
-| Store authenticated user
-|--------------------------------------------------------------------------
-*/
-
-$_SESSION['user'] = [
-    'id'        => $user['id'],
-    'full_name' => $user['full_name'],
-    'email'     => $user['email'],
-    'role'      => $user['role'],
-];
-
-
-/*
-|--------------------------------------------------------------------------
-| Role-based redirect
-|--------------------------------------------------------------------------
-*/
-
-switch ($user['role']) {
-
-    case 'tenant':
-        header(
-            'Location: ' . BASE_URL . '/tenant'
-        );
-        break;
-
-    case 'landlord':
-        header(
-            'Location: ' . BASE_URL . '/landlord'
-        );
-        break;
-
-    case 'driver':
-        header(
-            'Location: ' . BASE_URL . '/driver'
-        );
-        break;
-
-    case 'admin':
-        header(
-            'Location: ' . BASE_URL . '/admin'
-        );
-        break;
-
-    default:
-
-        Session::destroy();
-
-        header(
-            'Location: ' . BASE_URL . '/login?error='
-            . urlencode('Unknown empire role.')
-        );
-
-        break;
+    // Recognized device — skip OTP, log straight in.
+    completeLogin($user);
+    exit;
 }
 
+// Unrecognized device — password was correct, but login is NOT
+// complete yet. Store a pending marker (NOT $_SESSION['user'] —
+// that's the actual authenticated state) and require OTP.
+$_SESSION['pending_login_id'] = $userId;
+$_SESSION['pending_login_role'] = $user['role'];
+$_SESSION['pending_login_email'] = $user['email'];
+$_SESSION['pending_login_name'] = $user['full_name'];
+
+$otp = new Otp();
+$code = $otp->generate($userId, 'new_device_login');
+
+try {
+    OtpDelivery::sendOtpEmail($user['email'], $user['full_name'], $code);
+} catch (Throwable $e) {
+    error_log('LUX EMPIRE login OTP publish (NATS) failed: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Could not send verification email. Please try again.']);
+    exit;
+}
+
+echo json_encode([
+    'success' => true,
+    'needs_otp' => true,
+    'expires_in' => 300
+]);
 exit;
+
+
+/**
+ * Shared by both the trusted-device path here and
+ * verify_login_otp.php's post-OTP path — kept as one function so the
+ * two can never drift apart on what "fully logged in" means.
+ */
+function completeLogin(array $user): void
+{
+    Session::regenerateAfterLogin();
+
+    $_SESSION['user'] = [
+        'id'        => $user['id'],
+        'full_name' => $user['full_name'],
+        'email'     => $user['email'],
+        'role'      => $user['role'],
+    ];
+
+    unset($_SESSION['pending_login_id'], $_SESSION['pending_login_role'], $_SESSION['pending_login_email']);
+
+    $redirect = match ($user['role']) {
+        'tenant'   => BASE_URL . '/tenant',
+        'landlord' => BASE_URL . '/landlord',
+        'driver'   => BASE_URL . '/driver',
+        'admin'    => BASE_URL . '/admin',
+        default    => null,
+    };
+
+    if ($redirect === null) {
+        Session::destroy();
+        echo json_encode(['success' => false, 'message' => 'Unknown empire role.']);
+        return;
+    }
+
+    echo json_encode(['success' => true, 'redirect' => $redirect]);
+}

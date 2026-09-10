@@ -49,6 +49,7 @@ $heroHasRealMedia = ($heroVideoUrl !== null || !empty($heroImageUrls));
 
 ?>
 
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/nav-menu.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/home.css">
 
@@ -103,9 +104,15 @@ $heroHasRealMedia = ($heroVideoUrl !== null || !empty($heroImageUrls));
 
                     <?php if ($heroHasRealMedia && $heroVideoUrl !== null): ?>
 
-                        <div class="media-frame"
+                        <div class="media-frame media-frame-contain"
                             data-video="<?php echo htmlspecialchars($heroVideoUrl); ?>"
                             data-caption="<?php echo htmlspecialchars($heroTitle); ?>">
+
+                            <video class="media-backdrop-video"
+                                src="<?php echo htmlspecialchars($heroVideoUrl); ?>"
+                                autoplay muted loop playsinline preload="metadata"
+                                aria-hidden="true" tabindex="-1">
+                            </video>
 
                             <video class="media-video"
                                 src="<?php echo htmlspecialchars($heroVideoUrl); ?>"
@@ -120,10 +127,12 @@ $heroHasRealMedia = ($heroVideoUrl !== null || !empty($heroImageUrls));
 
                         <?php $heroImagesJson = json_encode($heroImageUrls); ?>
 
-                        <div class="media-frame"
+                        <div class="media-frame media-frame-contain"
                             data-images='<?php echo htmlspecialchars($heroImagesJson, ENT_QUOTES); ?>'
                             data-caption="<?php echo htmlspecialchars($heroTitle); ?>"
                             data-current-index="0">
+
+                            <div class="media-backdrop" style="background-image:url('<?php echo htmlspecialchars($heroImageUrls[0]); ?>');"></div>
 
                             <div class="media-carousel">
                                 <div class="media-carousel-track">
@@ -135,16 +144,6 @@ $heroHasRealMedia = ($heroVideoUrl !== null || !empty($heroImageUrls));
                                     <?php endforeach; ?>
                                 </div>
                             </div>
-
-                            <?php if (count($heroImageUrls) > 1): ?>
-                                <button type="button" class="media-carousel-btn media-carousel-prev" aria-label="Previous image">‹</button>
-                                <button type="button" class="media-carousel-btn media-carousel-next" aria-label="Next image">›</button>
-                                <div class="media-carousel-dots">
-                                    <?php foreach ($heroImageUrls as $index => $url): ?>
-                                        <span class="media-dot<?php echo $index === 0 ? ' is-active' : ''; ?>" data-index="<?php echo $index; ?>"></span>
-                                    <?php endforeach; ?>
-                                </div>
-                            <?php endif; ?>
 
                             <button type="button" class="media-enlarge-btn" aria-label="Enlarge image">⤢</button>
 
@@ -292,7 +291,9 @@ $heroHasRealMedia = ($heroVideoUrl !== null || !empty($heroImageUrls));
 
     <div class="lux-card home-cta-card">
 
-        <div class="home-cta-glow"></div>
+        <div class="home-cta-glow-clip">
+            <div class="home-cta-glow"></div>
+        </div>
 
         <div class="home-cta-inner">
 

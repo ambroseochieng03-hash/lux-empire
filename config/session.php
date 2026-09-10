@@ -87,7 +87,25 @@ final class Session
                 isset($_SERVER['SERVER_PORT'])
                 &&
                 (int) $_SERVER['SERVER_PORT'] === 443
-            );
+            )
+            ||
+            (
+                // Reverse proxy / load balancer terminated TLS and
+                // forwarded plain HTTP internally — the common shape
+                // of most cloud deployments (Oracle Cloud included).
+                // This header is only trustworthy when you KNOW your
+                // own proxy sets it and the app isn't directly
+                // internet-facing on a port an attacker could hit
+                // and spoof this header on — true once this sits
+                // behind Oracle's load balancer / your own nginx,
+                // not true if Apache is ever exposed raw to the
+                // internet on its own.
+                isset($_SERVER['HTTP_X_FORWARDED_PROTO'])
+                &&
+                strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https'
+            )
+            ||
+            str_contains($_SERVER['HTTP_HOST'] ?? '', 'ngrok');
 
         session_set_cookie_params([
             'lifetime' => SESSION_LIFETIME,

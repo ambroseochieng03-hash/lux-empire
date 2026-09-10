@@ -28,7 +28,7 @@ require_once __DIR__ . '/../config/app.php';
     <meta property="og:type" content="website">
     <meta property="og:url" content="<?php echo BASE_URL; ?>">
     <meta property="og:title" content="<?php echo APP_NAME; ?> | <?php echo APP_TAGLINE; ?>">
-    <meta property="og:description" content="Luxury Living. Elite Movement. One Empire. y">
+    <meta property="og:description" content="Luxury Living. Elite Movement. One Empire.">
     <!-- Point Open Graph image to logo.svg or your preview asset -->
     <meta property="og:image" content="<?php echo BASE_URL . '/' . APP_FAVICON; ?>">
     

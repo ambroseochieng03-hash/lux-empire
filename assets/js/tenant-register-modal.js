@@ -100,6 +100,9 @@ googleClientId } to be set by the page before this script runs.
          * registration completes, fire it automatically instead of
          * just dropping the user on their dashboard.
          */
+        
+        window.LuxCompletePendingGuestAction = completePendingGuestActionThenRedirect;
+
         async function completePendingGuestActionThenRedirect(fallbackRedirect, newCsrfToken) {
 
             if (newCsrfToken) {

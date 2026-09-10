@@ -37,6 +37,7 @@
         var track = getTrack(frame);
         var slides = frame.querySelectorAll('.media-slide');
         var dots = frame.querySelectorAll('.media-dot');
+        var backdrop = frame.querySelector('.media-backdrop');
 
         if (!track || !slides.length) {
             return;
@@ -48,7 +49,11 @@
 
         slides.forEach(function (slide) {
             var slideIndex = parseInt(slide.getAttribute('data-index'), 10);
-            slide.classList.toggle('is-active', slideIndex === index);
+            var isActive = slideIndex === index;
+            slide.classList.toggle('is-active', isActive);
+            if (isActive && backdrop) {
+                backdrop.style.backgroundImage = 'url(' + slide.src + ')';
+            }
         });
 
         dots.forEach(function (dot) {

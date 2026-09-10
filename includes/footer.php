@@ -7,13 +7,21 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 $isLoggedIn = Session::isAuthenticated();
+
+/*
+ * Same detection as navbar.php — the footer must never appear on a
+ * dashboard page (sidebar-driven layout, no room/need for it), but
+ * SHOULD appear on every public page regardless of login state,
+ * which is the actual bug being fixed here: it used to disappear
+ * for anyone logged in, anywhere, including the homepage.
+ */
+$isDashboardContext = $isLoggedIn
+    && strpos($_SERVER['SCRIPT_FILENAME'] ?? '', '/dashboard/') !== false;
 ?>
 
-<?php if (!$isLoggedIn): ?>
+<?php if (!$isDashboardContext): ?>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/footer-extra.css">
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/role-select-modal.css">
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/info-modals.css">
 
 <footer class="lux-footer">
 
@@ -30,9 +38,13 @@ $isLoggedIn = Session::isAuthenticated();
 <a href="<?php echo BASE_URL; ?>/">Home</a>
 <a href="<?php echo BASE_URL; ?>/browse">Luxury Homes</a>
 <a href="<?php echo BASE_URL; ?>/browse">Elite Transport</a>
+
+<?php if (!$isLoggedIn): ?>
 <a href="#" data-open-info-modal="about">About Empire</a>
 <a href="#" data-open-info-modal="contact">Contact</a>
 <a href="#" data-open-info-modal="privacy">Privacy Policy</a>
+<?php endif; ?>
+
 </div>
 
 <p class="lux-footer-quote">
@@ -45,6 +57,11 @@ $isLoggedIn = Session::isAuthenticated();
 
 </footer>
 
+<?php if (!$isLoggedIn): ?>
+
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/role-select-modal.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/info-modals.css">
+
 <?php require __DIR__ . '/role_select_modal.php'; ?>
 <?php require __DIR__ . '/info_modals.php'; ?>
 
@@ -53,7 +70,7 @@ $isLoggedIn = Session::isAuthenticated();
 
 <?php endif; ?>
 
-</div> <!-- End lux-site-container -->
+<?php endif; ?>
 
 <script>
 if ('serviceWorker' in navigator) {
@@ -63,6 +80,8 @@ if ('serviceWorker' in navigator) {
     });
 }
 </script>
+
+</div> <!-- End lux-site-container -->
 
 </body>
 </html>

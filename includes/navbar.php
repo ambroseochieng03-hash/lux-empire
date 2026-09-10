@@ -8,20 +8,45 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 $isLoggedIn = Session::isAuthenticated();
 
+/*
+ * True only when the physically-requested script lives under
+ * /dashboard/ — SCRIPT_FILENAME always reflects the top-level entry
+ * script regardless of require() depth, so this works no matter how
+ * many files this include is nested inside.
+ */
+$isDashboardContext = $isLoggedIn
+    && strpos($_SERVER['SCRIPT_FILENAME'] ?? '', '/dashboard/') !== false;
+
 $navNotifLink = null;
+$navDashboardUrl = null;
 
 if ($isLoggedIn) {
+
     $navUser = Session::user();
     $navRole = $navUser['role'] ?? null;
 
-    $notifRoleRoutes = [
-        'tenant'   => '/tenant/notifications',
-        'landlord' => '/landlord/notifications',
-        'driver'   => '/driver/notifications',
+    $roleDashboardRoutes = [
+        'tenant'   => '/tenant',
+        'landlord' => '/landlord',
+        'driver'   => '/driver',
+        'admin'    => '/admin',
     ];
 
-    if (isset($notifRoleRoutes[$navRole])) {
-        $navNotifLink = BASE_URL . $notifRoleRoutes[$navRole];
+    if (isset($roleDashboardRoutes[$navRole])) {
+        $navDashboardUrl = BASE_URL . $roleDashboardRoutes[$navRole];
+    }
+
+    if ($isDashboardContext) {
+
+        $notifRoleRoutes = [
+            'tenant'   => '/tenant/notifications',
+            'landlord' => '/landlord/notifications',
+            'driver'   => '/driver/notifications',
+        ];
+
+        if (isset($notifRoleRoutes[$navRole])) {
+            $navNotifLink = BASE_URL . $notifRoleRoutes[$navRole];
+        }
     }
 }
 
@@ -30,14 +55,50 @@ if ($isLoggedIn) {
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/nav-menu.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/navbar-extra.css">
 
-<?php if (!$isLoggedIn): ?>
+<?php if (!$isDashboardContext): ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/mobile-nav.css">
+<?php endif; ?>
+
+<?php if ($isDashboardContext): ?>
+<style>
+    /*
+     * Keeps the dashboard navbar's logo in sync with dashboard.css's
+     * own .lux-sidebar-toggle breakpoint (confirmed: 768px) — the
+     * logo appears exactly when that button disappears, and vice
+     * versa, so there's never a width where both or neither show.
+     */
+    @media (max-width: 768px) {
+        .lux-dashboard-logo-desktop-only {
+            display: none;
+        }
+
+        /*
+         * .lux-sidebar-toggle (dashboard.css) is position:fixed at
+         * left:18px, 50px wide -> right edge sits at 68px from the
+         * viewport's left. .lux-navbar has padding:14px 18px on
+         * mobile (style.css), so .logo's content already starts
+         * 18px in on its own — space-between (style.css) then pins
+         * it flush against that inner edge, which is exactly where
+         * the fixed button floats too. MARGIN (not padding) here,
+         * since .logo sits directly against .lux-navbar's own
+         * padding — adding padding to .logo would sit inside ITS
+         * box, not move the box itself away from the toggle button.
+         * 68 - 18 (navbar's own edge padding) = 50px needed.
+         */
+        #luxDashboardNavbar {
+            margin-left: 54px;
+        }
+    }
+</style>
 <?php endif; ?>
 
 <nav class="lux-header">
 <div class="lux-navbar">
 
-<!-- BRAND -->
+<?php if (!$isDashboardContext): ?>
+
+<!-- PUBLIC-PAGE BRAND — logo always shown here, both screen sizes.
+     Unchanged from the original public-page behavior. -->
 <div class="logo">
 <span class="lux-mark-wrap">
     <img src="<?php echo BASE_URL . '/' . APP_FAVICON; ?>"
@@ -51,8 +112,6 @@ if ($isLoggedIn) {
 </small>
 </div>
 </div>
-
-<?php if (!$isLoggedIn): ?>
 
 <!-- MOBILE MENU BUTTON -->
 <button class="lux-mobile-toggle" id="luxMobileToggleBtn" type="button" aria-haspopup="true" aria-expanded="false">
@@ -75,9 +134,7 @@ require __DIR__ . '/nav_menu.php';
 ?>
 </div>
 
-<!-- MOBILE NAV POPOVER — compact, anchored under the hamburger,
-     not a full-width expansion. Consolidates nav + auth entry
-     points + info modals into one small menu for small screens. -->
+<!-- MOBILE NAV POPOVER -->
 <div class="lux-mobile-nav-popover" id="luxMobileNavPopover" aria-hidden="true">
 <a href="<?php echo BASE_URL; ?>/">Home</a>
 <a href="<?php echo BASE_URL; ?>/browse">Browse Listings</a>
@@ -88,22 +145,70 @@ require __DIR__ . '/nav_menu.php';
 <a href="<?php echo BASE_URL; ?>/forgot-password">Recover Your Account</a>
 </div>
 
-<?php elseif ($navNotifLink): ?>
+<?php else: ?>
 
+<!-- DASHBOARD BRAND — logo appears ONLY at desktop widths (where
+     the sidebar stays open and sidebar.php's own toggle button
+     hides itself via CSS); at smaller widths, that toggle button
+     occupies this slot instead, so the logo is hidden here. App
+     name + tagline show at both sizes, always. -->
+<div class="logo" id="luxDashboardNavbar">
+<span class="lux-mark-wrap lux-dashboard-logo-desktop-only">
+    <img src="<?php echo BASE_URL . '/' . APP_FAVICON; ?>"
+        onerror="this.onerror=null; this.src='<?php echo BASE_URL . '/' . APP_FAVICON_PNG_32; ?>';"
+        class="lux-house-mark" alt="Lux Empire" width="100" height="87">
+</span>
+<div>
+<div>LUX EMPIRE</div>
+<small class="lux-navbar-tagline">
+                    Elite Homes • Effortless Moves
+</small>
+</div>
+</div>
+
+<?php if ($navNotifLink): ?>
 <!-- NOTIFICATION BELL -->
 <div class="lux-notif-bell-wrap" id="luxNotifBell" data-notif-link="<?php echo htmlspecialchars($navNotifLink); ?>">
 <i class="fa-solid fa-bell lux-notif-bell-icon"></i>
 <span class="lux-notif-bell-badge is-hidden" id="luxNotifBellBadge">0</span>
 </div>
+<?php endif; ?>
 
 <?php endif; ?>
 
 </div>
 </nav>
 
-<?php if (!$isLoggedIn): ?>
+<?php if (!$isDashboardContext): ?>
 <script src="<?php echo BASE_URL; ?>/assets/js/nav-menu.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/mobile-nav.js"></script>
+
+<script>
+/*
+ * Sign In / Create Account triggers, when a session is already
+ * active: redirect straight to the dashboard rather than showing a
+ * login/registration form.
+ */
+(function () {
+    <?php if ($navDashboardUrl): ?>
+    const dashboardUrl = <?php echo json_encode($navDashboardUrl); ?>;
+
+    document.addEventListener('click', function (event) {
+
+        const trigger = event.target.closest('[data-open-role-select], [data-open-tenant-register]');
+
+        if (!trigger) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        window.location.href = dashboardUrl;
+
+    }, true);
+    <?php endif; ?>
+})();
+</script>
 <?php endif; ?>
 
 <?php if ($navNotifLink): ?>
