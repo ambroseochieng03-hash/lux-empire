@@ -28,6 +28,20 @@ if (!$house) {
     exit();
 }
 
+/**
+ * A hidden listing is treated exactly like "not found" for tenants
+ * — this page is tenant-only (requireRoleAccess('tenant')), so
+ * there's no "owning landlord viewing their own page" case here to
+ * carve out.
+ */
+if (!empty($house['is_hidden'])) {
+    header("Location: search_houses.php?error=" . urlencode('This property is no longer available.'));
+    exit();
+}
+
+require_once '../../classes/VerificationLookup.php';
+$isLandlordVerified = (new VerificationLookup())->isVerified((int) $house['landlord_id']);
+
 $houseId = (int) $house['id'];
 
 /*
@@ -76,6 +90,7 @@ require_once '../../includes/sidebar.php';
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bookings.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/verification-badges.css">
 
 <div class="house-container">
 
@@ -169,6 +184,9 @@ require_once '../../includes/sidebar.php';
             <!-- TITLE -->
             <h1 class="house-title">
                 <?php echo htmlspecialchars($house['title']); ?>
+                <?php if (!empty($house['verified_at'])): ?>
+                    <span class="lux-verified-badge" title="Verified"><i class="fa-solid fa-circle-check"></i></span>
+                <?php endif; ?>
             </h1>
 
             <!-- PRICE -->
@@ -217,6 +235,9 @@ require_once '../../includes/sidebar.php';
 
                 <p class="vh-landlord-name">
                     <i class="fa-solid fa-user vh-gold-icon-tight"></i> <?php echo htmlspecialchars($house['landlord_name']); ?>
+                    <?php if ($isLandlordVerified): ?>
+                        <span class="lux-verified-badge" title="Verified"><i class="fa-solid fa-circle-check"></i></span>
+                    <?php endif; ?>
                 </p>
 
                 <div class="vh-contact-row">

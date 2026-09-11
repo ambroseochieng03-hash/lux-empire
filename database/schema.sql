@@ -488,3 +488,12 @@ CREATE TABLE idempotency_keys (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uniq_key_endpoint (idempotency_key, endpoint)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE truck_requests
+  ADD COLUMN trip_type ENUM('instant', 'scheduled') NOT NULL DEFAULT 'instant' AFTER tenant_id,
+  ADD COLUMN scheduled_at DATETIME NULL AFTER moving_date,
+  ADD COLUMN items_description TEXT NULL AFTER notes,
+  ADD COLUMN distance_km DECIMAL(8,2) NULL AFTER price,
+  ADD COLUMN last_daily_reminder_sent_at DATE NULL,
+  ADD COLUMN hour_reminder_sent_at TIMESTAMP NULL,
+  ADD COLUMN tenant_reminder_sent_at TIMESTAMP NULL;

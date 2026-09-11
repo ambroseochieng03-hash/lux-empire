@@ -35,6 +35,15 @@ $houses = $search !== ''
     ? $houseModel->searchHouses($search)
     : $houseModel->getAllHouses();
 
+$houses = array_values(array_filter($houses, static function ($house) {
+    return (int) ($house['is_hidden'] ?? 0) === 0;
+}));
+
+require_once __DIR__ . '/../classes/VerificationLookup.php';
+
+$landlordIdsOnPage = array_map(static fn ($h) => (int) $h['landlord_id'], $houses);
+$verifiedLandlordMap = (new VerificationLookup())->getVerifiedMap($landlordIdsOnPage);    
+
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/navbar.php';
 ?>
@@ -44,6 +53,7 @@ require_once __DIR__ . '/../includes/navbar.php';
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/guest-browse.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/tenant-register-modal.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/house-filters.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/verification-badges.css">
 
 <div class="guest-browse-page">
 
@@ -189,7 +199,12 @@ require_once __DIR__ . '/../includes/navbar.php';
 
                             <div class="tenant-card-padding lux-explore-content">
 
-                                <h2 class="lux-explore-card-title"><?php echo htmlspecialchars($house['title']); ?></h2>
+                                <h2 class="lux-explore-card-title">
+                                    <?php echo htmlspecialchars($house['title']); ?>
+                                    <?php if (!empty($house['verified_at'])): ?>
+                                        <span class="lux-verified-badge" title="Verified"><i class="fa-solid fa-circle-check"></i></span>
+                                    <?php endif; ?>
+                                </h2>
 
                                 <p class="lux-explore-desc">
                                     <?php echo htmlspecialchars(substr($house['description'], 0, 120)); ?>...

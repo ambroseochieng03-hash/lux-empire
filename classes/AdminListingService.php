@@ -163,7 +163,21 @@ final class AdminListingService
      * cascade via the existing FK). Requires a reason.
      */
     public function deleteListingPermanently(int $houseId, int $adminId, string $reason): bool
-    {
+    {   
+
+        $activeBookingCheck = $this->conn->prepare("
+            SELECT COUNT(*) FROM bookings
+            WHERE house_id = :house_id AND status IN ('pending', 'approved')
+        ");
+        $activeBookingCheck->execute([':house_id' => $houseId]);
+
+        if ((int) $activeBookingCheck->fetchColumn() > 0) {
+            throw new RuntimeException(
+                'This listing has pending or approved bookings and cannot be permanently deleted. ' .
+                'Resolve those bookings first from the Bookings admin page.'
+            );
+        }
+        
         $stmt = $this->conn->prepare("SELECT image_path FROM house_images WHERE house_id = :id");
         $stmt->execute([':id' => $houseId]);
         $paths = $stmt->fetchAll(PDO::FETCH_COLUMN);

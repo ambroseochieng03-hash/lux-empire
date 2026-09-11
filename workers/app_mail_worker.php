@@ -29,6 +29,7 @@ $stream = $client->getApi()->getStream('APP_EMAILS');
 $consumerNames = [
     'email.landlord_verified'       => 'app_email_landlord_verified',
     'email.driver_verified'         => 'app_email_driver_verified',
+    'email.new_booking_request'     => 'app_email_new_booking_request',
     'email.booking_accepted'        => 'app_email_booking_accepted',
     'email.booking_rejected'        => 'app_email_booking_rejected',
     'email.truck_request_accepted'  => 'app_email_truck_request_accepted',
@@ -68,6 +69,19 @@ function buildEmail(string $subject, array $job): ?array
                     'Your ' . $role . ' account has been verified by LUX EMPIRE administration. You now have full access to your dashboard.',
                     'Go to your dashboard',
                     BASE_URL . '/' . strtolower($job['role'] ?? '')
+                ),
+            ];
+
+        case 'email.new_booking_request':
+            return [
+                'subject' => 'New booking request for "' . ($job['house_title'] ?? 'your property') . '"',
+                'body' => EmailTemplate::render(
+                    'New Booking Request',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                    htmlspecialchars($job['tenant_name'] ?? 'A tenant') . ' has requested to book "' .
+                    htmlspecialchars($job['house_title'] ?? 'your property') . '".',
+                    'Review this request',
+                    BASE_URL . '/booking-requests'
                 ),
             ];
 

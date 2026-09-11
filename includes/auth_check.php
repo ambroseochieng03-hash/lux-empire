@@ -29,6 +29,29 @@ if (!Session::isAuthenticated()) {
     exit();
 }
 
+/**
+ * Re-check the account's live status on every authenticated
+ * request. $_SESSION['user'] is a snapshot from login time — an
+ * admin suspending this account afterward wouldn't otherwise be
+ * reflected until the person logs in again. This makes suspension
+ * take effect on their very next request instead.
+ */
+require_once __DIR__ . '/../config/db.php';
+
+$sessionUser = Session::user();
+
+$statusStmt = (new Database())->connect()->prepare("
+    SELECT status FROM users WHERE id = :id LIMIT 1
+");
+$statusStmt->execute([':id' => $sessionUser['id']]);
+$currentStatus = $statusStmt->fetchColumn();
+
+if ($currentStatus === false || $currentStatus !== 'active') {
+    Session::destroy();
+    header('Location: ' . BASE_URL . '/login?access_denied=suspended');
+    exit();
+}
+
 
 /**
  * Now that we know who this is, run DoS protection with the

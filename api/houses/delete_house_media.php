@@ -77,6 +77,14 @@ try {
             echo json_encode(['success' => false, 'message' => 'You do not have permission to edit this property.']);
             exit;
         }
+
+        $existingHouse = $house->getHouseById($houseId);
+
+        if ($existingHouse !== null && !empty($existingHouse['is_hidden'])) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'This listing is hidden by admin and its media cannot be modified.']);
+            exit;
+        }
     }
 
     $db = new Database();

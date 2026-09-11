@@ -41,6 +41,7 @@ if (!$client->ping()) {
 $consumers = [
     'email.landlord_verified'       => 'app_email_landlord_verified',
     'email.driver_verified'         => 'app_email_driver_verified',
+    'email.new_booking_request'     => 'app_email_new_booking_request',
     'email.booking_accepted'        => 'app_email_booking_accepted',
     'email.booking_rejected'        => 'app_email_booking_rejected',
     'email.truck_request_accepted'  => 'app_email_truck_request_accepted',

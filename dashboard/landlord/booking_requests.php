@@ -24,6 +24,7 @@ require_once '../../includes/sidebar.php';
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bookings.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/verification-badges.css">
 
 <div class="landlord-layout">
 
@@ -151,6 +152,16 @@ require_once '../../includes/sidebar.php';
                             <h2 class="booking-property-title">
                                 <?php echo htmlspecialchars($booking['title']); ?>
                             </h2>
+
+                            <?php if (!empty($booking['is_hidden'])): ?>
+                                <div class="lux-listing-notice lux-listing-notice-hidden">
+                                    This listing is currently hidden by admin from new tenants. This existing request is unaffected.
+                                </div>
+                            <?php elseif (!empty($booking['is_flagged'])): ?>
+                                <div class="lux-listing-notice lux-listing-notice-flagged">
+                                    This listing is flagged for admin review. This existing request is unaffected.
+                                </div>
+                            <?php endif; ?>
 
                             <br>
 

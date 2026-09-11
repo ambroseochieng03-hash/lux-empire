@@ -404,3 +404,48 @@ define('MAX_VIDEOS_PROCESSING_PER_LANDLORD', 1);         // concurrent in-flight
 define('MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY', 10);
 
 define('MAX_LISTINGS_PER_LANDLORD', 10);                 // free-tier cap
+
+/*
+|--------------------------------------------------------------------------
+| Truck Request Pricing
+|--------------------------------------------------------------------------
+|
+| Distance-based, Uber-style: a flat base fare plus a per-km rate,
+| with a floor so a very short trip is never absurdly cheap. These
+| are placeholder values — you said you'd tune them later, so these
+| exist purely to make the formula real and testable now.
+*/
+define('TRUCK_BASE_FARE', 500);       // KES, flat, every trip
+define('TRUCK_RATE_PER_KM', 60);      // KES per km
+define('TRUCK_MINIMUM_FARE', 800);    // KES, floor regardless of distance
+
+/*
+| Server-side Google API key for the Distance Matrix API — this MUST
+| be a DIFFERENT key from GOOGLE_MAPS_API_KEY (which is restricted to
+| your domain's HTTP referrer for browser use, and won't work at all
+| for server-to-server calls). Create a second, unrestricted-by-
+| referrer key in Google Cloud Console, restrict it by IP instead
+| (your server's IP) if possible, and enable the Distance Matrix API
+| specifically — it's billed separately from the Maps JavaScript API
+| and needs its own explicit enablement + billing on your Google
+| Cloud project. I can't do that account-level setup for you.
+*/
+define('GOOGLE_SERVER_API_KEY', $_ENV['GOOGLE_SERVER_API_KEY'] ?? '');
+/*
+| Minimum notice required for a scheduled (non-instant) trip — must
+| be comfortably longer than the 30-minute driver accept-gating
+| window (item 3), or a request could be scheduled so close to "now"
+| that no driver ever gets a legitimate chance to accept it.
+*/
+define('TRUCK_MIN_SCHEDULE_LEAD_MINUTES', 90);
+
+/*
+| How close to a scheduled move's time a driver may accept it.
+| Chosen deliberately shorter than TRUCK_MIN_SCHEDULE_LEAD_MINUTES
+| (90) so there's always a real gap between "tenant can no longer
+| schedule this close" and "drivers can now accept" — they should
+| never be the same number, or a trip booked at the exact minimum
+| lead time would be simultaneously just-barely-bookable and
+| already-acceptable, which defeats the point of gating at all.
+*/
+define('TRUCK_ACCEPT_WINDOW_MINUTES', 30);

@@ -73,6 +73,15 @@ try {
         exit;
     }
 
+    if (!empty($house['is_hidden'])) {
+        http_response_code(404);
+        echo json_encode([
+            'success' => false,
+            'message' => 'House not found.'
+        ]);
+        exit;
+    }
+
     // =====================================
     // HOUSE IMAGES
     // =====================================

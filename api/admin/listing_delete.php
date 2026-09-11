@@ -24,6 +24,8 @@ $service = new AdminListingService();
 
 try {
     $ok = $service->deleteListingPermanently($houseId, $currentAdminId, $reason);
+} catch (RuntimeException $e) {
+    adminJsonError($e->getMessage(), 409);
 } catch (Throwable $e) {
     error_log('LUX EMPIRE admin listing_delete error: ' . $e->getMessage());
     adminJsonError('Could not delete listing.', 500);

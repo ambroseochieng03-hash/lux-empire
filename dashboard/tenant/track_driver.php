@@ -37,6 +37,14 @@ $stmt->execute([$tenant_id]);
 
 $trip = $stmt->fetch();
 
+require_once '../../classes/VerificationLookup.php';
+
+$isDriverVerified = false;
+
+if ($trip && !empty($trip['driver_id'])) {
+    $isDriverVerified = (new VerificationLookup())->isVerified((int) $trip['driver_id']);
+}
+
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
@@ -153,6 +161,8 @@ require_once '../../includes/sidebar.php';
 }
 </style>
 
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/verification-badges.css">
+
 <div class="track-page">
 
 <main class="track-main">
@@ -207,6 +217,9 @@ require_once '../../includes/sidebar.php';
             word-break:break-word;
         ">
             <?php echo htmlspecialchars($trip['driver_name'] ?? 'Not Assigned'); ?>
+            <?php if ($isDriverVerified): ?>
+                <span class="lux-verified-badge" title="Verified Driver"><i class="fa-solid fa-circle-check"></i></span>
+            <?php endif; ?>
         </div>
 
         <div style="

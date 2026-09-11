@@ -48,6 +48,15 @@ final class IdempotencyGuard
      *     — this key already ran to completion; replay that exact
      *       result instead of doing anything again.
      */
+    /**
+     * A 'processing' row older than this is assumed abandoned (the
+     * original request crashed/died before calling complete()) and
+     * gets reclaimed rather than blocking forever. Generous — well
+     * beyond how long any real booking/request/listing action here
+     * should ever take.
+     */
+    private const PROCESSING_TIMEOUT_SECONDS = 120;
+
     public function begin(string $key, string $endpoint, int $userId): array
     {
         try {
@@ -67,16 +76,12 @@ final class IdempotencyGuard
 
         } catch (PDOException $e) {
 
-            // SQLSTATE 23000 = integrity constraint violation — the
-            // UNIQUE(idempotency_key, endpoint) pair already exists.
-            // Anything else is a real, unexpected DB error and
-            // should NOT be swallowed as "this was a duplicate".
             if ($e->getCode() !== '23000') {
                 throw $e;
             }
 
             $existing = $this->conn->prepare("
-                SELECT status, response_code, response_body
+                SELECT status, response_code, response_body, created_at
                 FROM idempotency_keys
                 WHERE idempotency_key = :key AND endpoint = :endpoint
                 LIMIT 1
@@ -85,7 +90,46 @@ final class IdempotencyGuard
             $existing->execute([':key' => $key, ':endpoint' => $endpoint]);
             $row = $existing->fetch(PDO::FETCH_ASSOC);
 
-            if (!$row || $row['status'] === 'processing') {
+            if (!$row) {
+                return ['status' => 'processing'];
+            }
+
+            if ($row['status'] === 'processing') {
+
+                $ageSeconds = time() - strtotime($row['created_at']);
+
+                if ($ageSeconds < self::PROCESSING_TIMEOUT_SECONDS) {
+                    return ['status' => 'processing'];
+                }
+
+                // Abandoned — reclaim it. The WHERE clause (still
+                // 'processing' AND matching the exact created_at we
+                // just read) makes this a compare-and-swap: if two
+                // requests both try to reclaim the same stale row at
+                // once, only one UPDATE actually matches a row (the
+                // first one's UPDATE changes created_at, so the
+                // second one's WHERE no longer matches) — same
+                // pattern as Booking::acceptBooking()'s conditional
+                // UPDATE.
+                $reclaim = $this->conn->prepare("
+                    UPDATE idempotency_keys
+                    SET created_at = NOW(), user_id = :user_id
+                    WHERE idempotency_key = :key AND endpoint = :endpoint
+                    AND status = 'processing' AND created_at = :original_created_at
+                ");
+
+                $reclaim->execute([
+                    ':user_id' => $userId,
+                    ':key' => $key,
+                    ':endpoint' => $endpoint,
+                    ':original_created_at' => $row['created_at']
+                ]);
+
+                if ($reclaim->rowCount() > 0) {
+                    return ['status' => 'new'];
+                }
+
+                // Someone else reclaimed it in the same instant.
                 return ['status' => 'processing'];
             }
 

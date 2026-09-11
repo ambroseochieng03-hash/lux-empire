@@ -170,6 +170,44 @@ final class AdminUserService
             throw new RuntimeException('Admin accounts cannot be deleted.');
         }
 
+        if ($target['role'] === 'landlord') {
+            $listingCount = $this->conn->prepare("SELECT COUNT(*) FROM houses WHERE landlord_id = :id");
+            $listingCount->execute([':id' => $userId]);
+
+            if ((int) $listingCount->fetchColumn() > 0) {
+                throw new RuntimeException(
+                    'This landlord still has active listings. Remove or reassign their listings first from the Houses admin page.'
+                );
+            }
+        }
+
+        if ($target['role'] === 'tenant') {
+            $activeBooking = $this->conn->prepare("
+                SELECT COUNT(*) FROM bookings WHERE tenant_id = :id AND status IN ('pending', 'approved')
+            ");
+            $activeBooking->execute([':id' => $userId]);
+
+            if ((int) $activeBooking->fetchColumn() > 0) {
+                throw new RuntimeException(
+                    'This tenant has a pending or active booking. Resolve it first from the Bookings admin page.'
+                );
+            }
+        }
+
+        if ($target['role'] === 'driver') {
+            $activeTrip = $this->conn->prepare("
+                SELECT COUNT(*) FROM truck_requests
+                WHERE driver_id = :id AND status IN ('accepted', 'arrived_at_pickup', 'in_transit')
+            ");
+            $activeTrip->execute([':id' => $userId]);
+
+            if ((int) $activeTrip->fetchColumn() > 0) {
+                throw new RuntimeException(
+                    'This driver has an active trip in progress. It must complete or be reassigned first.'
+                );
+            }
+        }
+
         $stmt = $this->conn->prepare("DELETE FROM users WHERE id = :id AND role <> 'admin'");
         $stmt->execute([':id' => $userId]);
 

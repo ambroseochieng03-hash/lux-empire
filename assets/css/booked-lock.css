@@ -1,0 +1,64 @@
+.lux-media-blurred{
+    position:relative;
+    overflow:hidden;
+}
+
+.lux-media-blurred .media-frame,
+.lux-media-blurred .house-placeholder{
+    filter:blur(6px);
+    pointer-events:none;
+    user-select:none;
+}
+
+.lux-booked-overlay{
+    position:absolute;
+    inset:0;
+    z-index:5;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,0.4);
+    color:#ffffff;
+    font-size:1.3rem;
+    font-weight:bold;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    pointer-events:none;
+}
+
+@media (max-width:768px){
+    .lux-booked-overlay{
+        font-size:1.1rem;
+    }
+}
+
+.lux-media-blurred{
+    position:relative;
+    overflow:hidden;
+    cursor:not-allowed;
+}
+
+.lux-media-blurred .media-frame,
+.lux-media-blurred .house-placeholder{
+    filter:blur(6px);
+    pointer-events:none;
+    user-select:none;
+    cursor:not-allowed;
+}
+
+.lux-booked-overlay{
+    position:absolute;
+    inset:0;
+    z-index:5;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,0.4);
+    color:#ffffff;
+    font-size:1.3rem;
+    font-weight:bold;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    pointer-events:none;
+    cursor:not-allowed;
+}

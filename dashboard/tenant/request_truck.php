@@ -101,6 +101,11 @@ require_once '../../includes/sidebar.php';
     }
 }
 
+.trip-type-btn.is-active {
+    background: linear-gradient(135deg, gold, #8f6b00) !important;
+    color: black !important;
+}
+
 </style>
 
 <div class="request-layout">
@@ -151,6 +156,43 @@ require_once '../../includes/sidebar.php';
                     method="POST"
                 >
                     <input type="hidden" name="idempotency_key" id="requestTruckIdemKey" value="">
+                    <input type="hidden" name="items_description" id="itemsDescriptionInput" value="">
+
+                    <!-- TRIP TYPE TOGGLE -->
+                    <div style="margin-bottom:26px;">
+                        <label style="display:block; margin-bottom:10px; color:var(--gold); font-weight:600;">
+                            When do you need this move?
+                        </label>
+
+                        <div style="display:flex; gap:12px;">
+                            <button type="button" id="tripTypeInstantBtn" class="lux-btn trip-type-btn is-active" data-trip-type="instant" style="flex:1; padding:14px;">
+                                <i class="fa-solid fa-bolt"></i> Move Now
+                            </button>
+                            <button type="button" id="tripTypeScheduledBtn" class="lux-btn trip-type-btn" data-trip-type="scheduled" style="flex:1; padding:14px;">
+                                <i class="fa-solid fa-calendar-days"></i> Schedule for Later
+                            </button>
+                        </div>
+
+                        <input type="hidden" name="trip_type" id="tripTypeInput" value="instant">
+                    </div>
+
+                    <!-- SCHEDULED DATE/TIME — hidden unless "Schedule for Later" is active -->
+                    <div style="margin-bottom:22px;" id="scheduledAtField" hidden>
+                        <label style="display:block; margin-bottom:10px; color:var(--gold); font-weight:600;">
+                            Move Date &amp; Time
+                        </label>
+
+                        <input
+                            type="datetime-local"
+                            name="scheduled_at"
+                            id="scheduledAtInput"
+                            class="request-input"
+                        >
+
+                        <div style="color:var(--gray); font-size:0.85rem; margin-top:8px;">
+                            Must be at least <?php echo TRUCK_MIN_SCHEDULE_LEAD_MINUTES; ?> minutes from now, so drivers have a fair chance to accept.
+                        </div>
+                    </div>
 
                     <!-- PICKUP -->
                     <div style="margin-bottom:22px;">
@@ -197,26 +239,22 @@ require_once '../../includes/sidebar.php';
 
                     </div>
 
-                    <!-- PRICE -->
-                    <div style="margin-bottom:30px;">
+                    <!-- ITEMS -->
+                    <div style="margin-bottom:22px;">
+                        <button type="button" id="openItemsModalBtn" class="lux-btn" style="width:100%; padding:14px; background:rgba(255,255,255,0.06); color:white;">
+                            <i class="fa-solid fa-list-check"></i> List Your Items <span id="itemsCountBadge" style="color:var(--gold);"></span>
+                        </button>
+                    </div>
 
-                        <label style="
-                            display:block;
-                            margin-bottom:10px;
-                            color:var(--gold);
-                            font-weight:600;
-                        ">
-                            Estimated Price (KES)
-                        </label>
-
-                        <input
-                            type="number"
-                            name="price"
-                            placeholder="Estimated transport cost"
-                            required
-                            class="request-input"
-                        >
-
+                    <!-- LIVE PRICE PREVIEW — informational only. The
+                         real price is ALWAYS recomputed server-side
+                         on submit; nothing here is ever trusted. -->
+                    <div style="margin-bottom:30px; padding:18px; border-radius:16px; background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.25);" id="pricePreviewBox">
+                        <div style="color:var(--gray); font-size:0.85rem; margin-bottom:6px;">Estimated Price</div>
+                        <div style="color:var(--gold); font-size:1.4rem; font-weight:bold;" id="pricePreviewAmount">
+                            Enter pickup &amp; destination to see a price
+                        </div>
+                        <div style="color:var(--gray); font-size:0.8rem; margin-top:4px;" id="pricePreviewMeta"></div>
                     </div>
 
                     <!-- HIDDEN GPS -->
@@ -229,6 +267,7 @@ require_once '../../includes/sidebar.php';
                     <button
                         type="submit"
                         class="lux-btn"
+                        id="requestTruckSubmitBtn"
                         style="width:100%; padding:18px; border:none; border-radius:18px; cursor:pointer; font-size:1rem;"
                     >
                         <i class="fa-solid fa-truck-fast"></i> Request Luxury Truck
@@ -313,9 +352,43 @@ require_once '../../includes/sidebar.php';
 
     </main>
 
+    <!-- ITEMS MODAL — reusable pattern (overlay + box), matches the
+        existing lux-booking-modal visual language rather than a new
+        style system. -->
+    <div id="itemsModal" style="display:none; position:fixed; inset:0; z-index:2000; align-items:center; justify-content:center; padding:20px;">
+        <div id="itemsModalOverlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px);"></div>
+
+        <div style="position:relative; max-width:480px; width:100%; max-height:80vh; overflow-y:auto; background:rgba(15,15,20,0.97); border:1px solid rgba(212,175,55,0.3); border-radius:22px; padding:28px;">
+
+            <h2 style="color:gold; font-family:'Cinzel', serif; font-size:1.3rem; margin-bottom:8px;">
+                What are you moving?
+            </h2>
+            <p style="color:var(--gray); font-size:0.9rem; margin-bottom:20px;">
+                List the items so your driver can prepare — optional, but helps them bring the right vehicle and manpower.
+            </p>
+
+            <div id="itemsRowsContainer" style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;"></div>
+
+            <button type="button" id="addItemRowBtn" class="lux-btn" style="width:100%; background:rgba(255,255,255,0.06); color:white; padding:12px; margin-bottom:20px;">
+                <i class="fa-solid fa-plus"></i> Add Another Item
+            </button>
+
+            <div style="display:flex; gap:12px;">
+                <button type="button" id="saveItemsBtn" class="lux-btn" style="flex:1; padding:14px;">Save</button>
+                <button type="button" id="closeItemsModalBtn" style="flex:1; padding:14px; background:rgba(255,255,255,0.06); color:white; border:1px solid rgba(255,255,255,0.15); border-radius:14px; cursor:pointer;">Cancel</button>
+            </div>
+
+        </div>
+    </div>
+
 </div>
 
 <script src="<?php echo BASE_URL; ?>/assets/js/request-truck-location.js"></script>
+
+<script>
+    window.LUX_TRUCK_FORM_CONFIG = { baseUrl: "<?php echo BASE_URL; ?>" };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/truck-request-form.js"></script>
 
 <script src="<?php echo BASE_URL; ?>/assets/js/idempotency.js"></script>
 <script>
@@ -341,9 +414,11 @@ document.getElementById('requestTruckPlainForm').addEventListener('submit', func
         submitButton.textContent = 'Submitting...';
 
         const payload = {
+            trip_type: document.getElementById('tripTypeInput').value,
+            scheduled_at: document.getElementById('scheduledAtInput').value,
+            items_description: document.getElementById('itemsDescriptionInput').value,
             pickup_location: document.getElementById('pickupLocationInput').value,
             destination: document.getElementById('destinationInput').value,
-            price: form.querySelector('input[name="price"]').value,
             pickup_lat: document.getElementById('pickupLatInput').value,
             pickup_lng: document.getElementById('pickupLngInput').value,
             destination_lat: document.getElementById('destinationLatInput').value,
@@ -366,7 +441,8 @@ document.getElementById('requestTruckPlainForm').addEventListener('submit', func
             // success and just follow through to my_bookings.php,
             // matching today's post-submit behavior.
             if (response.ok) {
-                window.location.href = 'my_bookings.php?success=' + encodeURIComponent('Truck request submitted successfully!');
+                const baseUrl = (window.LUX_TRUCK_FORM_CONFIG && window.LUX_TRUCK_FORM_CONFIG.baseUrl) || '';
+                window.location.href = baseUrl + '/tenant/my-bookings?success=' + encodeURIComponent('Truck request submitted successfully!');
                 return;
             }
 

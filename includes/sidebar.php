@@ -113,11 +113,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
             <a href="<?php echo BASE_URL; ?>/driver/active-trip"><i class="fa-solid fa-truck-fast"></i> Active Trip</a>
 
+            <a href="<?php echo BASE_URL; ?>/driver/location-tracker"><i class="fa-solid fa-location-dot"></i> Live Tracker</a>
+
             <button type="button" class="lux-emergency-trigger-btn" data-open-emergency-modal>
                 EMERGENCY
             </button>
-
-            <a href="<?php echo BASE_URL; ?>/driver/location-tracker"><i class="fa-solid fa-location-dot"></i> Live Tracker</a>
             
 
         <?php elseif ($userRole === 'admin'): ?>

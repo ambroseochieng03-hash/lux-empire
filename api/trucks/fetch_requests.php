@@ -17,6 +17,10 @@ try {
     $stmt = $pdo->prepare("
         SELECT
             truck_requests.id,
+            truck_requests.trip_type,
+            truck_requests.scheduled_at,
+            truck_requests.items_description,
+            truck_requests.distance_km,
             truck_requests.pickup_location,
             truck_requests.destination,
             truck_requests.price,
@@ -33,12 +37,32 @@ try {
 
         WHERE truck_requests.status = 'pending'
 
-        ORDER BY truck_requests.requested_at DESC
+        ORDER BY
+            (truck_requests.trip_type = 'instant') DESC,
+            truck_requests.scheduled_at ASC,
+            truck_requests.requested_at DESC
     ");
 
     $stmt->execute();
 
     $requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $windowSeconds = TRUCK_ACCEPT_WINDOW_MINUTES * 60;
+    $now = time();
+
+    foreach ($requests as &$request) {
+
+        $request['is_acceptable_now'] = true;
+        $request['window_opens_at'] = null;
+
+        if ($request['trip_type'] === 'scheduled' && $request['scheduled_at'] !== null) {
+            $scheduledAtTimestamp = strtotime($request['scheduled_at']);
+            $windowOpensAt = $scheduledAtTimestamp - $windowSeconds;
+            $request['window_opens_at'] = $windowOpensAt;
+            $request['is_acceptable_now'] = ($now >= $windowOpensAt);
+        }
+    }
+    unset($request);
 
     echo json_encode([
         'success' => true,

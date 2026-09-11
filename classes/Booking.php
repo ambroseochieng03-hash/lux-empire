@@ -388,6 +388,8 @@ class Booking {
                     h.location,
                     h.price,
                     h.rating,
+                    h.is_hidden,
+                    h.is_flagged,
 
                     (
                         SELECT hi.image_path
@@ -437,6 +439,8 @@ class Booking {
                     h.location,
                     h.price,
                     h.rating,
+                    h.is_hidden,
+                    h.is_flagged,
 
                     (
                         SELECT hi.image_path

@@ -6,12 +6,24 @@ requireRoleAccess('driver');
 
 require_once '../../config/db.php';
 
+require_once '../../config/db.php';
+require_once '../../config/csrf.php';
+
 $db = new Database();
 $pdo = $db->connect();
 
 $driver_id = (int) Session::user()['id'];
+$csrfToken = Csrf::token();
 
-// Fetch pending requests
+/*
+ * Both instant and scheduled pending requests are shown — a
+ * scheduled request is visible immediately (per spec: "drivers
+ * should be able to see it but can't accept it before the date
+ * reaches"), just not acceptable until within the window computed
+ * below. Ordered so instant + already-acceptable-scheduled trips
+ * float to the top, since those are the ones a driver can actually
+ * act on right now.
+ */
 $stmt = $pdo->prepare("
     SELECT
         truck_requests.*,
@@ -21,11 +33,14 @@ $stmt = $pdo->prepare("
     JOIN users
     ON truck_requests.tenant_id = users.id
     WHERE truck_requests.status = 'pending'
-    ORDER BY truck_requests.requested_at DESC
+    ORDER BY
+        (truck_requests.trip_type = 'instant') DESC,
+        truck_requests.scheduled_at ASC,
+        truck_requests.requested_at DESC
 ");
 
 $stmt->execute();
-$requests = $stmt->fetchAll();
+$requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
@@ -43,9 +58,7 @@ require_once '../../includes/sidebar.php';
     overflow-x: hidden;
 }
 
-/* tablet */
 @media (max-width: 992px) {
-
     .driver-requests-page .driver-main {
         margin-left: 0 !important;
         width: 100% !important;
@@ -53,51 +66,65 @@ require_once '../../includes/sidebar.php';
     }
 }
 
-/* mobile only */
 @media (max-width: 768px) {
-
     .driver-requests-page .driver-main {
         padding: 18px !important;
     }
-
-    /* ONLY this page headings */
     .driver-requests-page h1 {
         font-size: 2rem !important;
         line-height: 1.3;
     }
-
-    /* ONLY grids inside this page */
     .driver-requests-page div[style*="grid-template-columns"] {
         grid-template-columns: 1fr !important;
     }
-
-    /* ONLY flex containers in this page (safe scoped) */
     .driver-requests-page .lux-card > div {
         flex-wrap: wrap;
     }
-
-    /* buttons ONLY inside this page */
     .driver-requests-page .lux-btn,
     .driver-requests-page button {
         width: 100%;
     }
-
-    /* prevent text overflow only in this page */
     .driver-requests-page {
         word-break: break-word;
     }
 }
 
-/* small phones */
 @media (max-width: 480px) {
-
     .driver-requests-page .driver-main {
         padding: 14px !important;
     }
-
     .driver-requests-page h1 {
         font-size: 1.7rem !important;
     }
+}
+
+.trip-type-tag {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.trip-type-tag.instant {
+    background: rgba(0, 255, 120, 0.12);
+    color: lightgreen;
+}
+
+.trip-type-tag.scheduled {
+    background: rgba(100, 180, 255, 0.12);
+    color: #7fc4ff;
+}
+
+.accept-locked-btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: 18px;
+    font-size: 1rem;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.04);
+    color: var(--gray);
+    cursor: not-allowed;
 }
 
 </style>
@@ -134,7 +161,7 @@ require_once '../../includes/sidebar.php';
     </div>
 
     <!-- REQUEST GRID -->
-    <div style="
+    <div id="driverRequestsGrid" style="
         display:grid;
         grid-template-columns:repeat(auto-fit,minmax(340px,1fr));
         gap:30px;
@@ -144,7 +171,19 @@ require_once '../../includes/sidebar.php';
 
             <?php foreach ($requests as $request): ?>
 
-                <div class="lux-card" style="
+                <?php
+                    $isScheduled = ($request['trip_type'] === 'scheduled' && $request['scheduled_at'] !== null);
+                    $windowOpensAtTimestamp = null;
+                    $isAcceptableNow = true;
+
+                    if ($isScheduled) {
+                        $scheduledAtTimestamp = strtotime($request['scheduled_at']);
+                        $windowOpensAtTimestamp = $scheduledAtTimestamp - (TRUCK_ACCEPT_WINDOW_MINUTES * 60);
+                        $isAcceptableNow = (time() >= $windowOpensAtTimestamp);
+                    }
+                ?>
+
+                <div class="lux-card" data-request-id="<?php echo (int) $request['id']; ?>" style="
                     padding:30px;
                     border-radius:28px;
                     position:relative;
@@ -156,7 +195,9 @@ require_once '../../includes/sidebar.php';
                         display:flex;
                         justify-content:space-between;
                         align-items:center;
-                        margin-bottom:25px;
+                        margin-bottom:20px;
+                        flex-wrap:wrap;
+                        gap:10px;
                     ">
 
                         <div>
@@ -183,6 +224,30 @@ require_once '../../includes/sidebar.php';
                         </div>
                     </div>
 
+                    <!-- TRIP TYPE + SCHEDULE -->
+                    <div style="margin-bottom:20px;">
+
+                        <?php if ($isScheduled): ?>
+                            <span class="trip-type-tag scheduled">
+                                <i class="fa-solid fa-calendar-days"></i> Scheduled
+                            </span>
+                            <div style="color:var(--gray); font-size:0.85rem; margin-top:8px;">
+                                Move time: <?php echo date('M d, Y g:i A', strtotime($request['scheduled_at'])); ?>
+                            </div>
+                        <?php else: ?>
+                            <span class="trip-type-tag instant">
+                                <i class="fa-solid fa-bolt"></i> Move Now
+                            </span>
+                        <?php endif; ?>
+
+                        <?php if (!empty($request['distance_km'])): ?>
+                            <div style="color:var(--gray); font-size:0.85rem; margin-top:6px;">
+                                Approx. <?php echo htmlspecialchars($request['distance_km']); ?> km
+                            </div>
+                        <?php endif; ?>
+
+                    </div>
+
                     <!-- TENANT -->
                     <div style="margin-bottom:20px;">
                         <div style="color:var(--gray); margin-bottom:6px;">Tenant</div>
@@ -200,12 +265,22 @@ require_once '../../includes/sidebar.php';
                     </div>
 
                     <!-- DESTINATION -->
-                    <div style="margin-bottom:25px;">
+                    <div style="margin-bottom:<?php echo !empty($request['items_description']) ? '20' : '25'; ?>px;">
                         <div style="color:var(--gray); margin-bottom:6px;">Destination</div>
                         <div style="color:white;">
                             <?php echo htmlspecialchars($request['destination']); ?>
                         </div>
                     </div>
+
+                    <!-- ITEMS -->
+                    <?php if (!empty($request['items_description'])): ?>
+                        <div style="margin-bottom:25px;">
+                            <div style="color:var(--gray); margin-bottom:6px;">Items</div>
+                            <div style="color:white; white-space:pre-line; font-size:0.9rem;">
+                                <?php echo htmlspecialchars($request['items_description']); ?>
+                            </div>
+                        </div>
+                    <?php endif; ?>
 
                     <!-- STATUS -->
                     <div style="margin-bottom:25px;">
@@ -242,23 +317,30 @@ require_once '../../includes/sidebar.php';
                     </button>
 
                     <!-- ACTION -->
-                    <form action="<?php echo BASE_URL; ?>/api/trucks/accept_request.php" method="POST">
+                    <?php if ($isAcceptableNow): ?>
 
-                        <input type="hidden" name="request_id"
-                               value="<?php echo $request['id']; ?>">
-
-                        <button type="submit" class="lux-btn" style="
-                            width:100%;
-                            border:none;
-                            padding:16px;
-                            border-radius:18px;
-                            cursor:pointer;
-                            font-size:1rem;
-                        ">
+                        <button type="button" class="lux-btn accept-request-btn"
+                                data-request-id="<?php echo (int) $request['id']; ?>"
+                                style="
+                                width:100%;
+                                border:none;
+                                padding:16px;
+                                border-radius:18px;
+                                cursor:pointer;
+                                font-size:1rem;
+                            ">
                             Accept Request
                         </button>
 
-                    </form>
+                    <?php else: ?>
+
+                        <button type="button" class="accept-locked-btn" disabled
+                                data-window-opens-at="<?php echo (int) $windowOpensAtTimestamp; ?>">
+                            <i class="fa-solid fa-lock"></i>
+                            Opens in <span class="countdown-text">calculating...</span>
+                        </button>
+
+                    <?php endif; ?>
 
                 </div>
 
@@ -266,7 +348,7 @@ require_once '../../includes/sidebar.php';
 
         <?php else: ?>
 
-            <div class="lux-card" style="
+            <div class="lux-card" id="driverRequestsEmptyState" style="
                 padding:50px;
                 border-radius:28px;
                 text-align:center;
@@ -295,6 +377,48 @@ require_once '../../includes/sidebar.php';
 </main>
 
 </div>
+
+<script>
+    window.LUX_DRIVER_REQUESTS_CONFIG = {
+        baseUrl: "<?php echo BASE_URL; ?>",
+        csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"
+    };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/driver-requests.js"></script>
+<script>
+/*
+ * Live countdown text for locked "Opens in..." buttons — purely
+ * cosmetic. If polling/refresh already reloads this page
+ * periodically, the server-side re-check on each load is what
+ * actually unlocks a button; this just keeps the displayed text
+ * accurate between reloads instead of sitting stale.
+ */
+(function () {
+
+    function formatRemaining(seconds) {
+        if (seconds <= 0) return 'now — refresh the page';
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        if (hours > 0) return hours + 'h ' + minutes + 'm';
+        return minutes + 'm';
+    }
+
+    function tick() {
+        document.querySelectorAll('.accept-locked-btn[data-window-opens-at]').forEach((btn) => {
+            const opensAt = parseInt(btn.dataset.windowOpensAt, 10);
+            const remaining = opensAt - Math.floor(Date.now() / 1000);
+            const textEl = btn.querySelector('.countdown-text');
+            if (textEl) {
+                textEl.textContent = formatRemaining(remaining);
+            }
+        });
+    }
+
+    tick();
+    setInterval(tick, 30000);
+
+})();
+</script>
 
 <?php require_once '../../includes/chat_starter_modal.php'; ?>
 

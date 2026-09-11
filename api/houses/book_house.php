@@ -9,6 +9,7 @@ require_once '../../classes/House.php';
 require_once '../../classes/Booking.php';
 require_once '../../classes/Notification.php';
 require_once '../../classes/IdempotencyGuard.php';
+require_once '../../classes/EmailJobPublisher.php';
 require_once '../../config/app.php';
 require_once '../../config/csrf.php';
 require_once '../../config/security/DoSProtection.php';
@@ -103,6 +104,15 @@ if ((int) $house['landlord_id'] === $tenant_id) {
     exit;
 }
 
+if (!empty($house['is_hidden'])) {
+    $responseCode = 403;
+    $responseBody = json_encode(['success' => false, 'message' => 'This property is no longer available.']);
+    $idempotency->complete($idempotencyKey, 'book_house', $responseCode, $responseBody);
+    http_response_code($responseCode);
+    echo $responseBody;
+    exit;
+}
+
 $bookingModel = new Booking();
 
 $result = $bookingModel->createBooking(
@@ -122,6 +132,19 @@ if ($result === true) {
         $tenant_name . ' has requested to book "' . $house['title'] . '".',
         BASE_URL . '/booking-requests'
     );
+
+    $landlordLookup = (new Database())->connect()->prepare("SELECT full_name, email FROM users WHERE id = ?");
+    $landlordLookup->execute([(int) $house['landlord_id']]);
+    $landlordRow = $landlordLookup->fetch();
+
+    if ($landlordRow) {
+        EmailJobPublisher::publish('email.new_booking_request', [
+            'email' => $landlordRow['email'],
+            'name' => $landlordRow['full_name'],
+            'tenant_name' => $tenant_name,
+            'house_title' => $house['title'],
+        ]);
+    }
 
     $responseCode = 200;
     $responseBody = json_encode([

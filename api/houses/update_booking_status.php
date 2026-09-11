@@ -12,7 +12,7 @@ require_once '../../config/app.php';
 require_once '../../config/csrf.php';
 require_once '../../config/security/DoSProtection.php';
 require_once '../../config/security/RateLimiter.php';
-require_once '../../config/EmailJobPublisher.php';
+require_once '../../classes/EmailJobPublisher.php';
 
 header('Content-Type: application/json');
 

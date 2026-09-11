@@ -297,6 +297,20 @@ try {
 
             exit;
         }
+
+        $existingHouse = $house->getHouseById($houseId);
+
+        if ($existingHouse !== null && !empty($existingHouse['is_hidden'])) {
+
+            http_response_code(403);
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'This listing is hidden by admin and cannot be edited.'
+            ]);
+
+            exit;
+        }
     }
 
     /*

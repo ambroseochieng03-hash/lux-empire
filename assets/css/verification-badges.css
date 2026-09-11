@@ -1,0 +1,40 @@
+.lux-verified-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    margin-left:4px;
+    vertical-align:middle;
+    line-height:1;
+}
+
+.lux-verified-badge i{
+    color:#1877F2;
+    font-size:0.59em;
+}
+
+.lux-listing-notice{
+    padding:12px 16px;
+    border-radius:14px;
+    font-size:0.88rem;
+    line-height:1.6;
+    margin:10px 0 18px 0;
+    word-break:break-word;
+}
+
+.lux-listing-notice-hidden{
+    background:rgba(255,77,77,0.1);
+    border:1px solid rgba(255,77,77,0.3);
+    color:#ff8a8a;
+}
+
+.lux-listing-notice-flagged{
+    background:rgba(255,174,66,0.1);
+    border:1px solid rgba(255,174,66,0.3);
+    color:#ffcf94;
+}
+
+.action-btn-disabled{
+    opacity:0.4;
+    cursor:not-allowed;
+    pointer-events:none;
+}

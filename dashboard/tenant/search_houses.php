@@ -26,6 +26,20 @@ if (!empty($search)) {
 }
 
 /**
+ * Hide anything admin has hidden. This data is already present on
+ * every row (House::getAllHouses()/searchHouses() SELECT h.*), so
+ * this filters at the page level rather than touching House.php.
+ */
+$houses = array_values(array_filter($houses, static function ($house) {
+    return (int) ($house['is_hidden'] ?? 0) === 0;
+}));
+
+require_once '../../classes/VerificationLookup.php';
+
+$landlordIdsOnPage = array_map(static fn ($h) => (int) $h['landlord_id'], $houses);
+$verifiedLandlordMap = (new VerificationLookup())->getVerifiedMap($landlordIdsOnPage);
+
+/**
  * Build a house_id => status map of this tenant's own active
  * booking for each house, so the button/card can reflect "Request
  * Pending" / already-acted-on state without another round trip.
@@ -51,6 +65,7 @@ require_once '../../includes/sidebar.php';
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bookings.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/house-filters.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/verification-badges.css">
 
 <div class="lux-explore-page">
 
@@ -229,6 +244,9 @@ require_once '../../includes/sidebar.php';
 
                             <h2 class="lux-explore-card-title">
                                 <?php echo htmlspecialchars($house['title']); ?>
+                                <?php if (!empty($house['verified_at'])): ?>
+                                   <!-- <span class="lux-verified-badge" title="Verified"><i class="fa-solid fa-circle-check"></i></span> -->
+                                <?php endif; ?>
                             </h2>
 
                             <br>
@@ -267,14 +285,13 @@ require_once '../../includes/sidebar.php';
                                 <span style="color:var(--gray);">
                                     <div class="booking-lanlord-details">
                                         <?php echo htmlspecialchars($house['landlord_name']); ?>
+                                        <?php if ($verifiedLandlordMap[(int) $house['landlord_id']] ?? false): ?>
+                                            <span class="lux-verified-badge" title="Verified"><i class="fa-solid fa-circle-check"></i></span>
+                                        <?php endif; ?>
                                         <br>
-
                                         <?php echo htmlspecialchars($house['landlord_phone'] ?? 'N/A'); ?>
-
                                         <br>
-
                                         <?php echo htmlspecialchars($house['landlord_email'] ?? 'N/A'); ?>
-
                                     </div>
                                 </span>
 
@@ -398,6 +415,7 @@ require_once '../../includes/sidebar.php';
     window.LUX_CARD_VARIANT = 'tenant';
 </script>
 
+<script src="<?php echo BASE_URL; ?>/assets/js/idempotency.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/offline-db.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/offline-drafts.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>

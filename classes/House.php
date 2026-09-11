@@ -1567,7 +1567,8 @@ class House
     private function runFilterQuery(array $filters, int $limit, int $offset): array
     {
         $where = [
-            "(h.status != 'booked' OR h.booked_at IS NULL OR h.booked_at > (NOW() - INTERVAL 12 HOUR))"
+            "(h.status != 'booked' OR h.booked_at IS NULL OR h.booked_at > (NOW() - INTERVAL 12 HOUR))",
+            "h.is_hidden = 0"
         ];
         $params = [];
         $distanceSelect = '';

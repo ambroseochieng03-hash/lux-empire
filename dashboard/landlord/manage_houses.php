@@ -10,6 +10,24 @@ $houseModel = new House();
 
 $houses = $houseModel->getHousesByLandlord((int) Session::user()['id']);
 
+/**
+ * Booked listings vanish from the landlord's own view 24h after
+ * acceptance (they've already been unbookable/blurred since the
+ * moment of acceptance — this just removes them from the grid
+ * entirely once the grace period elapses). Permanent deletion from
+ * the DB + disk happens separately, at 48h, via
+ * scripts/cleanup_expired_listings.php (cron).
+ */
+$now = time();
+
+$houses = array_values(array_filter($houses, static function ($house) use ($now) {
+    if ($house['status'] !== 'booked' || empty($house['booked_at'])) {
+        return true;
+    }
+    $bookedAt = strtotime($house['booked_at']);
+    return $bookedAt !== false && ($now - $bookedAt) <= 24 * 3600;
+}));
+
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
@@ -19,6 +37,7 @@ $csrfToken = Csrf::token();
 ?>
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/booked-lock.css">
 
 <style>
 
@@ -180,6 +199,8 @@ $csrfToken = Csrf::token();
 
 </style>
 
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/verification-badges.css">
+
 <div style="
     display:flex;
     min-height:100vh;
@@ -270,6 +291,8 @@ $csrfToken = Csrf::token();
                          */
                         $mediaItems = $houseModel->getHouseMedia((int) $house['id']);
 
+                        $isBookedLocked = ($house['status'] === 'booked' && !empty($house['booked_at']));
+
                         $imageUrls = [];
                         $videoUrl  = null;
 
@@ -289,7 +312,11 @@ $csrfToken = Csrf::token();
                          id="houseCard-<?php echo (int) $house['id']; ?>">
 
                         <!-- MEDIA -->
-                        <div class="house-image">
+                        <div class="house-image<?php echo $isBookedLocked ? ' lux-media-blurred' : ''; ?>">
+
+                            <?php if ($isBookedLocked): ?>
+                                <div class="lux-booked-overlay">Booked</div>
+                            <?php endif; ?>
 
                             <?php if ($videoUrl !== null): ?>
 
@@ -366,7 +393,20 @@ $csrfToken = Csrf::token();
 
                             <h2 class="house-title">
                                 <?php echo htmlspecialchars($house['title']); ?>
+                                <?php if (!empty($house['verified_at'])): ?>
+                                    <span class="lux-verified-badge" title="Verified"><i class="fa-solid fa-circle-check"></i></span>
+                                <?php endif; ?>
                             </h2>
+
+                            <?php if (!empty($house['is_hidden'])): ?>
+                                <div class="lux-listing-notice lux-listing-notice-hidden">
+                                    This listing is hidden by admin and isn't visible to tenants. Editing and deletion are disabled while hidden.
+                                </div>
+                            <?php elseif (!empty($house['is_flagged'])): ?>
+                                <div class="lux-listing-notice lux-listing-notice-flagged">
+                                    This listing has been flagged for review by our team<?php echo !empty($house['flag_reason']) ? ': ' . htmlspecialchars($house['flag_reason']) : '.'; ?>
+                                </div>
+                            <?php endif; ?>
 
                             <!-- RATING -->
                             <div style="
@@ -447,20 +487,30 @@ $csrfToken = Csrf::token();
                             <!-- ACTIONS -->
                             <div class="house-actions">
 
-                                <!-- FIXED EDIT BUTTON -->
-                                <a
-                                    href="<?php echo BASE_URL; ?>/dashboard/landlord/edit_house.php?id=<?php echo $house['id']; ?>"
-                                    class="action-btn edit-btn"
-                                >
-                                    Edit
-                                </a>
+                                <?php if ($isBookedLocked): ?>
 
-                                <!-- DELETE — now AJAX, no page reload -->
-                                <button type="button"
-                                        class="action-btn delete-btn house-delete-btn"
-                                        data-house-id="<?php echo (int) $house['id']; ?>">
-                                    Delete
-                                </button>
+                                    <span class="action-btn edit-btn action-btn-disabled" title="This property is booked and cannot be edited">
+                                        Booked
+                                    </span>
+
+                                    <button type="button" class="action-btn delete-btn action-btn-disabled" disabled title="This property is booked">
+                                        Booked
+                                    </button>
+
+                                <?php else: ?>
+
+                                    <a href="<?php echo BASE_URL; ?>/dashboard/landlord/edit_house.php?id=<?php echo $house['id']; ?>"
+                                       class="action-btn edit-btn">
+                                        Edit
+                                    </a>
+
+                                    <button type="button"
+                                            class="action-btn delete-btn house-delete-btn"
+                                            data-house-id="<?php echo (int) $house['id']; ?>">
+                                        Delete
+                                    </button>
+
+                                <?php endif; ?>
 
                             </div>
 

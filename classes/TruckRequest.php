@@ -21,6 +21,9 @@ class TruckRequest {
         $query = "INSERT INTO " . $this->table . "
         (
             tenant_id,
+            trip_type,
+            scheduled_at,
+            items_description,
             pickup_location,
             destination,
             pickup_lat,
@@ -28,11 +31,15 @@ class TruckRequest {
             destination_lat,
             destination_lng,
             price,
+            distance_km,
             status
         )
         VALUES
         (
             :tenant_id,
+            :trip_type,
+            :scheduled_at,
+            :items_description,
             :pickup_location,
             :destination,
             :pickup_lat,
@@ -40,6 +47,7 @@ class TruckRequest {
             :destination_lat,
             :destination_lng,
             :price,
+            :distance_km,
             'pending'
         )";
 
@@ -48,13 +56,17 @@ class TruckRequest {
         return $stmt->execute([
 
             ':tenant_id' => $data['tenant_id'],
+            ':trip_type' => $data['trip_type'] ?? 'instant',
+            ':scheduled_at' => $data['scheduled_at'] ?? null,
+            ':items_description' => $data['items_description'] ?? null,
             ':pickup_location' => $data['pickup_location'],
             ':destination' => $data['destination'],
             ':pickup_lat' => $data['pickup_lat'],
             ':pickup_lng' => $data['pickup_lng'],
             ':destination_lat' => $data['destination_lat'],
             ':destination_lng' => $data['destination_lng'],
-            ':price' => $data['price']
+            ':price' => $data['price'],
+            ':distance_km' => $data['distance_km'] ?? null
         ]);
     }
 
