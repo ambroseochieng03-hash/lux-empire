@@ -204,7 +204,7 @@ require_once '../../includes/sidebar.php';
     ">
 
         <!-- ADD HOUSE -->
-        <a href="add_house.php"
+        <a href="<?php echo BASE_URL; ?>/add-property"
            class="lux-card tenant-card tenant-card-padding"
            style="
                 padding:30px;
@@ -227,7 +227,7 @@ require_once '../../includes/sidebar.php';
         </a>
 
         <!-- MANAGE -->
-        <a href="manage_houses.php"
+        <a href="<?php echo BASE_URL; ?>/manage-houses"
            class="lux-card tenant-card tenant-card-padding"
            style="
                 padding:30px;
@@ -250,7 +250,7 @@ require_once '../../includes/sidebar.php';
         </a>
 
         <!-- BOOKINGS -->
-        <a href="booking_requests.php"
+        <a href="<?php echo BASE_URL; ?>/booking-requests"
            class="lux-card tenant-card tenant-card-padding"
            style="
                 padding:30px;

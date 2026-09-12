@@ -150,7 +150,7 @@ require_once '../../includes/sidebar.php';
     ">
 
         <div class="lux-card" style="padding:30px; border-radius:24px; text-align:center;">
-            <div style="font-size:2.5rem;">📦</div>
+            <div style="font-size:2.5rem; color:var(--gold);"><i class="fa-solid fa-box-open"></i></div>
             <h2 style="color:var(--gold); font-size:2.2rem; margin:15px 0 10px;">
                 <?php echo count($availableRequests); ?>
             </h2>
@@ -158,7 +158,7 @@ require_once '../../includes/sidebar.php';
         </div>
 
         <div class="lux-card" style="padding:30px; border-radius:24px; text-align:center;">
-            <div style="font-size:2.5rem;"></div>
+            <div style="font-size:2.5rem; color:lightgreen;"><i class="fa-solid fa-truck-fast"></i></div>
             <h2 style="color:lightgreen; font-size:2.2rem; margin:15px 0 10px;">
                 <?php echo $activeTrip ? '1' : '0'; ?>
             </h2>
@@ -166,7 +166,7 @@ require_once '../../includes/sidebar.php';
         </div>
 
         <div class="lux-card" style="padding:30px; border-radius:24px; text-align:center;">
-            <div style="font-size:2.5rem;">🟢</div>
+            <div style="font-size:2.5rem; color:lightgreen;"><i class="fa-solid fa-circle-check"></i></div>
             <h2 style="color:var(--gold); font-size:1.5rem; margin:15px 0 10px;">
                 ONLINE
             </h2>
@@ -183,19 +183,19 @@ require_once '../../includes/sidebar.php';
         margin-bottom:45px;
     ">
 
-        <a href="available_requests.php" class="lux-card"
+        <a href="<?php echo BASE_URL; ?>/driver/available-requests" class="lux-card"
            style="padding:30px; border-radius:24px; text-decoration:none;">
             <h3 style="color:white;">Available Requests</h3>
             <p style="color:var(--gray);">View incoming transport jobs.</p>
         </a>
 
-        <a href="active_trip.php" class="lux-card"
+        <a href="<?php echo BASE_URL; ?>/driver/active-trip" class="lux-card"
            style="padding:30px; border-radius:24px; text-decoration:none;">
             <h3 style="color:white;">Active Trip</h3>
             <p style="color:var(--gray);">Manage current delivery trip.</p>
         </a>
 
-        <a href="location_tracker.php" class="lux-card"
+        <a href="<?php echo BASE_URL; ?>/driver/location-tracker" class="lux-card"
            style="padding:30px; border-radius:24px; text-decoration:none;">
             <h3 style="color:white;">Live GPS Tracker</h3>
             <p style="color:var(--gray);">Share live driver location.</p>

@@ -127,6 +127,50 @@ $data = [
 
 $result = $truck->createRequest($data);
 
+if ($result) {
+
+    require_once '../../classes/Notification.php';
+    require_once '../../classes/EmailJobPublisher.php';
+
+    $tenantName = Session::user()['full_name'] ?? 'A tenant';
+
+    $notifyDb = new Database();
+    $notifyPdo = $notifyDb->connect();
+
+    $driversStmt = $notifyPdo->query("SELECT id, full_name, email FROM users WHERE role = 'driver' AND status = 'active'");
+    $drivers = $driversStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $notification = new Notification();
+
+    $itemsList = $itemsDescription !== null
+        ? array_values(array_filter(array_map('trim', explode("\n", $itemsDescription))))
+        : [];
+
+    foreach ($drivers as $driver) {
+
+        $notification->create(
+            (int) $driver['id'],
+            'new_truck_request',
+            'New Move Request Available',
+            ($tripType === 'scheduled' ? 'A scheduled' : 'An instant') . ' move request from "' .
+                $pickup_location . '" to "' . $destination . '" is now available.',
+            BASE_URL . '/driver/available-requests'
+        );
+
+        EmailJobPublisher::publish('email.new_truck_request', [
+            'email' => $driver['email'],
+            'name' => $driver['full_name'],
+            'tenant_name' => $tenantName,
+            'trip_type' => $tripType,
+            'scheduled_at' => $scheduledAt,
+            'pickup_location' => $pickup_location,
+            'destination' => $destination,
+            'distance_km' => $distanceResult['distance_km'],
+            'items' => $itemsList,
+        ]);
+    }
+}
+
 $resultMessage = $result ? "Truck request submitted successfully!" : "Failed to submit request. Try again.";
 
 $idempotency->complete($idempotencyKey, 'request_truck', $result ? 200 : 500, $resultMessage);

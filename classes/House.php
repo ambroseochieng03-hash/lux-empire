@@ -1617,16 +1617,26 @@ class House
                 // Haversine distance in km — computed live against the
                 // house's own lat/lng, never pre-stored (either point
                 // can move, and this stays cheap at our current scale).
+                //
+                // BUGFIX: :inst_lat was previously used TWICE in this
+                // expression but bound only once — works under PDO's
+                // emulated-prepares mode, but throws SQLSTATE[HY093]
+                // "Invalid parameter number" the moment emulation is
+                // off, since a real prepared statement can't map one
+                // bound value onto two placeholder occurrences. Fixed
+                // by giving the second occurrence its own name, bound
+                // to the same value.
                 $distanceExpr = "(6371 * acos(
                     cos(radians(:inst_lat)) * cos(radians(h.latitude))
                     * cos(radians(h.longitude) - radians(:inst_lng))
-                    + sin(radians(:inst_lat)) * sin(radians(h.latitude))
+                    + sin(radians(:inst_lat2)) * sin(radians(h.latitude))
                 ))";
 
                 $where[] = "h.latitude IS NOT NULL AND h.longitude IS NOT NULL";
                 $where[] = "{$distanceExpr} <= :max_distance_km";
 
                 $params[':inst_lat'] = $institution['latitude'];
+                $params[':inst_lat2'] = $institution['latitude'];
                 $params[':inst_lng'] = $institution['longitude'];
                 $params[':max_distance_km'] = (float) $filters['max_distance_km'];
 

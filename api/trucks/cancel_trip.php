@@ -77,9 +77,9 @@ if (!$trip || (int) $trip['tenant_id'] !== $tenantId) {
 |--------------------------------------------------------------------------
 */
 
-if ($trip['status'] === 'in_transit' || $trip['status'] === 'completed') {
+if ($trip['status'] !== 'pending') {
     http_response_code(409);
-    echo json_encode(['success' => false, 'message' => 'Trip already started and cannot be cancelled.']);
+    echo json_encode(['success' => false, 'message' => 'This trip has already been accepted and can no longer be cancelled.']);
     exit;
 }
 

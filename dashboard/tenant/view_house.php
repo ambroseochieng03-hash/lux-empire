@@ -297,7 +297,7 @@ require_once '../../includes/sidebar.php';
 
                 <?php endif; ?>
 
-                <a href="<?php echo BASE_URL; ?>/dashboard/tenant/search_houses.php"
+                <a href="<?php echo BASE_URL; ?>/tenant/search-houses"
                    class="lux-btn vh-action-btn">
                     <i class="fa-solid fa-arrow-left"></i> Back to Listings
                 </a>

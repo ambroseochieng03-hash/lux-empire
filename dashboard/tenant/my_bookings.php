@@ -66,6 +66,29 @@ $truckStmt->execute([
 
 $truckRequests = $truckStmt->fetchAll();
 
+require_once '../../classes/VerificationLookup.php';
+
+$verificationLookup = new VerificationLookup();
+
+/**
+ * House-booking cards show the LISTING's own verified badge (the
+ * house itself, not the landlord — consistent with search_houses.php
+ * / view_house.php, which badge house.verified_at separately from
+ * the landlord's). Booking::getBookingsByTenant() already returns
+ * h.* via its SELECT, so no extra query is needed for that — it's
+ * available directly as $booking['verified_at'].
+ *
+ * Driver verification (truck requests) DOES need a lookup, since
+ * driver_id isn't a listing and has no verified_at on the row
+ * itself — it lives on users.verified_at for that driver.
+ */
+$driverIdsOnPage = array_filter(array_map(
+    static fn ($t) => (int) ($t['driver_id'] ?? 0),
+    $truckRequests
+));
+
+$verifiedDriverMap = $verificationLookup->getVerifiedMap($driverIdsOnPage);
+
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
@@ -75,6 +98,7 @@ require_once '../../includes/sidebar.php';
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bookings.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/my-bookings.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/verification-badges.css">
 
 <div class="mb-page">
 
@@ -260,6 +284,9 @@ require_once '../../includes/sidebar.php';
 
                                 <h2 class="mb-house-title">
                                     <?php echo htmlspecialchars($booking['title']); ?>
+                                    <?php if (!empty($booking['verified_at'])): ?>
+                                        <span class="lux-verified-badge" title="Verified"><i class="fa-solid fa-circle-check"></i></span>
+                                    <?php endif; ?>
                                 </h2>
 
                                 <br>
@@ -381,7 +408,7 @@ require_once '../../includes/sidebar.php';
                             make your first request.
                         </p>
 
-                        <a href="<?php echo BASE_URL; ?>/dashboard/tenant/search_houses.php"
+                        <a href="<?php echo BASE_URL; ?>/tenant/search-houses"
                            class="lux-btn mb-empty-link">
                             Explore Houses
                         </a>
@@ -426,6 +453,20 @@ require_once '../../includes/sidebar.php';
                              data-status="<?php echo htmlspecialchars($truckStatus); ?>"
                              data-timestamp="<?php echo (int) strtotime($trip['requested_at']); ?>"
                              data-search="<?php echo htmlspecialchars(strtolower($trip['pickup_location'] . ' ' . $trip['destination'])); ?>">
+
+                            <?php if (!empty($trip['trip_type']) && $trip['trip_type'] === 'scheduled'): ?>
+                                <div style="margin-bottom:12px;">
+                                    <span class="trip-type-tag scheduled" style="display:inline-block; padding:5px 10px; border-radius:8px; font-size:0.75rem; font-weight:bold; background:rgba(100,180,255,0.12); color:#7fc4ff;">
+                                        <i class="fa-solid fa-calendar-days"></i> Scheduled
+                                    </span>
+                                </div>
+                            <?php else: ?>
+                                <div style="margin-bottom:12px;">
+                                    <span class="trip-type-tag instant" style="display:inline-block; padding:5px 10px; border-radius:8px; font-size:0.75rem; font-weight:bold; background:rgba(0,255,120,0.12); color:lightgreen;">
+                                        <i class="fa-solid fa-bolt"></i> Move Now
+                                    </span>
+                                </div>
+                            <?php endif; ?>
 
                             <!-- TOP -->
                             <div class="tenant-flex mb-truck-top">
@@ -507,6 +548,9 @@ require_once '../../includes/sidebar.php';
 
                                     <div class="mb-driver-name">
                                         <?php echo htmlspecialchars($trip['driver_name']); ?>
+                                        <?php if ($verifiedDriverMap[(int) $trip['driver_id']] ?? false): ?>
+                                            <span class="lux-verified-badge" title="Verified Driver"><i class="fa-solid fa-circle-check"></i></span>
+                                        <?php endif; ?>
                                     </div>
 
                                     <div class="mb-driver-phone">
@@ -523,28 +567,36 @@ require_once '../../includes/sidebar.php';
                                 <!-- TRACK DRIVER (real navigation — unrelated to this AJAX refactor) -->
                                 <?php if ($truckStatus === 'accepted' || $truckStatus === 'in_transit'): ?>
 
-                                    <a href="<?php echo BASE_URL; ?>/dashboard/tenant/track_driver.php?trip_id=<?php echo (int) $trip['id']; ?>"
+                                    <a href="<?php echo BASE_URL; ?>/tenant/track-driver?trip_id=<?php echo (int) $trip['id']; ?>"
                                        class="mb-btn-track">
                                         Track Driver
                                     </a>
 
                                 <?php endif; ?>
 
-                                <!-- EDIT (real navigation) -->
+                                <!-- EDIT — opens the reusable modal, no navigation.
+                                     Only ever shown while status is pending, per spec:
+                                     an accepted trip can no longer be edited at all. -->
                                 <?php if ($truckStatus === 'pending'): ?>
 
-                                    <a href="<?php echo BASE_URL; ?>/dashboard/tenant/edit_truck_request.php?id=<?php echo (int) $trip['id']; ?>"
-                                       class="mb-btn-edit">
+                                    <button type="button"
+                                            class="mb-btn-edit edit-truck-trigger-btn"
+                                            data-request-id="<?php echo (int) $trip['id']; ?>"
+                                            data-trip-type="<?php echo htmlspecialchars($trip['trip_type'] ?? 'instant'); ?>"
+                                            data-scheduled-at="<?php echo htmlspecialchars($trip['scheduled_at'] ?? ''); ?>"
+                                            data-items="<?php echo htmlspecialchars($trip['items_description'] ?? ''); ?>">
                                         Edit
-                                    </a>
+                                    </button>
 
                                 <?php endif; ?>
 
                                 <!--
                                     CANCEL TRIP — class "truck-ajax-form" is what
                                     bindTenantTruckAjaxForms() in bookings.js listens for.
+                                    Pending only, per spec: an accepted trip can no
+                                    longer be cancelled by the tenant.
                                 -->
-                                <?php if ($truckStatus === 'pending' || $truckStatus === 'accepted'): ?>
+                                <?php if ($truckStatus === 'pending'): ?>
 
                                     <form class="truck-ajax-form"
                                           action="<?php echo BASE_URL; ?>/api/trucks/cancel_trip.php"
@@ -592,7 +644,7 @@ require_once '../../includes/sidebar.php';
                             Your logistics requests will appear here.
                         </p>
 
-                        <a href="<?php echo BASE_URL; ?>/dashboard/tenant/request_truck.php"
+                        <a href="<?php echo BASE_URL; ?>/tenant/request-truck"
                            class="lux-btn mb-empty-link">
                             Request Truck
                         </a>
@@ -636,6 +688,8 @@ require_once '../../includes/sidebar.php';
 </script>
 
 <script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/reusable-modal.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/truck-edit-modal.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/bookings.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/bookings-filter.js"></script>
 

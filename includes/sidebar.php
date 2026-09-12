@@ -161,6 +161,28 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
     </nav>
 
+<style>
+    /* Sidebar nav icons — was inheriting plain white from the link
+       text; gold matches the icon treatment already used everywhere
+       else in the app (navbar bell, chat icons, etc.), with the
+       emergency button's icon kept red since that one is
+       deliberately an alarm color, not a brand accent. */
+    .sidebar-nav a i {
+        color: var(--gold);
+        width: 20px;
+        text-align: center;
+        margin-right: 4px;
+    }
+
+    .sidebar-nav a.logout-link i {
+        color: #ff6b6b;
+    }
+
+    .lux-emergency-trigger-btn i {
+        color: white;
+    }
+</style>
+
 </aside>
 
 <!-- MOBILE TOGGLE -->

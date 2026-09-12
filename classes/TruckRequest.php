@@ -220,4 +220,83 @@ class TruckRequest {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Update ONLY the fields safe to change after a request is
+     * created: items_description always, scheduled_at for scheduled
+     * trips. Pickup/destination/price are immutable once created —
+     * the price is tied to the original coordinates, and re-picking
+     * a route is a map-picker UI problem, not an edit-form one.
+     * Refuses anything not still 'pending' (an accepted trip is
+     * locked, per spec).
+     */
+    public function updateEditableFields(int $requestId, int $tenantId, array $data): array
+    {
+        $stmt = $this->conn->prepare("
+            SELECT * FROM " . $this->table . "
+            WHERE id = :id AND tenant_id = :tenant_id
+            LIMIT 1
+        ");
+        $stmt->execute([':id' => $requestId, ':tenant_id' => $tenantId]);
+        $request = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$request) {
+            return ['success' => false, 'message' => 'Truck request not found.'];
+        }
+
+        if ($request['status'] !== 'pending') {
+            return ['success' => false, 'message' => 'This request has already been accepted and can no longer be edited.'];
+        }
+
+        $itemsDescription = trim($data['items_description'] ?? '');
+        $itemsDescription = $itemsDescription !== '' ? mb_substr($itemsDescription, 0, 2000) : null;
+
+        $scheduledAt = $request['scheduled_at'];
+
+        if ($request['trip_type'] === 'scheduled') {
+
+            $scheduledAtRaw = trim($data['scheduled_at'] ?? '');
+            $parsed = DateTime::createFromFormat('Y-m-d\TH:i', $scheduledAtRaw);
+
+            if (!$parsed) {
+                return ['success' => false, 'message' => 'Please choose a valid date and time.'];
+            }
+
+            $minimumLeadSeconds = TRUCK_MIN_SCHEDULE_LEAD_MINUTES * 60;
+
+            if ($parsed->getTimestamp() < (time() + $minimumLeadSeconds)) {
+                return ['success' => false, 'message' => 'Scheduled moves must be at least ' . TRUCK_MIN_SCHEDULE_LEAD_MINUTES . ' minutes from now.'];
+            }
+
+            $scheduledAt = $parsed->format('Y-m-d H:i:s');
+        }
+
+        $update = $this->conn->prepare("
+            UPDATE " . $this->table . "
+            SET items_description = :items_description,
+                scheduled_at = :scheduled_at
+            WHERE id = :id AND tenant_id = :tenant_id AND status = 'pending'
+        ");
+
+        $update->execute([
+            ':items_description' => $itemsDescription,
+            ':scheduled_at' => $scheduledAt,
+            ':id' => $requestId,
+            ':tenant_id' => $tenantId
+        ]);
+
+        if ($update->rowCount() === 0) {
+            // Status flipped to accepted between our SELECT and this
+            // UPDATE (race) — same conditional-UPDATE pattern used
+            // elsewhere in this codebase.
+            return ['success' => false, 'message' => 'This request has just been accepted and can no longer be edited.'];
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Request updated.',
+            'items_description' => $itemsDescription,
+            'scheduled_at' => $scheduledAt
+        ];
+    }
+
 }

@@ -19,6 +19,10 @@ foreach ($heroHouseModel->getAllHouses() as $candidateHouse) {
         continue; // don't showcase something no longer available
     }
 
+    if (!empty($candidateHouse['is_hidden'])) {
+        continue; // admin-hidden listings are never showcased
+    }
+
     $candidateMedia = $heroHouseModel->getHouseMedia((int) $candidateHouse['id']);
 
     if (empty($candidateMedia)) {

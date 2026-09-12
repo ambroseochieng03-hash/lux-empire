@@ -30,9 +30,13 @@ $consumerNames = [
     'email.landlord_verified'       => 'app_email_landlord_verified',
     'email.driver_verified'         => 'app_email_driver_verified',
     'email.new_booking_request'     => 'app_email_new_booking_request',
+    'email.new_truck_request'       => 'app_email_new_truck_request',
     'email.booking_accepted'        => 'app_email_booking_accepted',
     'email.booking_rejected'        => 'app_email_booking_rejected',
     'email.truck_request_accepted'  => 'app_email_truck_request_accepted',
+    'email.truck_daily_reminder'    => 'app_email_truck_daily_reminder',
+    'email.truck_hour_reminder'     => 'app_email_truck_hour_reminder',
+    'email.truck_tenant_reminder'   => 'app_email_truck_tenant_reminder',
     'email.admin_broadcast'         => 'app_email_admin_broadcast',
     'email.admin_direct_message'    => 'app_email_admin_direct_message',
     'email.emergency_acknowledged' => 'app_email_emergency_acknowledged'
@@ -69,6 +73,45 @@ function buildEmail(string $subject, array $job): ?array
                     'Your ' . $role . ' account has been verified by LUX EMPIRE administration. You now have full access to your dashboard.',
                     'Go to your dashboard',
                     BASE_URL . '/' . strtolower($job['role'] ?? '')
+                ),
+            ];
+
+            case 'email.new_truck_request':
+
+            $isScheduled = ($job['trip_type'] ?? 'instant') === 'scheduled';
+
+            $whenLine = $isScheduled
+                ? 'Scheduled for: ' . htmlspecialchars(date('M d, Y \a\t g:i A', strtotime($job['scheduled_at'] ?? 'now')))
+                : 'Requested for: right now (instant move)';
+
+            $items = is_array($job['items'] ?? null) ? $job['items'] : [];
+
+            $itemsHtml = count($items) > 0
+                ? '<ul style="margin:10px 0 0 0; padding-left:20px;">' .
+                    implode('', array_map(static fn($item) => '<li>' . htmlspecialchars($item) . '</li>', $items)) .
+                  '</ul>'
+                : '<em>No items listed.</em>';
+
+            $distanceLine = !empty($job['distance_km'])
+                ? '<br>Distance: approx. ' . htmlspecialchars((string) $job['distance_km']) . ' km'
+                : '';
+
+            return [
+                'subject' => ($isScheduled ? 'New scheduled move request' : 'New instant move request') . ' available',
+                'body' => EmailTemplate::render(
+                    'New Move Request',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                    htmlspecialchars($job['tenant_name'] ?? 'A tenant') . ' has posted a new ' .
+                    ($isScheduled ? 'scheduled' : 'instant') . ' move request:<br><br>' .
+                    '<strong>Type:</strong> ' . ($isScheduled ? 'Scheduled' : 'Instant (move now)') . '<br>' .
+                    '<strong>' . $whenLine . '</strong><br>' .
+                    'Pickup: ' . htmlspecialchars($job['pickup_location'] ?? '') . '<br>' .
+                    'Destination: ' . htmlspecialchars($job['destination'] ?? '') .
+                    $distanceLine . '<br><br>' .
+                    '<strong>Items (' . count($items) . '):</strong>' .
+                    $itemsHtml,
+                    'View this request',
+                    BASE_URL . '/driver/available-requests'
                 ),
             ];
 
@@ -116,6 +159,46 @@ function buildEmail(string $subject, array $job): ?array
                     'Driver Assigned',
                     'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
                     htmlspecialchars($job['driver_name'] ?? 'A driver') . ' has accepted your truck request and will be in touch.',
+                    'Track your driver',
+                    BASE_URL . '/tenant/track-driver'
+                ),
+            ];
+
+        case 'email.truck_daily_reminder':
+            return [
+                'subject' => 'Reminder: upcoming scheduled move',
+                'body' => EmailTemplate::render(
+                    'Upcoming Scheduled Move',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                    'This is a reminder that you have a scheduled move from "' . htmlspecialchars($job['pickup_location'] ?? '') .
+                    '" to "' . htmlspecialchars($job['destination'] ?? '') . '" on ' .
+                    htmlspecialchars(date('M d, Y g:i A', strtotime($job['scheduled_at'] ?? 'now'))) . '.',
+                    'View trip details',
+                    BASE_URL . '/driver/active-trip'
+                ),
+            ];
+
+        case 'email.truck_hour_reminder':
+            return [
+                'subject' => 'Your scheduled move starts in about an hour',
+                'body' => EmailTemplate::render(
+                    'Move Starting Soon',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                    'Your scheduled move from "' . htmlspecialchars($job['pickup_location'] ?? '') .
+                    '" to "' . htmlspecialchars($job['destination'] ?? '') . '" starts in about an hour.',
+                    'View trip details',
+                    BASE_URL . '/driver/active-trip'
+                ),
+            ];
+
+        case 'email.truck_tenant_reminder':
+            return [
+                'subject' => 'Your move starts in about an hour',
+                'body' => EmailTemplate::render(
+                    'Your Move Starts Soon',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                    'Your scheduled move to "' . htmlspecialchars($job['destination'] ?? '') . '" starts in about an hour. ' .
+                    htmlspecialchars($job['driver_name'] ?? 'Your driver') . ' will be on the way soon.',
                     'Track your driver',
                     BASE_URL . '/tenant/track-driver'
                 ),

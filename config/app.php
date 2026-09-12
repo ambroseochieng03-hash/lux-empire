@@ -401,9 +401,9 @@ define('MAX_IMAGES_PER_HOUSE', 10);
 define('MAX_VIDEO_SIZE_BYTES', 300 * 1024 * 1024);      // 300MB per video
 
 define('MAX_VIDEOS_PROCESSING_PER_LANDLORD', 1);         // concurrent in-flight
-define('MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY', 10);
+define('MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY', 5);
 
-define('MAX_LISTINGS_PER_LANDLORD', 10);                 // free-tier cap
+define('MAX_LISTINGS_PER_LANDLORD', 5);                 // free-tier cap
 
 /*
 |--------------------------------------------------------------------------
@@ -416,7 +416,7 @@ define('MAX_LISTINGS_PER_LANDLORD', 10);                 // free-tier cap
 | exist purely to make the formula real and testable now.
 */
 define('TRUCK_BASE_FARE', 500);       // KES, flat, every trip
-define('TRUCK_RATE_PER_KM', 60);      // KES per km
+define('TRUCK_RATE_PER_KM', 100);      // KES per km
 define('TRUCK_MINIMUM_FARE', 800);    // KES, floor regardless of distance
 
 /*

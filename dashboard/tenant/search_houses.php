@@ -313,7 +313,7 @@ require_once '../../includes/sidebar.php';
                             <!-- BUTTONS -->
                             <div class="tenant-actions lux-explore-actions">
 
-                                <a href="<?php echo BASE_URL; ?>/dashboard/tenant/view_house.php?id=<?php echo $houseId; ?>"
+                                <a href="<?php echo BASE_URL; ?>/tenant/view-house?id=<?php echo $houseId; ?>"
                                    class="lux-btn lux-explore-btn-view">
                                     View Details
                                 </a>

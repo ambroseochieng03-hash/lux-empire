@@ -14,6 +14,17 @@
  * Safe to re-run.
  */
 
+    /*
+    
+    nats stream update APP_EMAILS \
+    --subjects "email.landlord_verified,email.driver_verified,email.new_booking_request,email.new_truck_request,email.bookin
+    g_accepted,email.booking_rejected,email.truck_request_accepte
+    d,email.truck_daily_reminder,email.truck_hour_reminder,email.
+    truck_tenant_reminder,email.admin_broadcast,email.admin_direc
+    t_message,email.emergency_acknowledged"
+    
+    */
+
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/app.php';
@@ -42,9 +53,13 @@ $consumers = [
     'email.landlord_verified'       => 'app_email_landlord_verified',
     'email.driver_verified'         => 'app_email_driver_verified',
     'email.new_booking_request'     => 'app_email_new_booking_request',
+    'email.new_truck_request'       => 'app_email_new_truck_request',
     'email.booking_accepted'        => 'app_email_booking_accepted',
     'email.booking_rejected'        => 'app_email_booking_rejected',
     'email.truck_request_accepted'  => 'app_email_truck_request_accepted',
+    'email.truck_daily_reminder'    => 'app_email_truck_daily_reminder',
+    'email.truck_hour_reminder'     => 'app_email_truck_hour_reminder',
+    'email.truck_tenant_reminder'   => 'app_email_truck_tenant_reminder',
     'email.admin_broadcast'         => 'app_email_admin_broadcast',
     'email.admin_direct_message'    => 'app_email_admin_direct_message',
     'email.emergency_acknowledged' => 'app_email_emergency_acknowledged'
