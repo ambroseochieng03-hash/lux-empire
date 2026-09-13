@@ -110,6 +110,10 @@ googleClientId } to be set by the page before this script runs.
                 // server-side (login is a privilege boundary), so the
                 // token this page started with is now stale.
                 cfg.csrfToken = newCsrfToken;
+
+                if (window.LUX_PAYMENT_CONFIG) {
+                    window.LUX_PAYMENT_CONFIG.csrfToken = newCsrfToken;
+                }    
             }
 
             const pendingRaw = sessionStorage.getItem('luxPendingGuestAction');
@@ -133,21 +137,24 @@ googleClientId } to be set by the page before this script runs.
 
             if (pending.type === 'book_house') {
 
-                try {
-                    const result = await postForm(`${cfg.baseUrl}/api/houses/book_house.php`, {
-                        house_id: pending.houseId,
-                        csrf_token: cfg.csrfToken,
-                        idempotency_key: window.LuxIdempotency ? window.LuxIdempotency.generate() : ''
-                    });
+                closeModal();
 
-                    if (!result.success) {
-                        sessionStorage.setItem('luxBookingFailedMessage', result.message || 'Booking could not be completed automatically.');
-                    }
-                } catch (e) {
-                    sessionStorage.setItem('luxBookingFailedMessage', 'Booking could not be completed automatically.');
+                if (!window.LuxPayment) {
+                    window.location.href = fallbackRedirect;
+                    return;
                 }
 
-                window.location.href = cfg.baseUrl + '/tenant/my-bookings';
+                window.LuxPayment.open({
+                    purpose: 'booking_fee',
+                    houseId: pending.houseId,
+                    title: 'Secure This Listing',
+                    description: 'A KES 150 booking fee sends your request to the landlord and locks this property so no one else can book it while they decide. If the landlord declines, your fee is refunded.',
+                    amountLabel: 'KES 150 booking fee',
+                    onSuccess: () => {
+                        window.location.href = cfg.baseUrl + '/tenant/my-bookings';
+                    }
+                });
+
                 return;
             }
 

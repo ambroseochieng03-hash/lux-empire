@@ -38,3 +38,16 @@
     cursor:not-allowed;
     pointer-events:none;
 }
+
+.lux-pro-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #d4af37, #f5d76e);
+    color: #0a0a0a;
+    vertical-align: middle;
+}

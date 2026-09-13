@@ -747,10 +747,28 @@ editHouseForm.addEventListener(
 
             if (!response.ok || !result.success) {
 
-                throw new Error(
-                    result.message ||
-                    'Update failed.'
-                );
+                const limitCodes = ['LISTING_LIMIT_REACHED', 'IMAGE_LIMIT_REACHED', 'VIDEO_REQUIRES_PRO'];
+
+                if (limitCodes.includes(result.error_code)) {
+
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.textContent = submitButton.dataset.originalText || 'Save Changes';
+                    }
+
+                    if (confirm((result.message || 'Plan limit reached.') + '\n\nUpgrade to Pro now?')) {
+                        window.LuxPayment.open({
+                            purpose: 'landlord_pro',
+                            title: 'Upgrade to Pro',
+                            amountLabel: 'KES 499 / month',
+                            onSuccess: () => { editHouseForm.requestSubmit(); }
+                        });
+                    }
+
+                    return;
+                }
+
+                throw new Error(result.message || 'Update failed.');
             }
 
             window.location.href =
@@ -830,5 +848,13 @@ editHouseForm.addEventListener(
         });
     });
 </script>
+
+<script>
+    window.LUX_PAYMENT_CONFIG = {
+        baseUrl: "<?php echo BASE_URL; ?>",
+        csrfToken: "<?php echo htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8'); ?>"
+    };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/payment-modal.js"></script>
 
 <?php require_once '../../includes/footer.php'; ?>

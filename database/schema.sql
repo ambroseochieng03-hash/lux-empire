@@ -497,3 +497,70 @@ ALTER TABLE truck_requests
   ADD COLUMN last_daily_reminder_sent_at DATE NULL,
   ADD COLUMN hour_reminder_sent_at TIMESTAMP NULL,
   ADD COLUMN tenant_reminder_sent_at TIMESTAMP NULL;
+
+-- Landlord plan state lives on users (only meaningful for role='landlord',
+-- same convention as national_id_encrypted being landlord-only in practice)
+ALTER TABLE users
+    ADD COLUMN plan_tier ENUM('free','pro') NOT NULL DEFAULT 'free' AFTER role,
+    ADD COLUMN plan_expires_at DATETIME NULL AFTER plan_tier;
+
+-- One table for every M-Pesa transaction, regardless of what it's for.
+-- purpose + metadata tell you what it was paying for; nothing here is
+-- payment-type-specific.
+CREATE TABLE payments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    purpose ENUM('landlord_pro','booking_fee','driver_wallet_topup') NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    status ENUM('pending','completed','failed','timeout') NOT NULL DEFAULT 'pending',
+    checkout_request_id VARCHAR(100) NOT NULL,
+    merchant_request_id VARCHAR(100) NULL,
+    mpesa_receipt VARCHAR(50) NULL,
+    metadata JSON NULL,           -- e.g. {"booking_id": 42} or {"trip_id": 17}
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_checkout_request (checkout_request_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Driver commission wallet — a ledger, not a mutable balance column,
+-- so every deduction/top-up is auditable and race-safe.
+CREATE TABLE wallet_transactions (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    driver_id INT NOT NULL,
+    type ENUM('topup','commission','admin_adjustment') NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,          -- negative for commission deductions
+    reference_id INT NULL,                   -- payments.id or truck_requests.id
+    balance_after DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bookings need to know the fee was actually paid before the landlord
+-- ever sees/accepts the request.
+ALTER TABLE bookings
+    ADD COLUMN payment_status ENUM('unpaid','paid') NOT NULL DEFAULT 'unpaid' AFTER status,
+    ADD COLUMN payment_id INT NULL AFTER payment_status,
+    ADD CONSTRAINT fk_bookings_payment FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE SET NULL;
+
+CREATE TABLE mpesa_c2b_transactions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    mpesa_receipt VARCHAR(50) NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    transaction_time DATETIME NOT NULL,
+    matched_payment_id INT NULL,
+    status ENUM('unmatched','matched') NOT NULL DEFAULT 'unmatched',
+    raw_payload JSON NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_receipt (mpesa_receipt),
+    FOREIGN KEY (matched_payment_id) REFERENCES payments(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci; 
+
+ALTER TABLE houses
+    MODIFY COLUMN status ENUM('available','reserved','booked','rented') NOT NULL DEFAULT 'available';
+
+ALTER TABLE houses
+    ADD COLUMN reserved_by_booking_id INT NULL AFTER status,
+    ADD CONSTRAINT fk_houses_reserved_booking FOREIGN KEY (reserved_by_booking_id) REFERENCES bookings(id) ON DELETE SET NULL;

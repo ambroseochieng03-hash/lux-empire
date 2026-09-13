@@ -42,20 +42,70 @@ this project has no bundler.
                 }
             };
 
-            request.onsuccess = () => resolve(request.result);
+            request.onsuccess = () => {
+
+                const db = request.result;
+
+                /*
+                 * The browser can close this connection at any time —
+                 * tab backgrounding, back/forward-cache eviction,
+                 * memory pressure. Without this, dbPromise keeps
+                 * resolving to a dead connection forever, and every
+                 * future .transaction() call throws InvalidStateError
+                 * synchronously (which shows up as an unhandled
+                 * rejection, since it happens inside a Promise
+                 * executor with no surrounding try/catch). Dropping
+                 * the cache here means the next call just reopens.
+                 */
+                db.onclose = () => {
+                    dbPromise = null;
+                };
+
+                // Another tab wants to upgrade the schema — close
+                // cleanly so it can, and reset so this tab reopens
+                // fresh the next time it needs the DB.
+                db.onversionchange = () => {
+                    db.close();
+                    dbPromise = null;
+                };
+
+                resolve(db);
+            };
+
             request.onerror = () => reject(request.error);
         });
 
         return dbPromise;
     }
 
-    function withStore(storeName, mode, callback) {
+    /*
+     * Runs callback inside a transaction on storeName. If the cached
+     * connection turns out to be dead (InvalidStateError, thrown
+     * synchronously by db.transaction()), drops the cache and
+     * retries exactly once with a fresh connection rather than
+     * failing outright.
+     */
+    function withStore(storeName, mode, callback, isRetry) {
 
         return openDB().then((db) => new Promise((resolve, reject) => {
 
-            const tx = db.transaction(storeName, mode);
-            const store = tx.objectStore(storeName);
+            let tx;
 
+            try {
+                tx = db.transaction(storeName, mode);
+            } catch (err) {
+
+                if (err && err.name === 'InvalidStateError' && !isRetry) {
+                    dbPromise = null;
+                    withStore(storeName, mode, callback, true).then(resolve, reject);
+                    return;
+                }
+
+                reject(err);
+                return;
+            }
+
+            const store = tx.objectStore(storeName);
             const result = callback(store);
 
             tx.oncomplete = () => resolve(result);
@@ -78,15 +128,15 @@ this project has no bundler.
 
     function getAllHouses() {
 
-        return openDB().then((db) => new Promise((resolve, reject) => {
+        return withStore('houses', 'readonly', (store) => {
 
-            const tx = db.transaction('houses', 'readonly');
-            const store = tx.objectStore('houses');
-            const request = store.getAll();
+            return new Promise((resolve, reject) => {
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.error);
+            });
 
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
-        }));
+        }).then((maybePromise) => maybePromise);
     }
 
     /*
@@ -164,16 +214,16 @@ this project has no bundler.
 
     function getPendingDrafts() {
 
-        return openDB().then((db) => new Promise((resolve, reject) => {
+        return withStore('drafts', 'readonly', (store) => {
 
-            const tx = db.transaction('drafts', 'readonly');
-            const store = tx.objectStore('drafts');
-            const index = store.index('status');
-            const request = index.getAll('pending');
+            return new Promise((resolve, reject) => {
+                const index = store.index('status');
+                const request = index.getAll('pending');
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.error);
+            });
 
-            request.onsuccess = () => resolve(request.result || []);
-            request.onerror = () => reject(request.error);
-        }));
+        }).then((maybePromise) => maybePromise);
     }
 
     function deleteDraft(id) {

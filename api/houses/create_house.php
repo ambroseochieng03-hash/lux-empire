@@ -5,365 +5,191 @@ declare(strict_types=1);
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
-require_once '../../config/session.php';
-require_once '../../classes/House.php';
-require_once '../../config/security/DoSProtection.php';
+header('Content-Type: application/json');
 
-/**
- * ============================================================
- * AUTHENTICATION
- * ============================================================
- */
+require_once '../../config/session.php';
+require_once '../../config/csrf.php';
+require_once '../../classes/House.php';
+require_once '../../classes/PlanLimits.php';
+require_once '../../classes/IdempotencyGuard.php';
+require_once '../../config/security/DoSProtection.php';
+require_once '../../config/security/RedisThrottle.php';
 
 Session::start();
 
 if (!Session::isAuthenticated()) {
-
-    header(
-        'Location: ' . BASE_URL . '/login?error='
-        . urlencode('Authentication required.')
-    );
-
-    exit();
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Authentication required.']);
+    exit;
 }
 
 $user = Session::user();
 
-if (
-    $user === null ||
-    ($user['role'] ?? '') !== 'landlord'
-) {
-
-    header(
-        'Location: ' . BASE_URL . '/?error='
-        . urlencode('Unauthorized access.')
-    );
-
-    exit();
+if ($user === null || ($user['role'] ?? '') !== 'landlord') {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Unauthorized access.']);
+    exit;
 }
 
 $landlordId = (int) $user['id'];
-
 DoSProtection::check($landlordId);
 
-/**
- * ============================================================
- * REQUEST METHOD
- * ============================================================
- */
-
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-
-    header(
-        "Location: ../../dashboard/landlord/add_house.php"
-    );
-
-    exit();
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
+    exit;
 }
 
-/**
- * ============================================================
- * COLLECT INPUT
- * ============================================================
- */
+if (!Csrf::validate($_POST['csrf_token'] ?? null)) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Invalid or expired CSRF token.']);
+    exit;
+}
 
 $title = trim($_POST['title'] ?? '');
+$description = trim($_POST['description'] ?? '');
+$price = trim($_POST['price'] ?? '');
+$location = trim($_POST['location'] ?? '');
+$bedrooms = trim($_POST['bedrooms'] ?? '');
+$bathrooms = trim($_POST['bathrooms'] ?? '');
+$houseType = trim($_POST['house_type'] ?? '');
+$rating = (int) ($_POST['rating'] ?? 0);
+$latitude = ($_POST['latitude'] ?? '') !== '' ? (float) $_POST['latitude'] : null;
+$longitude = ($_POST['longitude'] ?? '') !== '' ? (float) $_POST['longitude'] : null;
 
-$description = trim(
-    $_POST['description'] ?? ''
-);
-
-$price = trim(
-    $_POST['price'] ?? ''
-);
-
-$location = trim(
-    $_POST['location'] ?? ''
-);
-
-$bedrooms = trim(
-    $_POST['bedrooms'] ?? ''
-);
-
-$bathrooms = trim(
-    $_POST['bathrooms'] ?? ''
-);
-
-$houseType = trim(
-    $_POST['house_type'] ?? ''
-);
-
-$rating = (int) (
-    $_POST['rating'] ?? 0
-);
-
-$latitude = ($_POST['latitude'] ?? '') !== ''
-    ? (float) $_POST['latitude']
-    : null;
-
-$longitude = ($_POST['longitude'] ?? '') !== ''
-    ? (float) $_POST['longitude']
-    : null;
-
-$landlordId = (int) $landlordId;
-
-
-/**
- * ============================================================
- * BASIC VALIDATION
- * ============================================================
- */
-
-if (
-    $title === '' ||
-    $price === '' ||
-    $location === ''
-) {
-
-    header(
-        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
-        . urlencode('Title, price and location are required.')
-    );
-
-    exit();
+if ($title === '' || $price === '' || $location === '') {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Title, price and location are required.']);
+    exit;
 }
 
 if (!is_numeric($price) || (float) $price <= 0) {
-
-    header(
-        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
-        . urlencode('Invalid property price.')
-    );
-
-    exit();
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Invalid property price.']);
+    exit;
 }
 
 $price = (float) $price;
-
-
-/**
- * ============================================================
- * NORMALIZE NUMERIC VALUES
- * ============================================================
- */
-
-$bedrooms = $bedrooms !== ''
-    ? (int) $bedrooms
-    : 1;
-
-$bathrooms = $bathrooms !== ''
-    ? (int) $bathrooms
-    : 1;
-
-
-/**
- * ============================================================
- * VALIDATE RATING
- * ============================================================
- */
+$bedrooms = $bedrooms !== '' ? (int) $bedrooms : 1;
+$bathrooms = $bathrooms !== '' ? (int) $bathrooms : 1;
 
 if ($rating < 1 || $rating > 5) {
     $rating = 5;
 }
 
-
-/**
- * ============================================================
- * NORMALIZE MEDIA INPUT
- *
- * The API does not process media.
- *
- * House.php + MediaService.php handle:
- *
- * - MIME validation
- * - Image processing
- * - Video processing
- * - File naming
- * - Database media records
- * - Transaction handling
- * ============================================================
- */
-
 $images = [];
-
 $video = null;
 
+if (isset($_FILES['images']) && is_array($_FILES['images']['name'] ?? null)) {
 
-/**
- * ------------------------------------------------------------
- * MULTIPLE IMAGES
- *
- * Expected frontend field:
- *
- * images[]
- * ------------------------------------------------------------
- */
+    foreach ($_FILES['images']['name'] as $index => $name) {
 
-if (
-    isset($_FILES['images']) &&
-    is_array($_FILES['images']['name'] ?? null)
-) {
-
-    $imageFiles = $_FILES['images'];
-
-    foreach ($imageFiles['name'] as $index => $name) {
-
-        if (
-            !isset(
-                $imageFiles['tmp_name'][$index],
-                $imageFiles['error'][$index],
-                $imageFiles['size'][$index]
-            )
-        ) {
+        if (!isset($_FILES['images']['tmp_name'][$index], $_FILES['images']['error'][$index], $_FILES['images']['size'][$index])) {
             continue;
         }
 
-        if ($imageFiles['error'][$index] === UPLOAD_ERR_NO_FILE) {
+        if ($_FILES['images']['error'][$index] === UPLOAD_ERR_NO_FILE) {
             continue;
         }
 
         $images[] = [
-            'name' => $imageFiles['name'][$index],
-            'type' => $imageFiles['type'][$index] ?? '',
-            'tmp_name' => $imageFiles['tmp_name'][$index],
-            'error' => $imageFiles['error'][$index],
-            'size' => $imageFiles['size'][$index]
+            'name' => $_FILES['images']['name'][$index],
+            'type' => $_FILES['images']['type'][$index] ?? '',
+            'tmp_name' => $_FILES['images']['tmp_name'][$index],
+            'error' => $_FILES['images']['error'][$index],
+            'size' => $_FILES['images']['size'][$index],
         ];
     }
 }
 
-
-/**
- * ------------------------------------------------------------
- * SINGLE VIDEO
- *
- * Expected frontend field:
- *
- * video
- * ------------------------------------------------------------
- */
-
-if (
-    isset($_FILES['video']) &&
-    is_array($_FILES['video']) &&
-    ($_FILES['video']['error'] ?? UPLOAD_ERR_NO_FILE)
-        !== UPLOAD_ERR_NO_FILE
-) {
-
+if (isset($_FILES['video']) && is_array($_FILES['video']) && ($_FILES['video']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
     $video = [
         'name' => $_FILES['video']['name'] ?? '',
         'type' => $_FILES['video']['type'] ?? '',
         'tmp_name' => $_FILES['video']['tmp_name'] ?? '',
         'error' => $_FILES['video']['error'] ?? UPLOAD_ERR_NO_FILE,
-        'size' => $_FILES['video']['size'] ?? 0
+        'size' => $_FILES['video']['size'] ?? 0,
     ];
 }
 
-
-/**
- * ============================================================
- * DEFENSIVE MEDIA RULE
- *
- * The backend refuses both media types even if somebody
- * manually bypasses the frontend.
- * ============================================================
- */
-
 if (!empty($images) && $video !== null) {
-
-    header(
-        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
-        . urlencode(
-            'A property can contain multiple images or one video, not both.'
-        )
-    );
-
-    exit();
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'A property can contain multiple images or one video, not both.']);
+    exit;
 }
-
-if (count($images) > MAX_IMAGES_PER_HOUSE) {
-
-    header(
-        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
-        . urlencode(
-            'You can upload up to ' . MAX_IMAGES_PER_HOUSE . ' images per property.'
-        )
-    );
-
-    exit();
-}
-
-require_once '../../classes/House.php';
-require_once '../../config/security/RedisThrottle.php';
 
 $houseModelForLimits = new House();
+$planLimits = PlanLimits::forLandlord($landlordId);
 
-if ($houseModelForLimits->countListingsByLandlord($landlordId) >= MAX_LISTINGS_PER_LANDLORD) {
+if ($houseModelForLimits->countListingsByLandlord($landlordId) >= $planLimits['max_listings']) {
+    http_response_code(403);
+    echo json_encode([
+        'success' => false,
+        'message' => "You've reached the " . $planLimits['max_listings'] . "-listing limit for your plan.",
+        'error_code' => 'LISTING_LIMIT_REACHED',
+    ]);
+    exit;
+}
 
-    header(
-        "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
-        . urlencode(
-            "You've reached the " . MAX_LISTINGS_PER_LANDLORD . "-listing limit for free accounts. Upgrade your account to add more properties."
-        )
-    );
-
-    exit();
+if (count($images) > $planLimits['max_images']) {
+    http_response_code(403);
+    echo json_encode([
+        'success' => false,
+        'message' => 'You can upload up to ' . $planLimits['max_images'] . ' images per property on your plan.',
+        'error_code' => 'IMAGE_LIMIT_REACHED',
+    ]);
+    exit;
 }
 
 if ($video !== null) {
+
+    if (!$planLimits['video_allowed']) {
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Video uploads are a Pro feature.',
+            'error_code' => 'VIDEO_REQUIRES_PRO',
+        ]);
+        exit;
+    }
 
     $inFlightKey = "video:inflight:{$landlordId}";
     $dailyKey = "video:daily:{$landlordId}:" . date('Y-m-d');
 
     if (RedisThrottle::getCount($inFlightKey) >= MAX_VIDEOS_PROCESSING_PER_LANDLORD) {
-
-        header(
-            "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
-            . urlencode('You already have a video being processed. Please wait for it to finish before uploading another.')
-        );
-
-        exit();
+        http_response_code(429);
+        echo json_encode(['success' => false, 'message' => 'You already have a video being processed. Please wait for it to finish before uploading another.']);
+        exit;
     }
 
     if (RedisThrottle::incrWithExpiry($dailyKey, 86400) > MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY) {
-
-        header(
-            "Location: " . BASE_URL . "/dashboard/landlord/add_house.php?error="
-            . urlencode("You've reached today's video upload limit (" . MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY . "). Please try again tomorrow.")
-        );
-
-        exit();
+        http_response_code(429);
+        echo json_encode(['success' => false, 'message' => "You've reached today's video upload limit (" . MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY . "). Please try again tomorrow."]);
+        exit;
     }
 }
-
-
-/**
- * ============================================================
- * CREATE HOUSE
- * ============================================================
- */
-
-require_once '../../classes/IdempotencyGuard.php';
 
 $idempotencyKey = trim($_POST['idempotency_key'] ?? '');
 
 if ($idempotencyKey === '') {
-    header("Location: ../../dashboard/landlord/add_house.php?error=" . urlencode('Invalid request.'));
-    exit();
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Invalid request.']);
+    exit;
 }
 
 $idempotency = new IdempotencyGuard();
 $guardResult = $idempotency->begin($idempotencyKey, 'create_house', $landlordId);
 
 if ($guardResult['status'] === 'processing') {
-    header("Location: ../../dashboard/landlord/add_house.php?error=" . urlencode('This listing is already being submitted.'));
-    exit();
+    http_response_code(409);
+    echo json_encode(['success' => false, 'message' => 'This listing is already being submitted.']);
+    exit;
 }
 
 if ($guardResult['status'] === 'completed') {
-    // Replay the original outcome rather than creating a second listing.
-    header('Location: ' . $guardResult['response_body']);
-    exit();
+    http_response_code((int) $guardResult['response_code']);
+    echo $guardResult['response_body'];
+    exit;
 }
 
 try {
@@ -375,80 +201,37 @@ try {
     }
 
     $houseId = $house->createHouse([
-
-        'title' => $title,
-
-        'description' => $description,
-
-        'price' => $price,
-
-        'location' => $location,
-
-        'bedrooms' => $bedrooms,
-
-        'bathrooms' => $bathrooms,
-
-        'house_type' => $houseType,
-
-        'rating' => $rating,
-
-        'latitude' => $latitude,
-
-        'longitude' => $longitude,
-
-        'landlord_id' => $landlordId,
-
-        'images' => $images,
-
-        'video' => $video
-
+        'title' => $title, 'description' => $description, 'price' => $price,
+        'location' => $location, 'bedrooms' => $bedrooms, 'bathrooms' => $bathrooms,
+        'house_type' => $houseType, 'rating' => $rating,
+        'latitude' => $latitude, 'longitude' => $longitude,
+        'landlord_id' => $landlordId, 'images' => $images, 'video' => $video,
     ]);
 
-
-    /**
-     * ========================================================
-     * SUCCESS
-     * ========================================================
-     */
-
     if ($houseId > 0) {
-
-        $redirectUrl = BASE_URL . "/dashboard/landlord/manage_houses.php?success="
-            . urlencode('Luxury property published successfully.');
-
-        $idempotency->complete($idempotencyKey, 'create_house', 200, $redirectUrl);
-
-        header("Location: " . $redirectUrl);
-        exit();
+        $responseCode = 200;
+        $responseBody = json_encode(['success' => true, 'message' => 'Luxury property published successfully.', 'house_id' => $houseId]);
+        $idempotency->complete($idempotencyKey, 'create_house', $responseCode, $responseBody);
+        http_response_code($responseCode);
+        echo $responseBody;
+        exit;
     }
 
-
-    /**
-     * ========================================================
-     * CREATION FAILED
-     * ========================================================
-     */
-
-    $redirectUrl = BASE_URL . "/dashboard/landlord/add_house.php?error="
-        . urlencode('Failed to publish property.');
-
-    $idempotency->complete($idempotencyKey, 'create_house', 500, $redirectUrl);
-
-    header("Location: " . $redirectUrl);
-    exit();
+    $responseCode = 500;
+    $responseBody = json_encode(['success' => false, 'message' => 'Failed to publish property.']);
+    $idempotency->complete($idempotencyKey, 'create_house', $responseCode, $responseBody);
+    http_response_code($responseCode);
+    echo $responseBody;
+    exit;
 
 } catch (Throwable $e) {
 
-    error_log(
-        '[' . date('Y-m-d H:i:s') . '] '
-        . 'House creation error: '
-        . $e->getMessage()
-    );
+    error_log('[' . date('Y-m-d H:i:s') . '] House creation error: ' . $e->getMessage());
 
-    $redirectUrl = BASE_URL . "/dashboard/landlord/add_house.php?error=" . urlencode($e->getMessage());
-
-    $idempotency->complete($idempotencyKey, 'create_house', 500, $redirectUrl);
-
-    header("Location: " . $redirectUrl);
-    exit();
+    $responseCode = 500;
+    $responseBody = json_encode(['success' => false, 'message' => $e->getMessage()]);
+    $idempotency->complete($idempotencyKey, 'create_house', $responseCode, $responseBody);
+    http_response_code($responseCode);
+    echo $responseBody;
+    exit;
 }

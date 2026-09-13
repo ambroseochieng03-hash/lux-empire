@@ -449,3 +449,43 @@ define('TRUCK_MIN_SCHEDULE_LEAD_MINUTES', 90);
 | already-acceptable, which defeats the point of gating at all.
 */
 define('TRUCK_ACCEPT_WINDOW_MINUTES', 30);
+
+/*
+|--------------------------------------------------------------------------
+| Daraja (M-Pesa)
+|--------------------------------------------------------------------------
+*/
+
+define('DARAJA_ENV', $_ENV['DARAJA_ENV'] ?? 'sandbox'); // 'sandbox' | 'production'
+
+define(
+    'DARAJA_BASE_URL',
+    DARAJA_ENV === 'production'
+        ? 'https://api.safaricom.co.ke'
+        : 'https://sandbox.safaricom.co.ke'
+);
+
+define('DARAJA_CONSUMER_KEY', $_ENV['DARAJA_CONSUMER_KEY'] ?? '');
+define('DARAJA_CONSUMER_SECRET', $_ENV['DARAJA_CONSUMER_SECRET'] ?? '');
+define('DARAJA_SHORTCODE', $_ENV['DARAJA_SHORTCODE'] ?? '');
+define('DARAJA_PASSKEY', $_ENV['DARAJA_PASSKEY'] ?? '');
+
+/*
+ * Must be a publicly reachable HTTPS URL — Safaricom calls this
+ * server-to-server, so localhost/ngrok-only dev needs the ngrok
+ * tunnel URL here during testing (same ngrok quirk your
+ * BASE_URL/session cookie logic already accounts for elsewhere).
+ */
+define('DARAJA_CALLBACK_URL', $_ENV['DARAJA_CALLBACK_URL'] ?? BASE_URL . '/api/payments/mpesa_stk_callback.php');
+
+/*
+|--------------------------------------------------------------------------
+| Monetization Pricing — server is the ONLY source of truth for these.
+| Never trust a client-submitted amount for any payment purpose.
+|--------------------------------------------------------------------------
+*/
+
+define('PRICE_LANDLORD_PRO_MONTHLY', 499);   // KES
+define('BOOKING_FEE_AMOUNT', 150);            // KES
+define('TRUCK_COMMISSION_PERCENT', 10);       // % of trip price
+define('WALLET_MIN_BALANCE_TO_ACCEPT', 0);    // KES — floor before a driver is blocked

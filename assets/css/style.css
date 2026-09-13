@@ -224,3 +224,50 @@ body {
     }
 
 }
+
+.lux-payment-modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 9999;
+    align-items: center; justify-content: center;
+}
+.lux-payment-modal-overlay.is-open { display: flex; }
+.lux-payment-modal {
+    background: var(--bg-dark, #0a0a0a);
+    border: 1px solid rgba(212,175,55,0.3);
+    border-radius: 24px;
+    padding: 32px;
+    width: 90%; max-width: 380px;
+    position: relative;
+}
+.lux-payment-modal-close {
+    position: absolute; top: 14px; right: 18px;
+    background: none; border: none; color: var(--gray, #999);
+    font-size: 1.5rem; cursor: pointer;
+}
+.lux-payment-title { color: white; margin-bottom: 18px; }
+.lux-payment-label { display: block; color: var(--gray, #999); margin-bottom: 14px; font-size: 0.9rem; }
+.lux-payment-input {
+    width: 100%; margin-top: 6px; padding: 14px; border: none; border-radius: 12px;
+    background: rgba(255,255,255,0.06); color: white; box-sizing: border-box;
+}
+.lux-payment-amount-display { color: var(--gold, #d4af37); font-size: 1.4rem; font-weight: bold; margin-bottom: 18px; }
+.lux-payment-error { color: #ffb3b3; font-size: 0.85rem; margin-bottom: 14px; }
+.lux-payment-spinner {
+    width: 36px; height: 36px; margin: 0 auto 20px;
+    border: 3px solid rgba(212,175,55,0.2); border-top-color: var(--gold, #d4af37);
+    border-radius: 50%; animation: lux-spin 0.8s linear infinite;
+}
+@keyframes lux-spin { to { transform: rotate(360deg); } }
+.lux-payment-waiting-text, .lux-payment-result-text { color: var(--gray, #999); text-align: center; }
+.lux-payment-result { text-align: center; font-size: 2.5rem; margin-bottom: 14px; }
+.lux-payment-result.is-success i { color: lightgreen; }
+.lux-payment-result.is-error i { color: #ff6b6b; }
+
+.lux-payment-description {
+    color: var(--gray, #999);
+    font-size: 0.88rem;
+    line-height: 1.6;
+    margin-bottom: 18px;
+}

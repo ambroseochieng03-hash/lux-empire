@@ -81,6 +81,15 @@ person can see happen rather than trust invisibly.
 
         for (const draft of drafts) {
 
+            // book_house.php was retired in favor of payment-first booking —
+            // any draft still pointing at it predates that change and can
+            // never succeed. Discard silently rather than leaving it stuck
+            // forever with no way to clear itself.
+            if (draft.endpoint.includes('book_house.php')) {
+                await window.LuxOfflineDB.deleteDraft(draft.id);
+                continue;
+            }
+
             try {
 
                 const body = new URLSearchParams(draft.payload);

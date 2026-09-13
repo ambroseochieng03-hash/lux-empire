@@ -2,6 +2,7 @@
 
 require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
+require_once '../../config/csrf.php';
 
 requireRoleAccess('landlord');
 
@@ -295,25 +296,16 @@ require_once '../../includes/sidebar.php';
 
         <!-- ERROR -->
 
-        <?php if (isset($_GET['error'])): ?>
-
-            <div class="landlord-alert">
-                <?= htmlspecialchars(
-                    $_GET['error'],
-                    ENT_QUOTES,
-                    'UTF-8'
-                ); ?>
-            </div>
-
-        <?php endif; ?>
+        <div class="landlord-alert" id="addHouseErrorAlert" style="display:none;"></div>
 
 
         <!-- FORM -->
 
         <div class="lux-card landlord-form-card">
 
-            <form id="landlordAddHouseForm" action="<?php echo BASE_URL; ?>/api/houses/create_house.php" method="POST" enctype="multipart/form-data">
+            <form id="landlordAddHouseForm" enctype="multipart/form-data">
                 <input type="hidden" name="idempotency_key" id="addHouseIdemKey" value="">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8'); ?>">
 
                 <!-- =====================================
                      PROPERTY TITLE
@@ -626,11 +618,6 @@ require_once '../../includes/sidebar.php';
                 </div>
 
                 <script src="<?php echo BASE_URL; ?>/assets/js/idempotency.js"></script>
-                <script>
-                document.getElementById('landlordAddHouseForm').addEventListener('submit', function () {
-                    document.getElementById('addHouseIdemKey').value = window.LuxIdempotency.get(this);
-                });
-                </script>
 
                 <script>
                 (function () {
@@ -681,5 +668,104 @@ require_once '../../includes/sidebar.php';
 
 </div>
 
+
+<script src="<?php echo BASE_URL; ?>/assets/js/idempotency.js"></script>
+<script>
+    window.LUX_PAYMENT_CONFIG = {
+        baseUrl: "<?php echo BASE_URL; ?>",
+        csrfToken: "<?php echo htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8'); ?>"
+    };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/payment-modal.js"></script>
+
+<script>
+(function () {
+
+    const form = document.getElementById('landlordAddHouseForm');
+    const errorAlert = document.getElementById('addHouseErrorAlert');
+    const submitBtn = form.querySelector('.landlord-submit-btn');
+
+    const LIMIT_CODES = ['LISTING_LIMIT_REACHED', 'IMAGE_LIMIT_REACHED', 'VIDEO_REQUIRES_PRO'];
+
+    function showError(message, showUpgrade) {
+
+        errorAlert.innerHTML = message;
+
+        if (showUpgrade) {
+            errorAlert.innerHTML += `
+                <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
+                    <button type="button" class="lux-btn" id="limitUpgradeBtn">Upgrade to Pro — KES 499/mo</button>
+                    <button type="button" class="lux-btn" id="limitDismissBtn" style="background:rgba(255,255,255,0.08); color:white;">Not now</button>
+                </div>
+            `;
+        }
+
+        errorAlert.style.display = 'block';
+
+        if (showUpgrade) {
+
+            document.getElementById('limitUpgradeBtn').addEventListener('click', () => {
+                window.LuxPayment.open({
+                    purpose: 'landlord_pro',
+                    title: 'Upgrade to Pro',
+                    amountLabel: 'KES 499 / month',
+                    onSuccess: () => {
+                        // Files the landlord already selected are still
+                        // sitting in the <input>s — nothing was lost by
+                        // navigating, because we never navigated.
+                        errorAlert.style.display = 'none';
+                        submitForm();
+                    }
+                });
+            });
+
+            document.getElementById('limitDismissBtn').addEventListener('click', () => {
+                errorAlert.style.display = 'none';
+            });
+        }
+    }
+
+    async function submitForm() {
+
+        document.getElementById('addHouseIdemKey').value = window.LuxIdempotency.get(form);
+
+        submitBtn.disabled = true;
+        const originalText = submitBtn.textContent;
+        submitBtn.textContent = 'Publishing...';
+
+        try {
+
+            const response = await fetch("<?php echo BASE_URL; ?>/api/houses/create_house.php", {
+                method: 'POST',
+                body: new FormData(form),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                window.location.href = "<?php echo BASE_URL; ?>/dashboard/landlord/manage_houses.php?success=" + encodeURIComponent(data.message);
+                return;
+            }
+
+            window.LuxIdempotency.reset(form);
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+
+            showError(data.message || 'Unable to publish property.', LIMIT_CODES.includes(data.error_code));
+
+        } catch (e) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+            showError('Network error. Please try again.', false);
+        }
+    }
+
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        submitForm();
+    });
+
+})();
+</script>
 
 <?php require_once '../../includes/footer.php'; ?>

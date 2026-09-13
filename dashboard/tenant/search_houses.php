@@ -144,6 +144,7 @@ require_once '../../includes/sidebar.php';
 
                         $isOwnHouse = ((int) $house['landlord_id'] === $tenantId);
                         $isHouseBooked = ($house['status'] === 'booked');
+                        $isHouseReserved = ($house['status'] === 'reserved');   // NEW
                         $tenantStatus = $tenantBookingStatusByHouse[$houseId] ?? null;
                         $tenantHasPending = ($tenantStatus === 'pending');
                         $tenantHasApproved = ($tenantStatus === 'approved');
@@ -340,6 +341,12 @@ require_once '../../includes/sidebar.php';
                                         Booked by You
                                     </button>
 
+                                <?php elseif ($isHouseReserved): ?>
+
+                                    <button type="button" class="lux-explore-btn-book lux-explore-btn-pending" disabled>
+                                        Booked
+                                    </button>
+
                                 <?php else: ?>
 
                                     <button type="button"
@@ -423,5 +430,13 @@ require_once '../../includes/sidebar.php';
 <script src="<?php echo BASE_URL; ?>/assets/js/house-filters.js"></script>
 
 <?php require_once '../../includes/chat_starter_modal.php'; ?>
+
+<script>
+    window.LUX_PAYMENT_CONFIG = {
+        baseUrl: "<?php echo BASE_URL; ?>",
+        csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"
+    };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/payment-modal.js"></script>
 
 <?php require_once '../../includes/footer.php'; ?>

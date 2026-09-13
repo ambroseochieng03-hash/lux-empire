@@ -162,14 +162,33 @@ if ($action === 'reject') {
     $house = $houseModel->getHouseById($result['house_id']);
     $houseTitle = $house['title'] ?? 'the property';
 
-    $notification->create(
-        $result['tenant_id'],
-        'booking_rejected',
-        'Booking Rejected',
-        'Your booking request for "' . $houseTitle . '" was declined by the landlord.',
-        BASE_URL . '/tenant/my-bookings'
-    );
+    if ($result['payment_status'] === 'paid' && $result['payment_id']) {
 
+        $refundFlag = (new Database())->connect()->prepare("
+            UPDATE payments SET metadata = JSON_SET(COALESCE(metadata, '{}'), '$.refund_required', true)
+            WHERE id = :id
+        ");
+        $refundFlag->execute([':id' => $result['payment_id']]);
+
+        $notification->create(
+            $result['tenant_id'],
+            'booking_rejected_refund',
+            'Booking Declined — Refund Pending',
+            'Your booking request for "' . $houseTitle . '" was declined by the landlord. Your KES 150 booking fee will be refunded shortly.',
+            BASE_URL . '/tenant/my-bookings'
+        );
+
+    } else {
+
+        $notification->create(
+            $result['tenant_id'],
+            'booking_rejected',
+            'Booking Rejected',
+            'Your booking request for "' . $houseTitle . '" was declined by the landlord.',
+            BASE_URL . '/tenant/my-bookings'
+        );
+    }
+    
     $tenantLookup = (new Database())->connect()->prepare("SELECT full_name, email FROM users WHERE id = ?");
     $tenantLookup->execute([$result['tenant_id']]);
     $tenantRow = $tenantLookup->fetch();

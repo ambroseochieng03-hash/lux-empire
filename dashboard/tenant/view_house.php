@@ -334,4 +334,12 @@ require_once '../../includes/sidebar.php';
 <script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/bookings.js"></script>
 
+<script>
+    window.LUX_PAYMENT_CONFIG = {
+        baseUrl: "<?php echo BASE_URL; ?>",
+        csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"
+    };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/payment-modal.js"></script>
+
 <?php require_once '../../includes/footer.php'; ?>

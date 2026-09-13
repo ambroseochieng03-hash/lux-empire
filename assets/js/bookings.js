@@ -169,7 +169,7 @@ without re-binding handlers.
 
     function bindTenantBookButtons() {
 
-        document.addEventListener('click', async (event) => {
+        document.addEventListener('click', (event) => {
 
             const button = event.target.closest('.book-now-btn');
 
@@ -183,74 +183,25 @@ without re-binding handlers.
                 return;
             }
 
-            setLoading(button, true);
-
-            const idemKey = window.LuxIdempotency ? window.LuxIdempotency.get(button) : null;
-
-            try {
-
-                const data = await postForm(
-                    `${cfg.baseUrl}/api/houses/book_house.php`,
-                    {
-                        house_id: houseId,
-                        csrf_token: cfg.csrfToken,
-                        idempotency_key: idemKey
-                    }
-                );
-
-                if (data.success) {
-
-                    button.textContent = 'Request Pending';
-                    button.classList.remove('book-now-btn');
-                    button.classList.add('lux-explore-btn-pending');
-                    button.disabled = true;
-
-                    showBookingModal(data.message || 'Your booking request has been submitted.', 'success');
-
-                } else {
-
-                    setLoading(button, false);
-
-                    // A real, definitive failure (property already
-                    // booked, validation error, etc.) — clear the key
-                    // so a deliberate retry click is treated as a
-                    // genuinely new attempt, not a replay of this
-                    // same failure.
-                    if (window.LuxIdempotency) {
-                        window.LuxIdempotency.reset(button);
-                    }
-
-                    showBookingModal(data.message || 'Unable to submit booking request.', 'error');
-                }
-
-            } catch (error) {
-
-                if (window.LuxOfflineDB) {
-
-                    await window.LuxOfflineDB.saveDraft({
-                        type: 'booking',
-                        endpoint: `${cfg.baseUrl}/api/houses/book_house.php`,
-                        payload: { house_id: houseId, idempotency_key: idemKey },
-                        csrfToken: cfg.csrfToken
-                    });
-
-                    if (window.LuxOfflineSync) {
-                        window.LuxOfflineSync.refreshBanner();
-                    }
-
-                    button.textContent = 'Saved — will submit when online';
-                    button.classList.remove('book-now-btn');
-                    button.classList.add('lux-explore-btn-pending');
-                    button.disabled = true;
-
-                    showBookingModal('You appear to be offline. Your booking request has been saved and will be submitted automatically once you\'re back online.', 'success');
-
-                } else {
-
-                    setLoading(button, false);
-                    showBookingModal('Network error. Please try again.', 'error');
-                }
+            if (!window.LuxPayment) {
+                showBookingModal('Payment system unavailable. Please refresh the page and try again.', 'error');
+                return;
             }
+
+            window.LuxPayment.open({
+                purpose: 'booking_fee',
+                houseId: houseId,
+                title: 'Secure This Listing',
+                description: 'A KES 150 booking fee sends your request to the landlord and locks this property so no one else can book it while they decide. If the landlord declines, your fee is refunded.',
+                amountLabel: 'KES 150 booking fee',
+                onSuccess: () => {
+                    button.textContent = 'Payment Received — Awaiting Landlord';
+                    button.classList.remove('book-now-btn');
+                    button.classList.add('lux-explore-btn-pending');
+                    button.disabled = true;
+                    showBookingModal('Payment received — the landlord has been notified.', 'success');
+                }
+            });
         });
     }
 

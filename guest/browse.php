@@ -375,6 +375,13 @@ require_once __DIR__ . '/../includes/navbar.php';
 <script src="<?php echo BASE_URL; ?>/assets/js/offline-db.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/offline-drafts.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
+<script>
+    window.LUX_PAYMENT_CONFIG = {
+        baseUrl: "<?php echo BASE_URL; ?>",
+        csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"
+    };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/payment-modal.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/tenant-register-modal.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/guest-browse.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/house-filters.js"></script>

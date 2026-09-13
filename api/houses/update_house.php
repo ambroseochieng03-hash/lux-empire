@@ -325,16 +325,8 @@ try {
 
     $hasImages = false;
 
-    if (
-        isset($files['images']) &&
-        is_array($files['images']['name'] ?? null)
-    ) {
-
-        foreach (
-            $files['images']['error']
-            as $error
-        ) {
-
+    if (isset($files['images']) && is_array($files['images']['name'] ?? null)) {
+        foreach ($files['images']['error'] as $error) {
             if ($error !== UPLOAD_ERR_NO_FILE) {
                 $hasImages = true;
                 break;
@@ -342,39 +334,46 @@ try {
         }
     }
 
-    $hasVideo =
-        isset($files['video']) &&
-        is_array($files['video']) &&
-        (
-            $files['video']['error']
-            ?? UPLOAD_ERR_NO_FILE
-        ) !== UPLOAD_ERR_NO_FILE;
+    $hasVideo = isset($files['video']) && is_array($files['video'])
+        && ($files['video']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
 
     if ($hasImages && $hasVideo) {
-
         http_response_code(400);
-
-        echo json_encode([
-            'success' => false,
-            'message' => 'A property can contain multiple images or one video, not both.'
-        ]);
-
+        echo json_encode(['success' => false, 'message' => 'A property can contain multiple images or one video, not both.']);
         exit;
     }
 
-    if ($hasImages) {
-        $imageCount = 0;
-        foreach ($files['images']['error'] as $error) {
-            if ($error !== UPLOAD_ERR_NO_FILE) {
-                $imageCount++;
+    require_once '../../classes/PlanLimits.php';
+
+    // Admins aren't subject to a landlord's own plan limits — everyone
+    // else (the ownership check above already guarantees role === 'landlord' here) is.
+    if ($role !== 'admin') {
+
+        $planLimits = PlanLimits::forLandlord($currentUser);
+
+        if ($hasImages) {
+            $imageCount = 0;
+            foreach ($files['images']['error'] as $error) {
+                if ($error !== UPLOAD_ERR_NO_FILE) $imageCount++;
+            }
+
+            if ($imageCount > $planLimits['max_images']) {
+                http_response_code(403);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'You can upload up to ' . $planLimits['max_images'] . ' images per property on your plan.',
+                    'error_code' => 'IMAGE_LIMIT_REACHED',
+                ]);
+                exit;
             }
         }
 
-        if ($imageCount > MAX_IMAGES_PER_HOUSE) {
-            http_response_code(400);
+        if ($hasVideo && !$planLimits['video_allowed']) {
+            http_response_code(403);
             echo json_encode([
                 'success' => false,
-                'message' => 'You can upload up to ' . MAX_IMAGES_PER_HOUSE . ' images per property.'
+                'message' => 'Video uploads are a Pro feature. Upgrade to add video to your listings.',
+                'error_code' => 'VIDEO_REQUIRES_PRO',
             ]);
             exit;
         }
@@ -388,19 +387,13 @@ try {
 
         if (RedisThrottle::getCount($inFlightKey) >= MAX_VIDEOS_PROCESSING_PER_LANDLORD) {
             http_response_code(429);
-            echo json_encode([
-                'success' => false,
-                'message' => 'You already have a video being processed. Please wait for it to finish before uploading another.'
-            ]);
+            echo json_encode(['success' => false, 'message' => 'You already have a video being processed. Please wait for it to finish before uploading another.']);
             exit;
         }
 
         if (RedisThrottle::incrWithExpiry($dailyKey, 86400) > MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY) {
             http_response_code(429);
-            echo json_encode([
-                'success' => false,
-                'message' => "You've reached today's video upload limit (" . MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY . "). Please try again tomorrow."
-            ]);
+            echo json_encode(['success' => false, 'message' => "You've reached today's video upload limit (" . MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY . "). Please try again tomorrow."]);
             exit;
         }
 

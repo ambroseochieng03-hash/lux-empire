@@ -99,9 +99,11 @@ class Booking {
                 ':landlord_id' => $landlord_id
             ]);
 
+            $newBookingId = (int) $this->conn->lastInsertId();
+
             $this->conn->commit();
 
-            return true;
+            return $newBookingId;   // was: return true;
 
         } catch (PDOException $e) {
 
@@ -183,7 +185,7 @@ class Booking {
                 UPDATE houses
                 SET status = 'booked', booked_at = NOW()
                 WHERE id = :house_id
-                AND status = 'available'
+                AND status = 'reserved'
             ");
 
             $houseUpdate->execute([':house_id' => $houseId]);
@@ -288,14 +290,13 @@ class Booking {
             $this->conn->beginTransaction();
 
             $stmt = $this->conn->prepare("
-                SELECT id, house_id, tenant_id, landlord_id, status
+                SELECT id, house_id, tenant_id, landlord_id, status, payment_status, payment_id
                 FROM " . $this->table . "
                 WHERE id = :id
                 FOR UPDATE
             ");
 
             $stmt->execute([':id' => $bookingId]);
-
             $booking = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$booking || (int) $booking['landlord_id'] !== $landlordId) {
@@ -314,13 +315,20 @@ class Booking {
                 WHERE id = :id
                 AND status = 'pending'
             ");
-
             $update->execute([':id' => $bookingId]);
 
             if ($update->rowCount() === 0) {
                 $this->conn->rollBack();
                 return ['success' => false, 'message' => 'This request has already been handled.'];
             }
+
+            // Release the house back onto the market — only if THIS
+            // booking was the one holding the reservation.
+            $this->conn->prepare("
+                UPDATE houses
+                SET status = 'available', reserved_by_booking_id = NULL
+                WHERE id = :house_id AND reserved_by_booking_id = :booking_id
+            ")->execute([':house_id' => $booking['house_id'], ':booking_id' => $bookingId]);
 
             $this->conn->commit();
 
@@ -329,7 +337,9 @@ class Booking {
                 'message' => 'Booking rejected.',
                 'booking_id' => $bookingId,
                 'house_id' => (int) $booking['house_id'],
-                'tenant_id' => (int) $booking['tenant_id']
+                'tenant_id' => (int) $booking['tenant_id'],
+                'payment_status' => $booking['payment_status'] ?? 'unpaid',
+                'payment_id' => $booking['payment_id'] ?? null,
             ];
 
         } catch (Throwable $e) {

@@ -11,17 +11,11 @@
  * email type gets its own consumer/queue instead, exactly like the
  * existing media_transcoder / media_image_compressor pair.
  *
- * Safe to re-run.
  */
 
     /*
     
-    nats stream update APP_EMAILS \
-    --subjects "email.landlord_verified,email.driver_verified,email.new_booking_request,email.new_truck_request,email.bookin
-    g_accepted,email.booking_rejected,email.truck_request_accepte
-    d,email.truck_daily_reminder,email.truck_hour_reminder,email.
-    truck_tenant_reminder,email.admin_broadcast,email.admin_direc
-    t_message,email.emergency_acknowledged"
+    nats stream update APP_EMAILS --subjects "email.landlord_verified,email.driver_verified,email.new_booking_request,email.new_truck_request,email.booking_accepted,email.booking_rejected,email.truck_request_accepted,email.truck_daily_reminder,email.truck_hour_reminder,email.truck_tenant_reminder,email.admin_broadcast,email.admin_direct_message,email.emergency_acknowledged,email.payment_confirmed"
     
     */
 
@@ -62,7 +56,8 @@ $consumers = [
     'email.truck_tenant_reminder'   => 'app_email_truck_tenant_reminder',
     'email.admin_broadcast'         => 'app_email_admin_broadcast',
     'email.admin_direct_message'    => 'app_email_admin_direct_message',
-    'email.emergency_acknowledged' => 'app_email_emergency_acknowledged'
+    'email.emergency_acknowledged' => 'app_email_emergency_acknowledged',
+    'email.payment_confirmed' => 'app_email_payment_confirmed'
 ];
 
 $stream = $client->getApi()->getStream('APP_EMAILS');

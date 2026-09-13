@@ -39,7 +39,8 @@ $consumerNames = [
     'email.truck_tenant_reminder'   => 'app_email_truck_tenant_reminder',
     'email.admin_broadcast'         => 'app_email_admin_broadcast',
     'email.admin_direct_message'    => 'app_email_admin_direct_message',
-    'email.emergency_acknowledged' => 'app_email_emergency_acknowledged'
+    'email.emergency_acknowledged' => 'app_email_emergency_acknowledged',
+    'email.payment_confirmed' => 'app_email_payment_confirmed'
 ];
 
 $queues = [];
@@ -228,6 +229,18 @@ function buildEmail(string $subject, array $job): ?array
                     nl2br(htmlspecialchars($job['body'] ?? ''))
                 ),
             ];
+
+        case 'email.payment_confirmed':
+            return [
+                'subject' => 'Payment confirmed',
+                'body' => EmailTemplate::render(
+                    'Payment Confirmed',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                    'We have received and confirmed your payment of KES ' . htmlspecialchars(number_format((float) ($job['amount'] ?? 0), 2)) . '. Thank you for your prompt payment.',
+                    'View my payments',
+                    BASE_URL . '/tenant/my-payments'
+                ),
+            ];    
 
         default:
             return null;
