@@ -100,6 +100,7 @@ RewriteRule ^tenant/view-house/?$ dashboard/tenant/view_house.php [END]
 RewriteRule ^driver/available-requests/?$ dashboard/driver/available_requests.php [END]
 RewriteRule ^driver/active-trip/?$ dashboard/driver/active_trip.php [END]
 RewriteRule ^driver/location-tracker/?$ dashboard/driver/location_tracker.php [END]
+RewriteRule ^driver/wallet/?$ dashboard/driver/wallet.php [END]
 
 
 # ================================================================
@@ -113,6 +114,8 @@ RewriteRule ^admin/reports/?$ dashboard/admin/reports.php [END]
 RewriteRule ^admin/emergency/?$ dashboard/admin/emergency.php [END]
 RewriteRule ^admin/bookings/?$ dashboard/admin/bookings.php [END]
 RewriteRule ^admin/messages/?$ dashboard/admin/messages.php [END]
+RewriteRule ^admin/payments/?$ dashboard/admin/payments.php [END]
+RewriteRule ^admin/waivers/?$ dashboard/admin/waivers.php [END]
 
 
 # ================================================================

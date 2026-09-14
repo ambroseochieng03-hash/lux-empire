@@ -51,7 +51,7 @@ assets/js/tenant-register-modal.js, which must load before this file).
 
     /*
     =========================================
-    HOUSE DETAIL QUICK-VIEW (api/houses/fetch_house.php)
+    HOUSE DETAIL QUICK-VIEW (api/houses/fetch_houses.php)
     =========================================
     */
 
@@ -89,7 +89,7 @@ assets/js/tenant-register-modal.js, which must load before this file).
 
             try {
 
-                const response = await fetch(`${cfg.baseUrl}/api/houses/fetch_house.php?id=${encodeURIComponent(houseId)}`);
+                const response = await fetch(`${cfg.baseUrl}/api/houses/fetch_houses.php?id=${encodeURIComponent(houseId)}`);
                 const data = await response.json();
 
                 if (!data.success) {

@@ -40,7 +40,9 @@ $consumerNames = [
     'email.admin_broadcast'         => 'app_email_admin_broadcast',
     'email.admin_direct_message'    => 'app_email_admin_direct_message',
     'email.emergency_acknowledged' => 'app_email_emergency_acknowledged',
-    'email.payment_confirmed' => 'app_email_payment_confirmed'
+    'email.payment_confirmed' => 'app_email_payment_confirmed',
+    'email.landlord_pro_activated'  => 'app_email_landlord_pro_activated',
+    'email.wallet_negative' => 'app_email_wallet_negative'
 ];
 
 $queues = [];
@@ -239,6 +241,32 @@ function buildEmail(string $subject, array $job): ?array
                     'We have received and confirmed your payment of KES ' . htmlspecialchars(number_format((float) ($job['amount'] ?? 0), 2)) . '. Thank you for your prompt payment.',
                     'View my payments',
                     BASE_URL . '/tenant/my-payments'
+                ),
+            ];
+            
+        case 'email.landlord_pro_activated':
+            return [
+                'subject' => 'Your LUX EMPIRE Pro plan is active',
+                'body' => EmailTemplate::render(
+                    'Pro Plan Activated',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                    'Thanks for upgrading — your LUX EMPIRE Pro plan is now active for the next 30 days. ' .
+                    'We received your payment of KES ' . htmlspecialchars($job['amount'] ?? '') . '.<br><br>' .
+                    'You now have access to more listings, more photos per listing, video uploads, and priority placement in search.',
+                    'Manage your properties',
+                    BASE_URL . '/manage-houses'
+                ),
+            ];
+            
+        case 'email.wallet_negative':
+            return [
+                'subject' => 'Your commission wallet balance is low',
+                'body' => EmailTemplate::render(
+                    'Wallet Balance Low',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                    'Your commission wallet balance is now KES ' . htmlspecialchars(number_format((float) ($job['balance'] ?? 0), 2)) . ' after your recent trip. Please top up your wallet to stay in good standing and continue accepting jobs.',
+                    'Top up my wallet',
+                    BASE_URL . '/driver/wallet'
                 ),
             ];    
 

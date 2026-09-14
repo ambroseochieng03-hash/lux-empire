@@ -374,7 +374,7 @@ class Booking {
                     LIMIT 1
                 ) AS image
               FROM bookings b
-              JOIN houses h ON b.house_id = h.id
+              LEFT JOIN houses h ON b.house_id = h.id
               WHERE b.tenant_id = :tenant_id
               ORDER BY b.booking_date DESC";
 
@@ -394,7 +394,7 @@ class Booking {
 
         $query = "SELECT
                     b.*,
-                    h.title,
+                    COALESCE(h.title, b.house_title_snapshot) AS title,
                     h.location,
                     h.price,
                     h.rating,
@@ -414,7 +414,7 @@ class Booking {
 
                 FROM " . $this->table . " b
 
-                JOIN houses h
+                LEFT JOIN houses h
                 ON b.house_id = h.id
 
                 JOIN users u
@@ -445,7 +445,7 @@ class Booking {
 
         $query = "SELECT
                     b.*,
-                    h.title,
+                    COALESCE(h.title, b.house_title_snapshot) AS title,
                     h.location,
                     h.price,
                     h.rating,
@@ -465,7 +465,7 @@ class Booking {
 
                 FROM " . $this->table . " b
 
-                JOIN houses h
+                LEFT JOIN houses h
                 ON b.house_id = h.id
 
                 JOIN users u

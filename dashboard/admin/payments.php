@@ -1,0 +1,160 @@
+<?php
+
+declare(strict_types=1);
+
+require_once '../../includes/init.php';
+require_once '../../includes/auth_check.php';
+requireRoleAccess('admin');
+
+require_once '../../config/csrf.php';
+require_once '../../classes/Payment.php';
+
+require_once '../../includes/header.php';
+require_once '../../includes/navbar.php';
+require_once '../../includes/sidebar.php';
+
+$payment = new Payment();
+$needingReview = $payment->listNeedingReview();
+$refundsPending = $payment->listRefundsPending();
+$recent = $payment->listRecent(50);
+
+$csrfToken = Csrf::token();
+?>
+
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/admin.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/admin-cards.css">
+
+<script>
+    window.LUX_ADMIN = {
+        csrfToken: "<?php echo htmlspecialchars($csrfToken, ENT_QUOTES); ?>",
+        baseUrl: "<?php echo BASE_URL; ?>"
+    };
+</script>
+
+<div class="lux-dashboard-layout">
+
+<main class="lux-dashboard-main">
+
+    <div class="lux-page-header">
+        <h1 class="lux-page-title">Payment Oversight</h1>
+        <p class="lux-page-subtitle">
+            Manually verify payments tenants/landlords flagged, resolve
+            pending refunds, and review recent payment activity.
+        </p>
+    </div>
+
+    <h2 style="color:white; margin:30px 0 15px;">Needs Manual Review (<?php echo count($needingReview); ?>)</h2>
+
+    <div class="lux-card-grid" id="luxReviewGrid">
+
+        <?php if (empty($needingReview)): ?>
+            <p style="color:var(--gray);">Nothing waiting on review.</p>
+        <?php endif; ?>
+
+        <?php foreach ($needingReview as $p): ?>
+            <div class="lux-entity-card" data-payment-card="<?php echo (int) $p['id']; ?>">
+                <div class="lux-entity-card-header">
+                    <div>
+                        <div class="lux-entity-name"><?php echo ucwords(str_replace('_', ' ', $p['purpose'])); ?> — KES <?php echo number_format((float) $p['amount']); ?></div>
+                        <div class="lux-entity-meta">Payment #<?php echo (int) $p['id']; ?></div>
+                    </div>
+                    <span class="lux-badge lux-badge-pending">Pending</span>
+                </div>
+
+                <div class="lux-entity-meta">
+                    <?php echo htmlspecialchars($p['full_name']); ?> (<?php echo htmlspecialchars($p['email']); ?>)<br>
+                    Phone: <?php echo htmlspecialchars($p['phone']); ?><br>
+                    User-submitted code: <strong><?php echo htmlspecialchars($p['user_submitted_receipt'] ?? '—'); ?></strong><br>
+                    <?php echo date('d M Y H:i', strtotime($p['created_at'])); ?>
+                </div>
+
+                <div class="lux-entity-actions">
+                    <button class="lux-btn lux-btn-success" data-action="approve" data-payment-id="<?php echo (int) $p['id']; ?>">Approve</button>
+                    <button class="lux-btn lux-btn-danger" data-action="reject" data-payment-id="<?php echo (int) $p['id']; ?>">Reject</button>
+                </div>
+            </div>
+        <?php endforeach; ?>
+
+    </div>
+
+    <h2 style="color:white; margin:40px 0 15px;">Refunds Pending (<?php echo count($refundsPending); ?>)</h2>
+
+    <div class="lux-card-grid" id="luxRefundGrid">
+
+        <?php if (empty($refundsPending)): ?>
+            <p style="color:var(--gray);">No refunds owed right now.</p>
+        <?php endif; ?>
+
+        <?php foreach ($refundsPending as $p): ?>
+            <div class="lux-entity-card" data-payment-card="<?php echo (int) $p['id']; ?>">
+                <div class="lux-entity-card-header">
+                    <div>
+                        <div class="lux-entity-name">Refund owed — KES <?php echo number_format((float) $p['amount']); ?></div>
+                        <div class="lux-entity-meta">Payment #<?php echo (int) $p['id']; ?></div>
+                    </div>
+                    <span class="lux-badge lux-badge-suspended">Refund Owed</span>
+                </div>
+
+                <div class="lux-entity-meta">
+                    <?php echo htmlspecialchars($p['full_name']); ?> (<?php echo htmlspecialchars($p['email']); ?>)<br>
+                    Phone: <?php echo htmlspecialchars($p['phone']); ?><br>
+                    M-Pesa receipt: <?php echo htmlspecialchars($p['mpesa_receipt'] ?? 'N/A'); ?><br>
+                    <?php echo date('d M Y H:i', strtotime($p['created_at'])); ?>
+                </div>
+
+                <div class="lux-entity-actions">
+                    <button class="lux-btn lux-btn-success" data-action="mark_refunded" data-payment-id="<?php echo (int) $p['id']; ?>">Mark Refunded</button>
+                </div>
+            </div>
+        <?php endforeach; ?>
+
+    </div>
+
+    <h2 style="color:white; margin:40px 0 15px;">Recent Payments</h2>
+
+    <div class="lux-card-grid">
+        <?php foreach ($recent as $p): ?>
+            <?php
+                $badgeClass = match ($p['status']) {
+                    'completed' => 'lux-badge-active',
+                    'failed' => 'lux-badge-suspended',
+                    default => 'lux-badge-pending',
+                };
+            ?>
+            <div class="lux-entity-card">
+                <div class="lux-entity-card-header">
+                    <div>
+                        <div class="lux-entity-name"><?php echo ucwords(str_replace('_', ' ', $p['purpose'])); ?> — KES <?php echo number_format((float) $p['amount']); ?></div>
+                        <div class="lux-entity-meta"><?php echo htmlspecialchars($p['full_name']); ?></div>
+                    </div>
+                    <span class="lux-badge <?php echo $badgeClass; ?>"><?php echo ucfirst($p['status']); ?></span>
+                </div>
+                <div class="lux-entity-meta">
+                    <?php echo htmlspecialchars($p['mpesa_receipt'] ?? 'No receipt'); ?><br>
+                    <?php echo date('d M Y H:i', strtotime($p['created_at'])); ?>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+
+</main>
+
+</div>
+
+<div class="lux-modal-overlay" id="luxConfirmModal" aria-hidden="true">
+    <div class="lux-modal-box">
+        <h3 class="lux-confirm-title">Are you sure?</h3>
+        <p class="lux-confirm-message"></p>
+        <div class="lux-confirm-reason-wrap" hidden>
+            <textarea class="lux-confirm-reason-input" placeholder="Notes (required for reject)"></textarea>
+        </div>
+        <div class="lux-modal-actions">
+            <button class="lux-btn lux-btn-ghost" data-confirm-close>Cancel</button>
+            <button class="lux-btn lux-btn-danger lux-confirm-accept">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<script src="<?php echo BASE_URL; ?>/assets/js/admin/payments.js"></script>
+
+<?php require_once '../../includes/footer.php'; ?>

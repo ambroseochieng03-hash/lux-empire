@@ -23,6 +23,7 @@ require_once __DIR__ . '/House.php';
 require_once __DIR__ . '/EmailJobPublisher.php';
 
 require_once __DIR__ . '/Notification.php';
+require_once __DIR__ . '/ReceiptExtractor.php';
 
 final class Payment
 {
@@ -277,12 +278,15 @@ final class Payment
             }
 
             $payment = $this->getPaymentByCheckoutId($checkoutRequestId);
+            $postCommitActions = [];
 
             if ($payment !== null) {
-                $this->applyEntitlement($payment);
+                $postCommitActions = $this->applyEntitlement($payment);
             }
 
             $this->conn->commit();
+
+            $this->dispatchPostCommitActions($postCommitActions);
 
         } catch (Throwable $e) {
             if ($this->conn->inTransaction()) {
@@ -302,19 +306,30 @@ final class Payment
 
     /**
      * Grant whatever the payment was for. Called only from inside
-     * the transaction in handleStkCallback() / matchC2bReceipt(),
-     * once, guaranteed by the conditional UPDATE above.
+     * the transaction in handleStkCallback() / reconcilePendingPayment()
+     * / matchC2bReceipt() — once, guaranteed by the conditional
+     * UPDATE those callers each do first.
+     *
+     * IMPORTANT: never sends notifications/emails directly here.
+     * Notification::create() opens its OWN separate PDO connection —
+     * if this method is still inside an open transaction that just
+     * locked a row in `users` (the landlord_pro case does exactly
+     * this), a notification INSERT on a different connection needing
+     * a foreign-key lock on that same locked row deadlocks against
+     * this transaction's own uncommitted state. Instead, this
+     * collects what needs to happen as plain data and returns it —
+     * the caller commits first, THEN dispatches these.
+     *
+     * @return array<int, array<string, mixed>> post-commit actions
      */
-    private function applyEntitlement(array $payment): void
+    private function applyEntitlement(array $payment): array
     {
         $metadata = json_decode((string) ($payment['metadata'] ?? '{}'), true) ?: [];
+        $actions = [];
 
         switch ($payment['purpose']) {
 
             case 'landlord_pro':
-                // Extend from whichever is later: now, or their current
-                // expiry — so renewing before expiry stacks time rather
-                // than wasting the remaining days.
                 $stmt = $this->conn->prepare("
                     UPDATE users
                     SET plan_tier = 'pro',
@@ -326,13 +341,31 @@ final class Payment
                 ");
                 $stmt->execute([':id' => $payment['user_id']]);
 
-                (new Notification())->create(
-                    (int) $payment['user_id'],
-                    'payment',
-                    'Pro plan activated',
-                    'Your LUX EMPIRE Pro plan is now active for 30 days.',
-                    BASE_URL . '/manage-houses'
-                );
+                $actions[] = [
+                    'type' => 'notification',
+                    'user_id' => (int) $payment['user_id'],
+                    'notif_type' => 'payment',
+                    'title' => 'Pro plan activated',
+                    'message' => 'Your LUX EMPIRE Pro plan is now active for 30 days.',
+                    'link' => BASE_URL . '/manage-houses',
+                ];
+
+                $landlordRow = $this->conn->prepare("SELECT full_name, email FROM users WHERE id = :id");
+                $landlordRow->execute([':id' => $payment['user_id']]);
+                $landlord = $landlordRow->fetch(PDO::FETCH_ASSOC);
+
+                if ($landlord) {
+                    $actions[] = [
+                        'type' => 'email',
+                        'subject_key' => 'email.landlord_pro_activated',
+                        'payload' => [
+                            'email' => $landlord['email'],
+                            'name' => $landlord['full_name'],
+                            'amount' => number_format((float) $payment['amount']),
+                        ],
+                    ];
+                }
+
                 break;
 
             case 'booking_fee':
@@ -343,10 +376,6 @@ final class Payment
                     break;
                 }
 
-                // Row-locked read — this is the entire race-condition fix. Every
-                // concurrent callback for a different payment on the same house
-                // queues behind this lock; only the first to arrive can see
-                // status = 'available' and proceed.
                 $houseLock = $this->conn->prepare("
                     SELECT status, landlord_id, title
                     FROM houses
@@ -358,24 +387,20 @@ final class Payment
 
                 if (!$house || $house['status'] !== 'available') {
 
-                    // Payment succeeded but the house is already gone — cannot be
-                    // avoided without instant refunds (needs Daraja B2C, not set
-                    // up yet). Flag it clearly so admin can process a manual
-                    // refund, and tell the tenant plainly rather than pretending
-                    // their booking went through.
                     $this->conn->prepare("
                         UPDATE payments
                         SET metadata = JSON_SET(COALESCE(metadata, '{}'), '$.refund_required', true)
                         WHERE id = :id
                     ")->execute([':id' => $payment['id']]);
 
-                    (new Notification())->create(
-                        (int) $payment['user_id'],
-                        'payment_refund_pending',
-                        'This property was just taken',
-                        'Someone secured this property moments before your payment completed. Your KES ' . number_format((float) $payment['amount']) . ' booking fee will be refunded — our team has been notified and will process it shortly.',
-                        BASE_URL . '/tenant/my-bookings'
-                    );
+                    $actions[] = [
+                        'type' => 'notification',
+                        'user_id' => (int) $payment['user_id'],
+                        'notif_type' => 'payment_refund_pending',
+                        'title' => 'This property was just taken',
+                        'message' => 'Someone secured this property moments before your payment completed. Your KES ' . number_format((float) $payment['amount']) . ' booking fee will be refunded — our team has been notified and will process it shortly.',
+                        'link' => BASE_URL . '/tenant/my-bookings',
+                    ];
 
                     error_log('LUX EMPIRE: booking_fee payment #' . $payment['id'] . ' needs manual refund — house ' . $houseId . ' no longer available.');
 
@@ -383,12 +408,13 @@ final class Payment
                 }
 
                 $bookingInsert = $this->conn->prepare("
-                    INSERT INTO bookings (tenant_id, house_id, landlord_id, status, payment_status, payment_id)
-                    VALUES (:tenant_id, :house_id, :landlord_id, 'pending', 'paid', :payment_id)
+                    INSERT INTO bookings (tenant_id, house_id, house_title_snapshot, landlord_id, status, payment_status, payment_id)
+                    VALUES (:tenant_id, :house_id, :house_title_snapshot, :landlord_id, 'pending', 'paid', :payment_id)
                 ");
                 $bookingInsert->execute([
                     ':tenant_id' => $payment['user_id'],
                     ':house_id' => $houseId,
+                    ':house_title_snapshot' => $house['title'],
                     ':landlord_id' => $house['landlord_id'],
                     ':payment_id' => $payment['id'],
                 ]);
@@ -400,48 +426,56 @@ final class Payment
                     WHERE id = :house_id
                 ")->execute([':booking_id' => $bookingId, ':house_id' => $houseId]);
 
-                // Tenant confirmation — immediate, per your requirement.
                 $tenantRow = $this->conn->prepare("SELECT full_name, email FROM users WHERE id = :id");
                 $tenantRow->execute([':id' => $payment['user_id']]);
                 $tenant = $tenantRow->fetch(PDO::FETCH_ASSOC);
 
-                (new Notification())->create(
-                    (int) $payment['user_id'],
-                    'payment_confirmed',
-                    'Booking fee paid',
-                    'Your KES ' . number_format((float) $payment['amount']) . ' booking fee for "' . $house['title'] . '" was received. The landlord has been notified.',
-                    BASE_URL . '/tenant/my-bookings'
-                );
+                $actions[] = [
+                    'type' => 'notification',
+                    'user_id' => (int) $payment['user_id'],
+                    'notif_type' => 'payment_confirmed',
+                    'title' => 'Booking fee paid',
+                    'message' => 'Your KES ' . number_format((float) $payment['amount']) . ' booking fee for "' . $house['title'] . '" was received. The landlord has been notified.',
+                    'link' => BASE_URL . '/tenant/my-bookings',
+                ];
 
                 if ($tenant) {
-                    EmailJobPublisher::publish('email.payment_confirmed', [
-                        'email' => $tenant['email'],
-                        'name' => $tenant['full_name'],
-                        'house_title' => $house['title'],
-                        'amount' => number_format((float) $payment['amount']),
-                    ]);
+                    $actions[] = [
+                        'type' => 'email',
+                        'subject_key' => 'email.payment_confirmed',
+                        'payload' => [
+                            'email' => $tenant['email'],
+                            'name' => $tenant['full_name'],
+                            'house_title' => $house['title'],
+                            'amount' => number_format((float) $payment['amount']),
+                        ],
+                    ];
                 }
 
-                // Landlord notification — only fires now, once payment is real.
-                (new Notification())->create(
-                    (int) $house['landlord_id'],
-                    'new_booking_request',
-                    'New Booking Request',
-                    ($tenant['full_name'] ?? 'A tenant') . ' has paid to book "' . $house['title'] . '".',
-                    BASE_URL . '/booking-requests'
-                );
+                $actions[] = [
+                    'type' => 'notification',
+                    'user_id' => (int) $house['landlord_id'],
+                    'notif_type' => 'new_booking_request',
+                    'title' => 'New Booking Request',
+                    'message' => ($tenant['full_name'] ?? 'A tenant') . ' has paid to book "' . $house['title'] . '".',
+                    'link' => BASE_URL . '/booking-requests',
+                ];
 
                 $landlordRow = $this->conn->prepare("SELECT full_name, email FROM users WHERE id = :id");
                 $landlordRow->execute([':id' => $house['landlord_id']]);
                 $landlord = $landlordRow->fetch(PDO::FETCH_ASSOC);
 
                 if ($landlord) {
-                    EmailJobPublisher::publish('email.new_booking_request', [
-                        'email' => $landlord['email'],
-                        'name' => $landlord['full_name'],
-                        'tenant_name' => $tenant['full_name'] ?? 'A tenant',
-                        'house_title' => $house['title'],
-                    ]);
+                    $actions[] = [
+                        'type' => 'email',
+                        'subject_key' => 'email.new_booking_request',
+                        'payload' => [
+                            'email' => $landlord['email'],
+                            'name' => $landlord['full_name'],
+                            'tenant_name' => $tenant['full_name'] ?? 'A tenant',
+                            'house_title' => $house['title'],
+                        ],
+                    ];
                 }
 
                 break;
@@ -454,6 +488,37 @@ final class Payment
                     (int) $payment['id']
                 );
                 break;
+        }
+
+        return $actions;
+    }
+
+    /**
+     * Runs the post-commit actions collected by applyEntitlement().
+     * ALWAYS call this AFTER $this->conn->commit() has already
+     * returned — never before, never inside the transaction.
+     */
+    private function dispatchPostCommitActions(array $actions): void
+    {
+        foreach ($actions as $action) {
+
+            try {
+
+                if ($action['type'] === 'notification') {
+                    (new Notification())->create(
+                        $action['user_id'],
+                        $action['notif_type'],
+                        $action['title'],
+                        $action['message'],
+                        $action['link'] ?? null
+                    );
+                } elseif ($action['type'] === 'email') {
+                    EmailJobPublisher::publish($action['subject_key'], $action['payload']);
+                }
+
+            } catch (Throwable $e) {
+                error_log('LUX EMPIRE Payment: post-commit action failed — ' . $e->getMessage());
+            }
         }
     }
 
@@ -518,6 +583,229 @@ final class Payment
 
     /**
      * ============================================================
+     * QUERY STK STATUS DIRECTLY (fallback when the callback is
+     * late or never arrives — Daraja sandbox in particular is known
+     * to sometimes skip callback delivery even for a genuinely
+     * completed/reversed transaction).
+     * ============================================================
+     */
+    public function queryStkStatus(string $checkoutRequestId): ?array
+    {
+        try {
+            $accessToken = $this->getAccessToken();
+        } catch (Throwable $e) {
+            error_log('LUX EMPIRE Payment: token fetch failed during query — ' . $e->getMessage());
+            return null;
+        }
+
+        $timestamp = date('YmdHis');
+        $password = base64_encode(DARAJA_SHORTCODE . DARAJA_PASSKEY . $timestamp);
+
+        $payload = [
+            'BusinessShortCode' => DARAJA_SHORTCODE,
+            'Password' => $password,
+            'Timestamp' => $timestamp,
+            'CheckoutRequestID' => $checkoutRequestId,
+        ];
+
+        $ch = curl_init(DARAJA_BASE_URL . '/mpesa/stkpushquery/v1/query');
+
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $accessToken,
+                'Content-Type: application/json',
+            ],
+            CURLOPT_TIMEOUT => 15,
+        ]);
+
+        $response = curl_exec($ch);
+        curl_close($ch);
+
+        $data = json_decode((string) $response, true);
+
+        return is_array($data) ? $data : null;
+    }
+
+    /**
+     * Actively resolve a payment that's still 'pending' by asking
+     * Safaricom directly, instead of waiting indefinitely on a
+     * callback that may never arrive. Idempotent and safe to call
+     * even if a real callback lands at almost the same moment — the
+     * conditional UPDATE (status='pending' in the WHERE) means
+     * whichever one gets there first wins; the second finds 0 rows
+     * and does nothing.
+     *
+     * Note: unlike a real callback, the Query API response does not
+     * include the M-Pesa receipt number, so a payment resolved this
+     * way has mpesa_receipt left NULL. The entitlement is still
+     * granted correctly — only the receipt display is missing,
+     * recoverable later via admin lookup if ever needed.
+     */
+    public function reconcilePendingPayment(int $paymentId): void
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM payments WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $paymentId]);
+        $payment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($payment === null || $payment['status'] !== 'pending') {
+            return;
+        }
+
+        $queryResult = $this->queryStkStatus($payment['checkout_request_id']);
+
+        if ($queryResult === null || !isset($queryResult['ResultCode'])) {
+            // Safaricom itself doesn't have a final answer yet
+            // (still processing) or the query call failed — leave it
+            // pending, the next poll will try again.
+            error_log('LUX EMPIRE Payment: query inconclusive for payment #' . $paymentId . ' — ' . json_encode($queryResult));
+            return;
+        }
+
+        $resultCode = (int) $queryResult['ResultCode'];
+
+        try {
+            $this->conn->beginTransaction();
+
+            if ($resultCode !== 0) {
+
+                $this->conn->prepare("
+                    UPDATE payments SET status = 'failed'
+                    WHERE id = :id AND status = 'pending'
+                ")->execute([':id' => $paymentId]);
+
+                $this->conn->commit();
+                return;
+            }
+
+            $stmt = $this->conn->prepare("
+                UPDATE payments SET status = 'completed'
+                WHERE id = :id AND status = 'pending'
+            ");
+            $stmt->execute([':id' => $paymentId]);
+
+            if ($stmt->rowCount() === 0) {
+                // A real callback landed first — nothing more to do.
+                $this->conn->rollBack();
+                return;
+            }
+
+            $postCommitActions = $this->applyEntitlement($payment);
+            $this->conn->commit();
+
+            $this->dispatchPostCommitActions($postCommitActions);
+
+        } catch (Throwable $e) {
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
+            error_log('LUX EMPIRE Payment: reconciliation failed for payment #' . $paymentId . ' — ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Self-service "I already paid" path — the person pastes the
+     * SMS or bare code for a SPECIFIC payment_id they already know
+     * about (the modal only offers this after its own polling gave
+     * up, so it already has the id). Not proof on its own — it
+     * re-asks Safaricom via the trusted checkout_request_id, and
+     * only escalates to admin review if that's still inconclusive.
+     */
+    public function submitUserReceipt(int $userId, int $paymentId, string $rawInput): array
+    {
+        $code = ReceiptExtractor::extract($rawInput);
+
+        if ($code === null) {
+            return [
+                'success' => false,
+                'message' => "We couldn't find an M-Pesa code in that. Paste the full confirmation message, or just the code itself.",
+            ];
+        }
+
+        $stmt = $this->conn->prepare("SELECT * FROM payments WHERE id = :id AND user_id = :user_id LIMIT 1");
+        $stmt->execute([':id' => $paymentId, ':user_id' => $userId]);
+        $payment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($payment === null) {
+            return ['success' => false, 'message' => 'Payment not found.'];
+        }
+
+        if ($payment['status'] === 'completed') {
+            return ['success' => true, 'message' => 'This payment is already confirmed.'];
+        }
+
+        if ($payment['status'] !== 'pending') {
+            return ['success' => false, 'message' => 'This payment can no longer be verified. Please start a new payment.'];
+        }
+
+        $this->conn->prepare("UPDATE payments SET user_submitted_receipt = :code WHERE id = :id")
+            ->execute([':code' => $code, ':id' => $paymentId]);
+
+        $this->reconcilePendingPayment($paymentId);
+
+        $recheck = $this->conn->prepare("SELECT status FROM payments WHERE id = :id");
+        $recheck->execute([':id' => $paymentId]);
+
+        if ($recheck->fetchColumn() === 'completed') {
+            return ['success' => true, 'message' => 'Payment verified — access granted.'];
+        }
+
+        $this->conn->prepare("UPDATE payments SET needs_admin_review = 1 WHERE id = :id")
+            ->execute([':id' => $paymentId]);
+
+        return [
+            'success' => true,
+            'pending_review' => true,
+            'message' => "We've recorded your code and flagged this for our team to confirm — you'll be notified once it's verified, usually within a few hours.",
+        ];
+    }
+
+    /**
+     * Standalone "I paid via Paybill" flow — no STK push was ever
+     * initiated. Tries an automatic C2B match first (only works once
+     * Go-Live C2B webhook registration is done with a real Paybill);
+     * otherwise queues a pending payment for admin review.
+     */
+    public function submitPaybillPayment(int $userId, string $purpose, float $amount, string $rawInput, array $metadata = []): array
+    {
+        $code = ReceiptExtractor::extract($rawInput);
+
+        if ($code === null) {
+            return [
+                'success' => false,
+                'message' => "We couldn't find an M-Pesa code in that. Paste the full confirmation message, or just the code itself.",
+            ];
+        }
+
+        $autoResult = $this->matchC2bReceipt($userId, $purpose, $code, $metadata);
+
+        if ($autoResult['success']) {
+            return $autoResult;
+        }
+
+        $checkoutId = 'PAYBILL-' . $userId . '-' . time() . '-' . bin2hex(random_bytes(3));
+
+        $this->conn->prepare("
+            INSERT INTO payments
+                (user_id, purpose, amount, phone, status, checkout_request_id, user_submitted_receipt, needs_admin_review, metadata)
+            VALUES
+                (:user_id, :purpose, :amount, 'PAYBILL', 'pending', :checkout_id, :code, 1, :metadata)
+        ")->execute([
+            ':user_id' => $userId, ':purpose' => $purpose, ':amount' => $amount,
+            ':checkout_id' => $checkoutId, ':code' => $code, ':metadata' => json_encode($metadata),
+        ]);
+
+        return [
+            'success' => true,
+            'pending_review' => true,
+            'message' => "We've recorded your code and flagged this for our team to confirm — you'll be notified once it's verified, usually within a few hours.",
+        ];
+    }
+
+    /**
+     * ============================================================
      * C2B RECEIPT MATCHING (self-service "I already paid" flow)
      * ============================================================
      */
@@ -577,11 +865,15 @@ final class Payment
             ")->execute([':payment_id' => $paymentId, ':id' => $c2b['id']]);
 
             $payment = $this->getPaymentById($paymentId);
+            $postCommitActions = [];
+
             if ($payment !== null) {
-                $this->applyEntitlement($payment);
+                $postCommitActions = $this->applyEntitlement($payment);
             }
 
             $this->conn->commit();
+
+            $this->dispatchPostCommitActions($postCommitActions);
 
             return ['success' => true, 'message' => 'Payment verified — access granted.'];
 
@@ -594,6 +886,182 @@ final class Payment
         }
     }
 
+    public function manuallyApprove(int $paymentId, int $adminId, string $notes = ''): array
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM payments WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $paymentId]);
+        $payment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($payment === null) {
+            return ['success' => false, 'message' => 'Payment not found.'];
+        }
+
+        if ($payment['status'] === 'completed') {
+            $this->conn->prepare("
+                UPDATE payments SET needs_admin_review = 0, admin_notes = :notes, resolved_by_admin_id = :admin_id
+                WHERE id = :id
+            ")->execute([':notes' => $notes, ':admin_id' => $adminId, ':id' => $paymentId]);
+            return ['success' => true, 'message' => 'This payment was already completed — review cleared.'];
+        }
+
+        if ($payment['status'] !== 'pending') {
+            return ['success' => false, 'message' => 'Only a pending payment can be manually approved.'];
+        }
+
+        try {
+            $this->conn->beginTransaction();
+
+            $update = $this->conn->prepare("
+                UPDATE payments
+                SET status = 'completed', needs_admin_review = 0, admin_notes = :notes, resolved_by_admin_id = :admin_id
+                WHERE id = :id AND status = 'pending'
+            ");
+            $update->execute([':notes' => $notes, ':admin_id' => $adminId, ':id' => $paymentId]);
+
+            if ($update->rowCount() === 0) {
+                $this->conn->rollBack();
+                return ['success' => false, 'message' => 'This payment was already resolved.'];
+            }
+
+            $postCommitActions = $this->applyEntitlement($payment);
+            $this->conn->commit();
+
+            $this->dispatchPostCommitActions($postCommitActions);
+
+            (new Notification())->create(
+                (int) $payment['user_id'],
+                'payment_manually_verified',
+                'Payment Verified',
+                'Our team has manually verified your payment — access has been granted.',
+                null
+            );
+
+            return ['success' => true, 'message' => 'Payment approved and access granted.'];
+
+        } catch (Throwable $e) {
+            if ($this->conn->inTransaction()) $this->conn->rollBack();
+            error_log('LUX EMPIRE Payment: manual approval failed — ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Something went wrong approving this payment.'];
+        }
+    }
+
+    public function manuallyReject(int $paymentId, int $adminId, string $notes = ''): array
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM payments WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $paymentId]);
+        $payment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($payment === null) {
+            return ['success' => false, 'message' => 'Payment not found.'];
+        }
+
+        $this->conn->prepare("
+            UPDATE payments
+            SET status = 'failed', needs_admin_review = 0, admin_notes = :notes, resolved_by_admin_id = :admin_id
+            WHERE id = :id AND status = 'pending'
+        ")->execute([':notes' => $notes, ':admin_id' => $adminId, ':id' => $paymentId]);
+
+        (new Notification())->create(
+            (int) $payment['user_id'],
+            'payment_rejected',
+            'Payment Could Not Be Verified',
+            'We were unable to verify the payment code you submitted.' . ($notes ? ' Note: ' . $notes : '') . ' Please try again or contact support.',
+            null
+        );
+
+        return ['success' => true, 'message' => 'Payment marked as failed and the user was notified.'];
+    }
+
+    public function markRefundResolved(int $paymentId, int $adminId, string $notes = ''): array
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM payments WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $paymentId]);
+        $payment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($payment === null) {
+            return ['success' => false, 'message' => 'Payment not found.'];
+        }
+
+        $this->conn->prepare("
+            UPDATE payments SET refund_resolved_at = NOW(), admin_notes = :notes, resolved_by_admin_id = :admin_id
+            WHERE id = :id
+        ")->execute([':notes' => $notes, ':admin_id' => $adminId, ':id' => $paymentId]);
+
+        (new Notification())->create(
+            (int) $payment['user_id'],
+            'refund_processed',
+            'Refund Processed',
+            'Your KES ' . number_format((float) $payment['amount']) . ' refund has been processed.',
+            null
+        );
+
+        return ['success' => true, 'message' => 'Refund marked resolved and the user was notified.'];
+    }
+
+    public function grantWaivedPayment(int $userId, string $purpose, float $amount, array $metadata = []): array
+    {
+        try {
+            $this->conn->beginTransaction();
+
+            $checkoutId = 'WAIVER-' . $userId . '-' . time() . '-' . bin2hex(random_bytes(3));
+
+            $stmt = $this->conn->prepare("
+                INSERT INTO payments (user_id, purpose, amount, phone, status, checkout_request_id, metadata)
+                VALUES (:user_id, :purpose, :amount, 'WAIVED', 'completed', :checkout_id, :metadata)
+            ");
+            $stmt->execute([
+                ':user_id' => $userId, ':purpose' => $purpose, ':amount' => $amount,
+                ':checkout_id' => $checkoutId, ':metadata' => json_encode($metadata),
+            ]);
+            $paymentId = (int) $this->conn->lastInsertId();
+
+            $payment = ['id' => $paymentId, 'user_id' => $userId, 'purpose' => $purpose, 'amount' => $amount, 'metadata' => json_encode($metadata)];
+            $postCommitActions = $this->applyEntitlement($payment);
+
+            $this->conn->commit();
+            $this->dispatchPostCommitActions($postCommitActions);
+
+            return ['success' => true, 'payment_id' => $paymentId, 'waived' => true, 'message' => 'Granted at no charge.'];
+
+        } catch (Throwable $e) {
+            if ($this->conn->inTransaction()) $this->conn->rollBack();
+            error_log('LUX EMPIRE Payment: waiver grant failed — ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Something went wrong granting this.'];
+        }
+    }
+
+    public function listNeedingReview(): array
+    {
+        return $this->conn->query("
+            SELECT p.*, u.full_name, u.email, u.phone
+            FROM payments p JOIN users u ON p.user_id = u.id
+            WHERE p.needs_admin_review = 1 AND p.status = 'pending'
+            ORDER BY p.created_at ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function listRefundsPending(): array
+    {
+        return $this->conn->query("
+            SELECT p.*, u.full_name, u.email, u.phone
+            FROM payments p JOIN users u ON p.user_id = u.id
+            WHERE p.refund_required = 1 AND p.refund_resolved_at IS NULL
+            ORDER BY p.created_at ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function listRecent(int $limit = 50): array
+    {
+        $stmt = $this->conn->prepare("
+            SELECT p.*, u.full_name, u.email
+            FROM payments p JOIN users u ON p.user_id = u.id
+            ORDER BY p.id DESC LIMIT :limit
+        ");
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     private function getPaymentById(int $id): ?array
     {
         $stmt = $this->conn->prepare("SELECT * FROM payments WHERE id = :id LIMIT 1");
@@ -602,12 +1070,12 @@ final class Payment
         return $row ?: null;
     }
 
-    public function getPaymentStatus(int $paymentId, int $userId): ?array
-    {
-        $stmt = $this->conn->prepare("
-            SELECT status, purpose, amount FROM payments
-            WHERE id = :id AND user_id = :user_id LIMIT 1
-        ");
+        public function getPaymentStatus(int $paymentId, int $userId): ?array
+        {
+            $stmt = $this->conn->prepare("
+                SELECT status, purpose, amount, created_at FROM payments
+                WHERE id = :id AND user_id = :user_id LIMIT 1
+            ");
         $stmt->execute([':id' => $paymentId, ':user_id' => $userId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;

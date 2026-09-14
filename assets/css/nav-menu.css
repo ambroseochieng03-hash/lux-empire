@@ -23,7 +23,7 @@
     /* position:fixed + exact top/left are set by nav-menu.js at
        open time — this is just the resting/visual style now. */
     position:fixed;
-    width:160px;
+    width:195px;
     background:#0f0f0f;
     border:1px solid rgba(212,175,55,0.3);
     border-radius:14px;

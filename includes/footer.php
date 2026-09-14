@@ -73,6 +73,10 @@ $isDashboardContext = $isLoggedIn
 <?php endif; ?>
 
 <script>
+    window.LUX_PAYMENT_PAYBILL = "<?php echo htmlspecialchars(DARAJA_SHORTCODE, ENT_QUOTES); ?>";
+</script>
+
+<script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('<?php echo BASE_URL; ?>/sw.js')

@@ -485,7 +485,7 @@ define('DARAJA_CALLBACK_URL', $_ENV['DARAJA_CALLBACK_URL'] ?? BASE_URL . '/api/p
 |--------------------------------------------------------------------------
 */
 
-define('PRICE_LANDLORD_PRO_MONTHLY', 499);   // KES
-define('BOOKING_FEE_AMOUNT', 150);            // KES
+define('PRICE_LANDLORD_PRO_MONTHLY', 5);   // KES
+define('BOOKING_FEE_AMOUNT', 5);            // KES
 define('TRUCK_COMMISSION_PERCENT', 10);       // % of trip price
 define('WALLET_MIN_BALANCE_TO_ACCEPT', 0);    // KES — floor before a driver is blocked

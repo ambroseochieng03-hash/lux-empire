@@ -119,7 +119,7 @@ require_once __DIR__ . '/../includes/navbar.php';
                                 }
                             }
 
-                            $isHouseBooked = ($house['status'] === 'booked');
+                            $isHouseBooked = in_array($house['status'], ['booked', 'unavailable'], true);
                         ?>
 
                         <div class="lux-card tenant-card lux-explore-card<?php echo $isHouseBooked ? ' lux-explore-card-unavailable' : ''; ?>"
@@ -327,7 +327,7 @@ require_once __DIR__ . '/../includes/navbar.php';
 
 </div>
 
-<!-- Guest house detail quick-view (populated via api/houses/fetch_house.php) -->
+<!-- Guest house detail quick-view (populated via api/houses/fetch_houses.php) -->
 <div class="guest-detail-modal" id="guestDetailModal" aria-hidden="true">
     <div class="guest-detail-modal-overlay" data-guest-detail-close></div>
     <div class="guest-detail-modal-box">

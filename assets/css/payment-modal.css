@@ -1,0 +1,38 @@
+.lux-limit-modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 9998;
+    align-items: center; justify-content: center;
+}
+.lux-limit-modal-overlay.is-open { display: flex; }
+.lux-limit-modal {
+    background: var(--bg-dark, #0a0a0a);
+    border: 1px solid rgba(255,80,80,0.3);
+    border-radius: 24px;
+    padding: 30px;
+    width: 90%; max-width: 420px;
+}
+.lux-limit-modal-message {
+    color: #ffb3b3;
+    font-size: 1.05rem;
+    line-height: 1.6;
+    margin-bottom: 22px;
+}
+.lux-limit-modal-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.lux-limit-modal-actions .lux-limit-modal-upgrade {
+    flex: 1;
+    min-width: 200px;
+}
+.lux-limit-modal-dismiss {
+    padding: 12px 20px;
+    border-radius: 14px;
+    border: none;
+    background: rgba(255,255,255,0.08);
+    color: white;
+    cursor: pointer;
+}

@@ -11,7 +11,7 @@ Three layers:
      images; videos are explicitly excluded from cache.put() below
      because <video> Range requests return 206 Partial Content,
      which the Cache API cannot store (throws if you try).
-  3. House data endpoints (filter_houses.php, fetch_house.php,
+  3. House data endpoints (filter_houses.php, fetch_houses.php,
      filter_meta.php) — network-first.
   4. Page navigations (actual HTML documents) and everything else
      same-origin — network-first, so a page visited once online is
@@ -67,7 +67,7 @@ function isHouseVideo(url) {
 
 function isHouseDataEndpoint(url) {
     return url.pathname.indexOf('/api/houses/filter_houses.php') !== -1
-        || url.pathname.indexOf('/api/houses/fetch_house.php') !== -1
+        || url.pathname.indexOf('/api/houses/fetch_houses.php') !== -1
         || url.pathname.indexOf('/api/houses/filter_meta.php') !== -1;
 }
 

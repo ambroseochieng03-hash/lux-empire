@@ -53,6 +53,51 @@ try {
         exit;
     }
 
+    $database = new Database();
+    $pdoCheck = $database->connect();
+    $payment = new Payment();
+
+    /*
+    * Only a genuinely RECENT pending attempt blocks a new one — a
+    * double-click or an already-open modal, not something the person
+    * gave up on minutes ago. Deliberately does NOT synchronously call
+    * Safaricom here: that reconciliation belongs to the polling loop
+    * (check_payment_status.php) and the future cron sweep, not the hot
+    * path of starting a new payment — trying to resolve an old stuck
+    * transaction inline can itself hang, blocking this request.
+    */
+    $recentWindowSeconds = 60;
+
+    $dupParams = [
+        ':user_id' => $userId,
+        ':purpose' => $purpose,
+        ':window' => $recentWindowSeconds,
+    ];
+
+    $houseScopeSql = '';
+
+    if ($purpose === 'booking_fee') {
+        $houseScopeSql = " AND JSON_EXTRACT(metadata, '$.house_id') = :house_id ";
+        $dupParams[':house_id'] = (int) ($body['house_id'] ?? 0);
+    }
+
+    $existingPending = $pdoCheck->prepare("
+        SELECT id FROM payments
+        WHERE user_id = :user_id
+        AND purpose = :purpose
+        AND status = 'pending'
+        AND created_at >= (NOW() - INTERVAL :window SECOND)
+        $houseScopeSql
+        ORDER BY id DESC LIMIT 1
+    ");
+    $existingPending->execute($dupParams);
+
+    if ($existingPending->fetch()) {
+        http_response_code(409);
+        echo json_encode(['success' => false, 'message' => 'A payment attempt is already in progress. Check your phone, or wait a moment before trying again.']);
+        exit;
+    }
+
     $amount = null;
     $metadata = [];
 
@@ -100,26 +145,11 @@ try {
                 exit;
             }
 
-            // Prevents firing a second STK push for the same house
-            // while an earlier one is still pending — not the
-            // race-condition guarantee itself (that's the row lock
-            // in Payment::applyEntitlement()).
-            $database = new Database();
-            $pdoCheck = $database->connect();
+            require_once '../../classes/PaymentWaiver.php';
 
-            $dup = $pdoCheck->prepare("
-                SELECT id FROM payments
-                WHERE user_id = :user_id
-                AND purpose = 'booking_fee'
-                AND status = 'pending'
-                AND JSON_EXTRACT(metadata, '$.house_id') = :house_id
-                LIMIT 1
-            ");
-            $dup->execute([':user_id' => $userId, ':house_id' => $houseId]);
-
-            if ($dup->fetch()) {
-                http_response_code(409);
-                echo json_encode(['success' => false, 'message' => 'A payment for this property is already in progress. Check your phone for the M-Pesa prompt.']);
+            if (PaymentWaiver::isWaived($userId, 'tenant')) {
+                $waivedResult = $payment->grantWaivedPayment($userId, 'booking_fee', 0.0, ['house_id' => $houseId, 'waived' => true]);
+                echo json_encode($waivedResult);
                 exit;
             }
 
@@ -157,7 +187,6 @@ try {
             exit;
     }
 
-    $payment = new Payment();
     $result = $payment->initiateStkPush($userId, $purpose, $amount, $phoneInput, $metadata);
 
     echo json_encode($result);

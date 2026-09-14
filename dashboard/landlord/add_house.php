@@ -669,6 +669,7 @@ require_once '../../includes/sidebar.php';
 </div>
 
 
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/payment-modal.css">
 <script src="<?php echo BASE_URL; ?>/assets/js/idempotency.js"></script>
 <script>
     window.LUX_PAYMENT_CONFIG = {
@@ -677,6 +678,7 @@ require_once '../../includes/sidebar.php';
     };
 </script>
 <script src="<?php echo BASE_URL; ?>/assets/js/payment-modal.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/limit-modal.js"></script>
 
 <script>
 (function () {
@@ -689,40 +691,27 @@ require_once '../../includes/sidebar.php';
 
     function showError(message, showUpgrade) {
 
-        errorAlert.innerHTML = message;
-
         if (showUpgrade) {
-            errorAlert.innerHTML += `
-                <div style="margin-top:14px; display:flex; gap:10px; flex-wrap:wrap;">
-                    <button type="button" class="lux-btn" id="limitUpgradeBtn">Upgrade to Pro — KES 499/mo</button>
-                    <button type="button" class="lux-btn" id="limitDismissBtn" style="background:rgba(255,255,255,0.08); color:white;">Not now</button>
-                </div>
-            `;
+            window.LuxLimitModal.show({
+                message: message,
+                onUpgrade: () => {
+                    window.LuxPayment.open({
+                        purpose: 'landlord_pro',
+                        title: 'Upgrade to Pro',
+                        amountLabel: 'KES 499 / month',
+                        onSuccess: () => {
+                            // Files already selected in the form are still
+                            // there — nothing was lost, no page reload.
+                            submitForm();
+                        }
+                    });
+                }
+            });
+            return;
         }
 
+        errorAlert.textContent = message;
         errorAlert.style.display = 'block';
-
-        if (showUpgrade) {
-
-            document.getElementById('limitUpgradeBtn').addEventListener('click', () => {
-                window.LuxPayment.open({
-                    purpose: 'landlord_pro',
-                    title: 'Upgrade to Pro',
-                    amountLabel: 'KES 499 / month',
-                    onSuccess: () => {
-                        // Files the landlord already selected are still
-                        // sitting in the <input>s — nothing was lost by
-                        // navigating, because we never navigated.
-                        errorAlert.style.display = 'none';
-                        submitForm();
-                    }
-                });
-            });
-
-            document.getElementById('limitDismissBtn').addEventListener('click', () => {
-                errorAlert.style.display = 'none';
-            });
-        }
     }
 
     async function submitForm() {

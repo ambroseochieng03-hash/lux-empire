@@ -185,7 +185,7 @@ class MediaService
 
         if (!$compressed) {
 
-            imagedestroy($source);
+            
 
             throw new RuntimeException(
                 'Unable to create processed image.'
@@ -223,16 +223,14 @@ class MediaService
             82
         )) {
 
-            imagedestroy($source);
-            imagedestroy($compressed);
+            
 
             throw new RuntimeException(
                 'Failed to save processed image.'
             );
         }
 
-        imagedestroy($source);
-        imagedestroy($compressed);
+       
 
         return $filename;
     }
@@ -520,7 +518,7 @@ class MediaService
         $compressed = imagecreatetruecolor($newWidth, $newHeight);
 
         if (!$compressed) {
-            imagedestroy($source);
+            
             throw new RuntimeException('Unable to create processed image.');
         }
 
@@ -532,8 +530,7 @@ class MediaService
         $targetPath = $this->uploadDirectory . $targetFilename;
         $ok = imagewebp($compressed, $targetPath, 82);
 
-        imagedestroy($source);
-        imagedestroy($compressed);
+
 
         if (!$ok) {
             throw new RuntimeException('Failed to save processed image.');

@@ -1,0 +1,204 @@
+/* ================================================================
+   LUX EMPIRE — PRODUCT TOUR STYLES
+   SAVE AT: assets/css/product-tour.css
+   Loaded only where the tour runs (navbar.php / sidebar.php).
+   Uses the same gold (#d4af37-ish "gold"/var(--gold)) + near-black
+   card look already used by the logout modal in sidebar.php, so it
+   never feels like a bolted-on third-party widget.
+================================================================ */
+
+/* click-blocking layer behind the spotlight, so people can only
+   interact with the tour itself while it's running */
+.lux-tour-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99997;
+    background: rgba(0, 0, 0, 0.45);
+}
+
+/* the "hole" — a box-shadow big enough to darken the whole screen
+   except this rectangle, which is how the spotlight effect works
+   without needing an SVG mask */
+.lux-tour-spotlight {
+    position: fixed;
+    z-index: 99998;
+    border-radius: 14px;
+    pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55), 0 0 0 3px rgba(212, 175, 55, 0.85);
+    transition: top .25s ease, left .25s ease, width .25s ease, height .25s ease, opacity .2s ease;
+    opacity: 0;
+}
+
+.lux-tour-tooltip {
+    position: fixed;
+    z-index: 99999;
+    width: 290px;
+    max-width: calc(100vw - 24px);
+    background: rgba(15, 15, 20, 0.98);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    border-radius: 18px;
+    padding: 22px 20px 18px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+    color: #eee;
+    font-family: inherit;
+}
+
+.lux-tour-x {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.lux-tour-x:hover { color: #eee; }
+
+.lux-tour-title {
+    color: gold;
+    font-family: 'Cinzel', serif;
+    font-size: 1.15rem;
+    margin: 0 20px 8px 0;
+}
+
+.lux-tour-text {
+    color: #ccc;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    margin: 0;
+}
+
+.lux-tour-dots {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin: 16px 0 4px;
+}
+
+.lux-tour-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.lux-tour-dot.is-active { background: gold; }
+
+.lux-tour-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 14px;
+    gap: 10px;
+}
+
+.lux-tour-actions-right {
+    display: flex;
+    gap: 8px;
+}
+
+.lux-tour-link {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 0.8rem;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 6px 0;
+}
+
+.lux-tour-link:hover { color: #bbb; }
+
+.lux-tour-btn {
+    background: linear-gradient(135deg, gold, #8f6b00);
+    color: black;
+    border: none;
+    border-radius: 10px;
+    padding: 9px 16px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.lux-tour-btn:hover { filter: brightness(1.05); }
+
+.lux-tour-btn-ghost {
+    background: rgba(255, 255, 255, 0.07);
+    color: #eee;
+}
+
+/* ---- "Would you like a guide?" prompt ---- */
+.lux-tour-prompt-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99996;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.lux-tour-prompt-box {
+    max-width: 380px;
+    width: 100%;
+    background: rgba(15, 15, 20, 0.98);
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    border-radius: 22px;
+    padding: 30px 26px;
+    text-align: center;
+    box-shadow: 0 12px 45px rgba(0, 0, 0, 0.55);
+}
+
+.lux-tour-prompt-icon {
+    font-size: 2rem;
+    color: gold;
+    margin-bottom: 14px;
+}
+
+.lux-tour-prompt-title {
+    color: gold;
+    font-family: 'Cinzel', serif;
+    font-size: 1.3rem;
+    margin: 0 0 12px;
+}
+
+.lux-tour-prompt-text {
+    color: #ccc;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    margin: 0 0 22px;
+}
+
+.lux-tour-prompt-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ---- floating "?" relaunch button ---- */
+.lux-tour-help-btn {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, gold, #8f6b00);
+    color: black;
+    border: none;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    font-size: 1rem;
+    cursor: pointer;
+    z-index: 4000;
+}
+
+.lux-tour-help-btn:hover { filter: brightness(1.05); }
+
+@media (max-width: 480px) {
+    .lux-tour-tooltip { width: 260px; padding: 18px 16px 16px; }
+    .lux-tour-prompt-box { padding: 24px 20px; }
+}

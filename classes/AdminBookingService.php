@@ -25,11 +25,11 @@ final class AdminBookingService
         $stmt = $this->conn->query("
             SELECT
                 b.id, b.status, b.booking_date,
-                h.id AS house_id, h.title AS house_title,
+                h.id AS house_id, COALESCE(h.title, b.house_title_snapshot) AS house_title,
                 tenant.id AS tenant_id, tenant.full_name AS tenant_name, tenant.email AS tenant_email,
                 landlord.id AS landlord_id, landlord.full_name AS landlord_name
             FROM bookings b
-            JOIN houses h ON b.house_id = h.id
+            LEFT JOIN houses h ON b.house_id = h.id
             JOIN users tenant ON b.tenant_id = tenant.id
             JOIN users landlord ON b.landlord_id = landlord.id
             ORDER BY b.id DESC

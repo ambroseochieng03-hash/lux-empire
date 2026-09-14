@@ -48,6 +48,7 @@ require_once __DIR__ . '/../config/app.php';
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/admin.css">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/emergency.css">
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/navbar.css">
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/payment-modal.css">
 
     <!-- LUX EMPIRE Favicon -->
     <!-- SVG first: modern browsers (Chrome, Firefox, Edge) use this and ignore the rest. -->

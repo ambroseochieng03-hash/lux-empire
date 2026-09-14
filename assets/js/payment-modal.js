@@ -19,7 +19,7 @@ Usage:
 (function () {
 
     const POLL_INTERVAL_MS = 3000;
-    const POLL_TIMEOUT_MS = 90000;
+    const POLL_TIMEOUT_MS = 180000; // 3 minutes — realistic time to notice and enter the M-Pesa PIN
 
     let modalEl = null;
     let pollTimer = null;
@@ -71,9 +71,82 @@ Usage:
             <button type="button" class="lux-btn lux-payment-pay-btn" id="luxPaymentPayBtn" style="width:100%;">
                 Pay Now
             </button>
+            <div style="text-align:center; color:var(--gray); margin:14px 0; font-size:0.85rem;">— or —</div>
+            <button type="button" class="lux-payment-retry-btn" id="luxPaymentPaybillTrigger" style="width:100%;">
+                Already Paid via Paybill? Enter Code
+            </button>
         `;
 
         body.querySelector('#luxPaymentPayBtn').addEventListener('click', () => initiate(config));
+
+        body.querySelector('#luxPaymentPaybillTrigger').addEventListener('click', () => {
+            const paybillAmountInput = modalEl.querySelector('#luxPaymentAmount');
+            if (paybillAmountInput && paybillAmountInput.value) {
+                config.amount = parseFloat(paybillAmountInput.value);
+            }
+            renderPaybillStep(config);
+        });
+    }
+
+    function renderPaybillStep(config) {
+        const body = modalEl.querySelector('.lux-payment-modal-body');
+        const paybill = window.LUX_PAYMENT_PAYBILL || '—';
+
+        body.innerHTML = `
+            <h3 class="lux-payment-title">Pay via Paybill</h3>
+            <p class="lux-payment-description">
+                Paybill: <strong>${paybill}</strong><br>
+                Account Number: <strong>your phone number</strong><br>
+                Amount: <strong>${config.amountLabel || ''}</strong><br><br>
+                After paying, paste the M-Pesa confirmation message (or just the code) below.
+            </p>
+            <textarea id="luxPaybillReceiptInput" class="lux-payment-input" rows="3" placeholder="e.g. UIEQ46JHI7 Confirmed..."></textarea>
+            <div class="lux-payment-error" id="luxPaybillError" hidden></div>
+            <button type="button" class="lux-btn" id="luxPaybillSubmitBtn" style="width:100%; margin-top:10px;">Submit</button>
+            <button type="button" class="lux-payment-retry-btn" id="luxPaybillBackBtn" style="width:100%; margin-top:8px;">Back</button>
+        `;
+
+        body.querySelector('#luxPaybillBackBtn').addEventListener('click', () => renderPhoneStep(config));
+
+        body.querySelector('#luxPaybillSubmitBtn').addEventListener('click', async () => {
+            const input = document.getElementById('luxPaybillReceiptInput').value.trim();
+            const errorEl = document.getElementById('luxPaybillError');
+
+            if (!input) {
+                errorEl.textContent = 'Paste the M-Pesa message or code.';
+                errorEl.hidden = false;
+                return;
+            }
+
+            renderWaitingStep('Verifying...');
+
+            try {
+                const payload = {
+                    csrf_token: window.LUX_PAYMENT_CONFIG.csrfToken,
+                    purpose: config.purpose,
+                    receipt_input: input,
+                };
+                if (config.houseId) payload.house_id = config.houseId;
+                if (config.amount) payload.amount = config.amount;
+
+                const res = await fetch(window.LUX_PAYMENT_CONFIG.baseUrl + '/api/payments/submit_paybill_payment.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    renderResultStep(!data.pending_review, data.message, config);
+                } else {
+                    renderPaybillStep(config);
+                    document.getElementById('luxPaybillError').textContent = data.message || 'Could not verify.';
+                    document.getElementById('luxPaybillError').hidden = false;
+                }
+            } catch (e) {
+                renderPaybillStep(config);
+            }
+        });
     }
 
     function renderWaitingStep(message) {
@@ -99,6 +172,55 @@ Usage:
         } else if (typeof config.onSuccess === 'function') {
             config.onSuccess();
         }
+    }
+
+    function renderManualVerifyStep(paymentId, config) {
+        const body = modalEl.querySelector('.lux-payment-modal-body');
+        body.innerHTML = `
+            <p class="lux-payment-waiting-text">This is taking longer than expected. If you already paid, paste the M-Pesa confirmation message (or just the code) below.</p>
+            <textarea id="luxManualReceiptInput" class="lux-payment-input" rows="3" placeholder="e.g. UIEQ46JHI7 Confirmed. Ksh5.00 sent to..."></textarea>
+            <div class="lux-payment-error" id="luxManualError" hidden></div>
+            <button type="button" class="lux-btn" id="luxManualVerifyBtn" style="width:100%; margin-top:10px;">Verify Payment</button>
+            <button type="button" class="lux-payment-retry-btn" id="luxManualRetryBtn" style="width:100%; margin-top:8px;">Start a New Payment Instead</button>
+        `;
+
+        body.querySelector('#luxManualVerifyBtn').addEventListener('click', async () => {
+            const input = document.getElementById('luxManualReceiptInput').value.trim();
+            const errorEl = document.getElementById('luxManualError');
+
+            if (!input) {
+                errorEl.textContent = 'Paste the M-Pesa message or code.';
+                errorEl.hidden = false;
+                return;
+            }
+
+            renderWaitingStep('Verifying...');
+
+            try {
+                const res = await fetch(window.LUX_PAYMENT_CONFIG.baseUrl + '/api/payments/submit_receipt.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        csrf_token: window.LUX_PAYMENT_CONFIG.csrfToken,
+                        payment_id: paymentId,
+                        receipt_input: input,
+                    }),
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    renderResultStep(!data.pending_review, data.message, config);
+                } else {
+                    renderManualVerifyStep(paymentId, config);
+                    document.getElementById('luxManualError').textContent = data.message || 'Could not verify.';
+                    document.getElementById('luxManualError').hidden = false;
+                }
+            } catch (e) {
+                renderManualVerifyStep(paymentId, config);
+            }
+        });
+
+        body.querySelector('#luxManualRetryBtn').addEventListener('click', () => renderPhoneStep(config));
     }
 
     function showError(message) {
@@ -148,6 +270,11 @@ Usage:
                 return;
             }
 
+            if (data.waived) {
+                renderResultStep(true, data.message || 'Granted at no charge!', config);
+                return;
+            }
+
             renderWaitingStep('Enter your M-Pesa PIN on your phone to complete payment...');
             pollDeadline = Date.now() + POLL_TIMEOUT_MS;
             pollStatus(data.payment_id, config);
@@ -159,7 +286,7 @@ Usage:
 
     async function pollStatus(paymentId, config) {
         if (Date.now() > pollDeadline) {
-            renderResultStep(false, "This is taking longer than expected. If you completed the payment, it will still be applied shortly — check back in a minute.", config);
+            renderManualVerifyStep(paymentId, config);
             return;
         }
 

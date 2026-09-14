@@ -51,6 +51,12 @@ final class PlanLimits
 
     public static function isPro(int $landlordId): bool
     {
+        require_once __DIR__ . '/PaymentWaiver.php';
+
+        if (PaymentWaiver::isWaived($landlordId, 'landlord')) {
+            return true;
+        }
+
         $row = self::loadRow($landlordId);
 
         return $row !== null

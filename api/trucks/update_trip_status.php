@@ -140,7 +140,39 @@ if ($success) {
 
         $_SESSION['success'] = "Trip started successfully.";
 
-    } elseif ($status === 'completed') {
+    } 
+    
+        /* NEW: deduct commission now, notify driver only if balance goes negative. No accept-time gate — drivers can take jobs at any balance, including zero or negative. */
+        require_once '../../classes/Payment.php';
+        require_once '../../classes/EmailJobPublisher.php';
+
+        $paymentModel = new Payment();
+        $paymentModel->deductCommission((int) $driver_id, (float) $trip['price'], (int) $trip_id);
+        $newWalletBalance = $paymentModel->getWalletBalance((int) $driver_id);
+
+        if ($newWalletBalance < 0) {
+
+            $notification->create(
+                (int) $driver_id,
+                'wallet_negative',
+                'Wallet Balance Low',
+                'Your commission wallet is now KES ' . number_format($newWalletBalance, 2) . ' after this trip. Top up when convenient to stay in good standing.',
+                BASE_URL . '/driver/wallet'
+            );
+
+            $driverRow = $pdo->prepare("SELECT full_name, email FROM users WHERE id = ?");
+            $driverRow->execute([$driver_id]);
+            $driverInfo = $driverRow->fetch();
+
+            if ($driverInfo) {
+                EmailJobPublisher::publish('email.wallet_negative', [
+                    'email' => $driverInfo['email'],
+                    'name' => $driverInfo['full_name'],
+                    'balance' => number_format($newWalletBalance, 2),
+                ]);
+            }
+            
+        } elseif ($status === 'completed') {
 
         $notification->create(
             (int) $trip['tenant_id'],

@@ -564,3 +564,61 @@ ALTER TABLE houses
 ALTER TABLE houses
     ADD COLUMN reserved_by_booking_id INT NULL AFTER status,
     ADD CONSTRAINT fk_houses_reserved_booking FOREIGN KEY (reserved_by_booking_id) REFERENCES bookings(id) ON DELETE SET NULL;
+
+ALTER TABLE payments
+    ADD COLUMN user_submitted_receipt VARCHAR(20) NULL AFTER mpesa_receipt,
+    ADD COLUMN needs_admin_review TINYINT(1) NOT NULL DEFAULT 0 AFTER user_submitted_receipt,
+    ADD COLUMN refund_required TINYINT(1) NOT NULL DEFAULT 0 AFTER needs_admin_review,
+    ADD COLUMN refund_resolved_at TIMESTAMP NULL AFTER refund_required,
+    ADD COLUMN admin_notes TEXT NULL AFTER refund_resolved_at,
+    ADD COLUMN resolved_by_admin_id INT NULL AFTER admin_notes,
+    ADD CONSTRAINT fk_payments_resolved_by FOREIGN KEY (resolved_by_admin_id) REFERENCES users(id) ON DELETE SET NULL;
+
+CREATE TABLE payment_waivers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    scope ENUM('user','role') NOT NULL,
+    user_id INT NULL,
+    role ENUM('tenant','landlord','driver') NULL,
+    reason TEXT NULL,
+    granted_by INT NOT NULL,
+    expires_at DATETIME NOT NULL,
+    revoked_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (granted_by) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE houses
+    MODIFY COLUMN status ENUM('available','reserved','booked','unavailable','rented') NOT NULL DEFAULT 'available';
+
+-- Preserve a readable trace of what was booked, even once the house row is gone.
+ALTER TABLE bookings
+    ADD COLUMN house_title_snapshot VARCHAR(150) NULL AFTER house_id;
+
+UPDATE bookings b
+JOIN houses h ON b.house_id = h.id
+SET b.house_title_snapshot = h.title;
+
+-- Find the FK's real name first (it wasn't given an explicit name
+-- in your original schema, so MariaDB auto-generated one):
+SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+WHERE TABLE_SCHEMA = 'house_truck_platform' AND TABLE_NAME = 'bookings'
+AND COLUMN_NAME = 'house_id' AND REFERENCED_TABLE_NAME = 'houses';
+
+-- ERROR
+ALTER TABLE bookings DROP FOREIGN KEY bookings_ibfk_1;  -- use the actual name from above
+ALTER TABLE bookings MODIFY COLUMN house_id INT NULL;
+ALTER TABLE bookings
+    ADD CONSTRAINT fk_bookings_house FOREIGN KEY (house_id) REFERENCES houses(id) ON DELETE SET NULL;
+
+USE house_truck_platform;
+
+ALTER TABLE bookings
+    DROP FOREIGN KEY `1`;
+
+ALTER TABLE bookings
+    ADD CONSTRAINT fk_bookings_house
+    FOREIGN KEY (house_id)
+    REFERENCES houses(id);
+
+SHOW CREATE TABLE bookings\G    

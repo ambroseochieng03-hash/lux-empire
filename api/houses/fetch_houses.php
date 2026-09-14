@@ -5,6 +5,12 @@ declare(strict_types=1);
 header('Content-Type: application/json');
 
 require_once '../../config/db.php';
+require_once '../../config/security/DoSProtection.php';
+
+DoSProtection::check();
+
+$database = new Database();
+$pdo = $database->connect();
 
 try {
 
@@ -89,7 +95,7 @@ try {
     $imageStmt = $pdo->prepare("
         SELECT image_path
         FROM house_images
-        WHERE house_id = ?
+        WHERE house_id = ? AND status = 'ready'
         ORDER BY id ASC
     ");
 

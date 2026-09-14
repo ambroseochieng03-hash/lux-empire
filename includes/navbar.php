@@ -57,6 +57,7 @@ if ($isLoggedIn) {
 
 <?php if (!$isDashboardContext): ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/mobile-nav.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/product-tour.css">
 <?php endif; ?>
 
 <?php if ($isDashboardContext): ?>
@@ -120,11 +121,11 @@ if ($isLoggedIn) {
 
 <!-- DESKTOP NAVIGATION -->
 <div class="nav-links" id="luxNavLinks">
-<a href="<?php echo BASE_URL; ?>/">Home</a>
-<a href="<?php echo BASE_URL; ?>/browse">LUX Homes</a>
-<a href="<?php echo BASE_URL; ?>/browse">LUX Move</a>
-<a href="#" data-open-info-modal="about">About</a>
-<a href="#" data-open-info-modal="contact">Contact</a>
+<a href="<?php echo BASE_URL; ?>/" data-tour="home">Home</a>
+<a href="<?php echo BASE_URL; ?>/browse" data-tour="homes">LUX Homes</a>
+<a href="<?php echo BASE_URL; ?>/browse" data-tour="move">LUX Move</a>
+<a href="#" data-tour="about" data-open-info-modal="about">About</a>
+<a href="#" data-tour="contact" data-open-info-modal="contact">Contact</a>
 </div>
 
 <div class="lux-nav-buttons" id="luxNavButtons">
@@ -136,13 +137,13 @@ require __DIR__ . '/nav_menu.php';
 
 <!-- MOBILE NAV POPOVER -->
 <div class="lux-mobile-nav-popover" id="luxMobileNavPopover" aria-hidden="true">
-<a href="<?php echo BASE_URL; ?>/">Home</a>
-<a href="<?php echo BASE_URL; ?>/browse">Browse Listings</a>
-<a href="<?php echo BASE_URL; ?>/login">Sign In</a>
-<a href="#" data-open-role-select>Create Account</a>
-<a href="#" data-open-info-modal="about">About</a>
-<a href="#" data-open-info-modal="contact">Contact</a>
-<a href="<?php echo BASE_URL; ?>/forgot-password">Recover Your Account</a>
+<a href="<?php echo BASE_URL; ?>/" data-tour="m-home">Home</a>
+<a href="<?php echo BASE_URL; ?>/browse" data-tour="m-browse">Browse Listings</a>
+<a href="<?php echo BASE_URL; ?>/login" data-tour="m-login">Sign In</a>
+<a href="#" data-tour="m-register" data-open-role-select>Create Account</a>
+<a href="#" data-tour="m-about" data-open-info-modal="about">About</a>
+<a href="#" data-tour="m-contact" data-open-info-modal="contact">Contact</a>
+<a href="<?php echo BASE_URL; ?>/forgot-password" data-tour="m-recover">Recover Your Account</a>
 </div>
 
 <?php else: ?>
@@ -182,6 +183,8 @@ require __DIR__ . '/nav_menu.php';
 <?php if (!$isDashboardContext): ?>
 <script src="<?php echo BASE_URL; ?>/assets/js/nav-menu.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/mobile-nav.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/product-tour.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/home-tour.js"></script>
 
 <script>
 /*

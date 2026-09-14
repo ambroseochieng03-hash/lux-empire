@@ -100,6 +100,8 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
             <a href="<?php echo BASE_URL; ?>/driver"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
             <a href="<?php echo BASE_URL; ?>/driver/available-requests"><i class="fa-solid fa-truck"></i> Available Jobs</a>
+
+            <a href="<?php echo BASE_URL; ?>/driver/wallet"><i class="fa-solid fa-wallet"></i> Wallet</a>
             <!-- inside the driver block -->
             <a href="<?php echo BASE_URL; ?>/driver/messages">
                 <i class="fa-solid fa-comments"></i> Chats
@@ -130,6 +132,8 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             <a href="<?php echo BASE_URL; ?>/admin/emergency"><i class="fa-solid fa-triangle-exclamation"></i> Emergencies</a>
             <a href="<?php echo BASE_URL; ?>/admin/bookings"><i class="fa-solid fa-calendar-check"></i> Bookings</a>
             <a href="<?php echo BASE_URL; ?>/admin/messages"><i class="fa-solid fa-envelope"></i> Broadcast</a>
+            <a href="<?php echo BASE_URL; ?>/admin/payments"><i class="fa-solid fa-money-bill-wave"></i> Payments</a>
+            <a href="<?php echo BASE_URL; ?>/admin/waivers"><i class="fa-solid fa-gift"></i> Waivers</a>
 
         <?php endif; ?>
 
@@ -324,3 +328,14 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
 })();
 </script>
+
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/product-tour.css">
+<script>
+    window.LUX_TOUR_USER = {
+        id: <?php echo (int) ($user['id'] ?? 0); ?>,
+        role: "<?php echo htmlspecialchars($userRole, ENT_QUOTES); ?>",
+        name: "<?php echo htmlspecialchars($userName, ENT_QUOTES); ?>"
+    };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/product-tour.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/dashboard-tour.js"></script>

@@ -39,4 +39,16 @@ if ($status === null) {
     exit;
 }
 
+/*
+ * If the callback hasn't resolved this within 15 seconds, actively
+ * ask Safaricom instead of waiting indefinitely — see
+ * Payment::reconcilePendingPayment() for why the callback alone
+ * isn't enough. Frontend polls every 3s, so this fires on roughly
+ * the 5th poll onward, and every poll after that until resolved.
+ */
+if ($status['status'] === 'pending' && strtotime($status['created_at']) <= (time() - 15)) {
+    $payment->reconcilePendingPayment($paymentId);
+    $status = $payment->getPaymentStatus($paymentId, (int) $user['id']);
+}
+
 echo json_encode(['success' => true] + $status);

@@ -100,4 +100,42 @@ regardless of network/connection-queue delays.
         });
     });
 
+    document.addEventListener('click', async (event) => {
+
+        const btn = event.target.closest('.external-toggle-btn');
+        if (!btn || btn.disabled) return;
+
+        const houseId = btn.dataset.houseId;
+        const action = btn.dataset.action;
+        const originalText = btn.textContent;
+
+        btn.disabled = true;
+        btn.textContent = 'Please wait...';
+
+        try {
+            const formData = new URLSearchParams({
+                house_id: houseId,
+                action: action,
+                csrf_token: window.LUX_MANAGE_HOUSES_CONFIG.csrfToken,
+            });
+
+            const res = await fetch(`${window.LUX_MANAGE_HOUSES_CONFIG.baseUrl}/api/houses/toggle_external_availability.php`, {
+                method: 'POST', body: formData,
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                window.location.reload();
+            } else {
+                btn.disabled = false;
+                btn.textContent = originalText;
+                alert(data.message || 'Could not update this listing.');
+            }
+        } catch (e) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+            alert('Network error. Please try again.');
+        }
+    });
+
 })();

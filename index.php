@@ -15,8 +15,8 @@ $heroPrice      = 120000;
 
 foreach ($heroHouseModel->getAllHouses() as $candidateHouse) {
 
-    if (($candidateHouse['status'] ?? '') === 'booked') {
-        continue; // don't showcase something no longer available
+    if (($candidateHouse['status'] ?? '') !== 'available') {
+        continue; // only ever showcase a house tenants can actually book right now
     }
 
     if (!empty($candidateHouse['is_hidden'])) {

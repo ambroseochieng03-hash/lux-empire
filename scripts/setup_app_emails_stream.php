@@ -57,7 +57,9 @@ $consumers = [
     'email.admin_broadcast'         => 'app_email_admin_broadcast',
     'email.admin_direct_message'    => 'app_email_admin_direct_message',
     'email.emergency_acknowledged' => 'app_email_emergency_acknowledged',
-    'email.payment_confirmed' => 'app_email_payment_confirmed'
+    'email.payment_confirmed' => 'app_email_payment_confirmed',
+    'email.landlord_pro_activated'  => 'app_email_landlord_pro_activated',
+    'email.wallet_negative' => 'app_email_wallet_negative'
 ];
 
 $stream = $client->getApi()->getStream('APP_EMAILS');

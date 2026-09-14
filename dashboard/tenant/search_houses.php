@@ -143,7 +143,7 @@ require_once '../../includes/sidebar.php';
                         }
 
                         $isOwnHouse = ((int) $house['landlord_id'] === $tenantId);
-                        $isHouseBooked = ($house['status'] === 'booked');
+                        $isHouseBooked = in_array($house['status'], ['booked', 'unavailable'], true);
                         $isHouseReserved = ($house['status'] === 'reserved');   // NEW
                         $tenantStatus = $tenantBookingStatusByHouse[$houseId] ?? null;
                         $tenantHasPending = ($tenantStatus === 'pending');

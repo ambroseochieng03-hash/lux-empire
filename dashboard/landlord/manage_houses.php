@@ -292,6 +292,8 @@ $csrfToken = Csrf::token();
                         $mediaItems = $houseModel->getHouseMedia((int) $house['id']);
 
                         $isBookedLocked = ($house['status'] === 'booked' && !empty($house['booked_at']));
+                        $isReserved = ($house['status'] === 'reserved');
+                        $isMarkedUnavailable = ($house['status'] === 'unavailable');
 
                         $imageUrls = [];
                         $videoUrl  = null;
@@ -487,28 +489,48 @@ $csrfToken = Csrf::token();
                             <!-- ACTIONS -->
                             <div class="house-actions">
 
-                                <?php if ($isBookedLocked): ?>
+                                <?php if ($isBookedLocked || $isReserved): ?>
 
-                                    <span class="action-btn edit-btn action-btn-disabled" title="This property is booked and cannot be edited">
-                                        Booked
+                                    <span class="action-btn edit-btn action-btn-disabled" title="<?php echo $isReserved ? 'This property has a pending paid booking' : 'This property is booked'; ?>">
+                                        <?php echo $isReserved ? 'Reserved' : 'Booked'; ?>
                                     </span>
 
-                                    <button type="button" class="action-btn delete-btn action-btn-disabled" disabled title="This property is booked">
-                                        Booked
+                                    <button type="button" class="action-btn delete-btn action-btn-disabled" disabled title="Resolve the pending booking first">
+                                        Locked
                                     </button>
 
                                 <?php else: ?>
 
                                     <a href="<?php echo BASE_URL; ?>/dashboard/landlord/edit_house.php?id=<?php echo $house['id']; ?>"
-                                       class="action-btn edit-btn">
+                                    class="action-btn edit-btn">
                                         Edit
                                     </a>
 
-                                    <button type="button"
-                                            class="action-btn delete-btn house-delete-btn"
-                                            data-house-id="<?php echo (int) $house['id']; ?>">
-                                        Delete
-                                    </button>
+                                    <?php if ($isMarkedUnavailable): ?>
+
+                                        <button type="button"
+                                                class="action-btn edit-btn external-toggle-btn"
+                                                data-house-id="<?php echo (int) $house['id']; ?>"
+                                                data-action="mark_available">
+                                            Make Available Again
+                                        </button>
+
+                                    <?php else: ?>
+
+                                        <button type="button"
+                                                class="action-btn edit-btn external-toggle-btn"
+                                                data-house-id="<?php echo (int) $house['id']; ?>"
+                                                data-action="mark_unavailable">
+                                            Booked Elsewhere?
+                                        </button>
+
+                                        <button type="button"
+                                                class="action-btn delete-btn house-delete-btn"
+                                                data-house-id="<?php echo (int) $house['id']; ?>">
+                                            Delete
+                                        </button>
+
+                                    <?php endif; ?>
 
                                 <?php endif; ?>
 
@@ -544,7 +566,7 @@ $csrfToken = Csrf::token();
                         Start building your Empire portfolio now.
                     </p>
 
-                    <a href="<?php echo BASE_URL; ?>/dashboard/landlord/add_house.php"
+                    <a href="<?php echo BASE_URL; ?>/add-property"
                        class="lux-btn"
                        style="text-decoration:none;">
                        Add First Property
