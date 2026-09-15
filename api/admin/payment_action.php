@@ -43,8 +43,12 @@ if ($action === 'reject' && $notes === '') {
 
 $payment = new Payment();
 
+$overrideAmount = isset($_POST['override_amount']) && $_POST['override_amount'] !== ''
+    ? (float) $_POST['override_amount']
+    : null;
+
 $result = match ($action) {
-    'approve' => $payment->manuallyApprove($paymentId, $adminId, $notes),
+    'approve' => $payment->manuallyApprove($paymentId, $adminId, $notes, $overrideAmount),
     'reject' => $payment->manuallyReject($paymentId, $adminId, $notes),
     'mark_refunded' => $payment->markRefundResolved($paymentId, $adminId, $notes),
 };

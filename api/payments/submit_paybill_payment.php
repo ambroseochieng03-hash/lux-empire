@@ -87,13 +87,20 @@ switch ($purpose) {
             echo json_encode(['success' => false, 'message' => 'Only driver accounts have a commission wallet.']);
             exit;
         }
-        $requested = (float) ($body['amount'] ?? 0);
-        if ($requested < 100 || $requested > 50000) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Enter an amount between KES 100 and KES 50,000.']);
-            exit;
+        $rawAmount = $body['amount'] ?? null;
+        if ($rawAmount !== null && $rawAmount !== '') {
+            $requested = (float) $rawAmount;
+            if ($requested < 100 || $requested > 50000) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Enter an amount between KES 100 and KES 50,000, or leave it blank and paste the full M-Pesa message instead.']);
+                exit;
+            }
+            $amount = round($requested, 2);
+        } else {
+            // No amount typed — Payment::submitPaybillPayment() will
+            // read it straight from the pasted M-Pesa message.
+            $amount = null;
         }
-        $amount = round($requested, 2);
         break;
 
     default:

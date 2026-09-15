@@ -72,7 +72,7 @@ Usage:
                 Pay Now
             </button>
             <div style="text-align:center; color:var(--gray); margin:14px 0; font-size:0.85rem;">— or —</div>
-            <button type="button" class="lux-payment-retry-btn" id="luxPaymentPaybillTrigger" style="width:100%;">
+            <button type="button" class="lux-btn lux-payment-retry-btn" id="luxPaymentPaybillTrigger" style="width:100%;">
                 Already Paid via Paybill? Enter Code
             </button>
         `;
@@ -80,10 +80,20 @@ Usage:
         body.querySelector('#luxPaymentPayBtn').addEventListener('click', () => initiate(config));
 
         body.querySelector('#luxPaymentPaybillTrigger').addEventListener('click', () => {
+
             const paybillAmountInput = modalEl.querySelector('#luxPaymentAmount');
+
+            // Amount is OPTIONAL going into the Paybill screen now —
+            // if the driver already paid an arbitrary sum outside
+            // the app, they may not know/want to re-type it; the
+            // server reads it straight out of the pasted M-Pesa
+            // message instead. If they DID fill the field (e.g. they
+            // were about to use the STK "Pay Now" flow and switched
+            // their mind), carry that value over as a convenience.
             if (paybillAmountInput && paybillAmountInput.value) {
                 config.amount = parseFloat(paybillAmountInput.value);
             }
+
             renderPaybillStep(config);
         });
     }
@@ -92,18 +102,24 @@ Usage:
         const body = modalEl.querySelector('.lux-payment-modal-body');
         const paybill = window.LUX_PAYMENT_PAYBILL || '—';
 
+        // amountLabel covers landlord_pro/booking_fee (fixed, server-set
+        // prices); config.amount covers driver_wallet_topup (the figure
+        // the person just typed in, captured by the trigger above).
+        const displayAmount = config.amountLabel
+            || (config.amount ? `KES ${config.amount.toLocaleString()}` : 'Will be read from your M-Pesa message');
+
         body.innerHTML = `
             <h3 class="lux-payment-title">Pay via Paybill</h3>
             <p class="lux-payment-description">
                 Paybill: <strong>${paybill}</strong><br>
                 Account Number: <strong>your phone number</strong><br>
-                Amount: <strong>${config.amountLabel || ''}</strong><br><br>
+                Amount: <strong>${displayAmount}</strong><br><br>
                 After paying, paste the M-Pesa confirmation message (or just the code) below.
             </p>
             <textarea id="luxPaybillReceiptInput" class="lux-payment-input" rows="3" placeholder="e.g. UIEQ46JHI7 Confirmed..."></textarea>
             <div class="lux-payment-error" id="luxPaybillError" hidden></div>
             <button type="button" class="lux-btn" id="luxPaybillSubmitBtn" style="width:100%; margin-top:10px;">Submit</button>
-            <button type="button" class="lux-payment-retry-btn" id="luxPaybillBackBtn" style="width:100%; margin-top:8px;">Back</button>
+            <button type="button" class="lux-btn lux-payment-retry-btn" id="luxPaybillBackBtn" style="width:100%; margin-top:8px;">Back</button>
         `;
 
         body.querySelector('#luxPaybillBackBtn').addEventListener('click', () => renderPhoneStep(config));
@@ -316,7 +332,18 @@ Usage:
 
     function open(config) {
         ensureModal();
-        renderPhoneStep(config);
+
+        // startStep: 'paybill' skips straight to the paste-your-code
+        // screen — for "I already paid, just let me report it"
+        // entry points (e.g. wallet.php's second button below),
+        // where making someone click through the STK phone-entry
+        // screen first would make no sense.
+        if (config.startStep === 'paybill') {
+            renderPaybillStep(config);
+        } else {
+            renderPhoneStep(config);
+        }
+
         modalEl.classList.add('is-open');
     }
 

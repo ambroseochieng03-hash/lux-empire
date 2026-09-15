@@ -41,9 +41,14 @@ require_once '../../includes/sidebar.php';
                 A <?php echo TRUCK_COMMISSION_PERCENT; ?>% commission is deducted from each completed trip.
                 You can accept jobs at any balance, including zero or negative — top up any time.
             </p>
-            <button type="button" class="lux-btn" id="topUpWalletBtn" style="margin-top:16px;">
-                Top Up Wallet
-            </button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+                <button type="button" class="lux-btn" id="topUpWalletBtn">
+                    Top Up Wallet
+                </button>
+                <button type="button" class="lux-btn lux-payment-retry-btn" id="reportPaymentBtn">
+                    Already Paid? Report It
+                </button>
+            </div>
         <?php endif; ?>
 
     </div>
@@ -67,6 +72,24 @@ require_once '../../includes/sidebar.php';
                 purpose: 'driver_wallet_topup',
                 title: 'Top Up Wallet',
                 description: <?php echo json_encode($balance <= 0 ? 'Your wallet balance is at zero or below. You can still accept jobs — topping up just keeps your account in good standing.' : ''); ?>,
+                onSuccess: () => window.location.reload(),
+            });
+        });
+    }
+
+    // Covers BOTH recovery cases:
+    //  - paid via Paybill directly, never touched STK at all
+    //  - paid via STK, but our side never confirmed it (rare, but
+    //    the fallback exists so nobody's money is ever just stuck)
+    // Either way: paste the message, server tries to auto-verify,
+    // and if it can't, it queues for admin to confirm manually.
+    const reportBtn = document.getElementById('reportPaymentBtn');
+    if (reportBtn) {
+        reportBtn.addEventListener('click', () => {
+            window.LuxPayment.open({
+                purpose: 'driver_wallet_topup',
+                title: 'Report a Payment',
+                startStep: 'paybill',
                 onSuccess: () => window.location.reload(),
             });
         });

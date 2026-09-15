@@ -44,11 +44,16 @@
         el.addEventListener('click', closeConfirm);
     });
 
+    let pendingOverrideAmount = null;
+
     document.addEventListener('click', (event) => {
         const btn = event.target.closest('[data-action][data-payment-id]');
         if (!btn) return;
 
         const card = btn.closest('.lux-entity-card');
+        const amountInput = card ? card.querySelector('.lux-payment-amount-override') : null;
+        pendingOverrideAmount = amountInput ? amountInput.value : null;
+
         openConfirm(btn.dataset.action, btn.dataset.paymentId, card);
     });
 
@@ -63,6 +68,15 @@
             return;
         }
 
+        // Capture these BEFORE closeConfirm() runs — closeConfirm()
+        // resets pendingCard/pendingAction/pendingPaymentId to null,
+        // so using the outer variables after that point silently
+        // does nothing. This was the actual bug: the approve/reject
+        // itself was almost certainly succeeding server-side, the
+        // card just never got removed from the page afterward.
+        const cardToRemove = pendingCard;
+        const actionLabel = pendingAction;
+
         acceptBtn.disabled = true;
 
         try {
@@ -73,6 +87,10 @@
                 notes: notes,
             });
 
+            if (pendingAction === 'approve' && pendingOverrideAmount) {
+                body.append('override_amount', pendingOverrideAmount);
+            }
+
             const res = await fetch(`${cfg.baseUrl}/api/admin/payment_action.php`, { method: 'POST', body });
             const data = await res.json();
 
@@ -80,7 +98,7 @@
             closeConfirm();
 
             if (data.success) {
-                if (pendingCard) pendingCard.remove();
+                if (cardToRemove) cardToRemove.remove();
             } else {
                 alert(data.message || 'Something went wrong.');
             }

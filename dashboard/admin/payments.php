@@ -68,6 +68,14 @@ $csrfToken = Csrf::token();
                     <?php echo date('d M Y H:i', strtotime($p['created_at'])); ?>
                 </div>
 
+                <?php if ($p['purpose'] === 'driver_wallet_topup'): ?>
+                    <div style="margin:12px 0;">
+                        <label style="color:var(--gray); display:block; margin-bottom:6px; font-size:0.85rem;">Amount to credit (KES)</label>
+                        <input type="number" class="lux-payment-amount-override" value="<?php echo htmlspecialchars((string) $p['amount']); ?>"
+                               style="width:140px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:white; padding:8px 10px; border-radius:8px;">
+                    </div>
+                <?php endif; ?>
+
                 <div class="lux-entity-actions">
                     <button class="lux-btn lux-btn-success" data-action="approve" data-payment-id="<?php echo (int) $p['id']; ?>">Approve</button>
                     <button class="lux-btn lux-btn-danger" data-action="reject" data-payment-id="<?php echo (int) $p['id']; ?>">Reject</button>

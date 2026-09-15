@@ -768,7 +768,7 @@ final class Payment
      * Go-Live C2B webhook registration is done with a real Paybill);
      * otherwise queues a pending payment for admin review.
      */
-    public function submitPaybillPayment(int $userId, string $purpose, float $amount, string $rawInput, array $metadata = []): array
+    public function submitPaybillPayment(int $userId, string $purpose, ?float $amount, string $rawInput, array $metadata = []): array
     {
         $code = ReceiptExtractor::extract($rawInput);
 
@@ -776,6 +776,23 @@ final class Payment
             return [
                 'success' => false,
                 'message' => "We couldn't find an M-Pesa code in that. Paste the full confirmation message, or just the code itself.",
+            ];
+        }
+
+        // driver_wallet_topup has no fixed price — if the person
+        // didn't type an amount, read it straight out of the
+        // message they pasted instead of forcing a second step.
+        // landlord_pro/booking_fee always use the server's own
+        // fixed price regardless of what's passed in — never trust
+        // an amount for those two, whether typed or extracted.
+        if ($purpose === 'driver_wallet_topup' && $amount === null) {
+            $amount = ReceiptExtractor::extractAmount($rawInput);
+        }
+
+        if ($amount === null || $amount <= 0) {
+            return [
+                'success' => false,
+                'message' => "We couldn't read an amount from that. Please paste the FULL M-Pesa confirmation message (it should contain \"Ksh...\").",
             ];
         }
 
@@ -886,7 +903,7 @@ final class Payment
         }
     }
 
-    public function manuallyApprove(int $paymentId, int $adminId, string $notes = ''): array
+    public function manuallyApprove(int $paymentId, int $adminId, string $notes = '', ?float $overrideAmount = null): array
     {
         $stmt = $this->conn->prepare("SELECT * FROM payments WHERE id = :id LIMIT 1");
         $stmt->execute([':id' => $paymentId]);
@@ -894,6 +911,15 @@ final class Payment
 
         if ($payment === null) {
             return ['success' => false, 'message' => 'Payment not found.'];
+        }
+
+        // Admin can correct the amount before granting — matters
+        // for driver_wallet_topup, where the figure came from
+        // regex-reading a pasted message and could be off.
+        if ($overrideAmount !== null && $overrideAmount > 0 && $overrideAmount != $payment['amount']) {
+            $this->conn->prepare("UPDATE payments SET amount = :amount WHERE id = :id")
+                ->execute([':amount' => $overrideAmount, ':id' => $paymentId]);
+            $payment['amount'] = $overrideAmount;
         }
 
         if ($payment['status'] === 'completed') {

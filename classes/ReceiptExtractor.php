@@ -27,4 +27,18 @@ final class ReceiptExtractor
 
         return null;
     }
+
+    /**
+     * Pulls the amount out of a real M-Pesa message ("...Ksh500.00
+     * sent to..."). Used so a driver reporting a Paybill payment
+     * never has to manually re-type an amount that's already sitting
+     * right there in the message they're pasting.
+     */
+    public static function extractAmount(string $input): ?float
+    {
+        if (preg_match('/Ksh\s?([\d,]+(?:\.\d{1,2})?)/i', $input, $matches)) {
+            return (float) str_replace(',', '', $matches[1]);
+        }
+        return null;
+    }
 }
