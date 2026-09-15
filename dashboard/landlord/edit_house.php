@@ -285,7 +285,7 @@ require_once '../../includes/sidebar.php';
                         required
                         value="<?= htmlspecialchars($house['title'] ?? '') ?>"
                         class="lux-input"
-                    >
+                                            >
 
                 </div>
 
@@ -321,6 +321,7 @@ require_once '../../includes/sidebar.php';
                             required
                             value="<?= htmlspecialchars($house['price'] ?? '') ?>"
                             class="lux-input"
+                            data-validate="price"
                         >
 
                     </div>
@@ -336,6 +337,7 @@ require_once '../../includes/sidebar.php';
                             name="house_type"
                             value="<?= htmlspecialchars($house['house_type'] ?? '') ?>"
                             class="lux-input"
+                            data-validate="house_type"
                         >
 
                     </div>
@@ -356,6 +358,7 @@ require_once '../../includes/sidebar.php';
                         required
                         value="<?= htmlspecialchars($house['location'] ?? '') ?>"
                         class="lux-input"
+                        data-validate="location"
                     >
 
                 </div>
@@ -375,6 +378,7 @@ require_once '../../includes/sidebar.php';
                             name="bedrooms"
                             value="<?= htmlspecialchars($house['bedrooms'] ?? 1) ?>"
                             class="lux-input"
+                            data-validate="room_count"
                         >
 
                     </div>
@@ -390,6 +394,7 @@ require_once '../../includes/sidebar.php';
                             name="bathrooms"
                             value="<?= htmlspecialchars($house['bathrooms'] ?? 1) ?>"
                             class="lux-input"
+                            data-validate="room_count"
                         >
 
                     </div>
@@ -622,6 +627,8 @@ require_once '../../includes/sidebar.php';
 
 </div>
 
+<script src="<?php echo BASE_URL; ?>/assets/js/form-validation.js"></script>
+
 <script>
 
 const editHouseForm =
@@ -699,6 +706,10 @@ editHouseForm.addEventListener(
     async function(e)
     {
         e.preventDefault();
+
+        if (!window.LuxFormValidation.validateForm(this)) {
+            return;
+        }
 
         const formData =
             new FormData(this);

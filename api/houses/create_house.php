@@ -14,6 +14,7 @@ require_once '../../classes/PlanLimits.php';
 require_once '../../classes/IdempotencyGuard.php';
 require_once '../../config/security/DoSProtection.php';
 require_once '../../config/security/RedisThrottle.php';
+require_once '../../classes/Validator.php';
 
 Session::start();
 
@@ -57,15 +58,63 @@ $rating = (int) ($_POST['rating'] ?? 0);
 $latitude = ($_POST['latitude'] ?? '') !== '' ? (float) $_POST['latitude'] : null;
 $longitude = ($_POST['longitude'] ?? '') !== '' ? (float) $_POST['longitude'] : null;
 
+if (($_POST['latitude'] ?? '') !== '' && !Validator::isValidLatitude((string) $_POST['latitude'])) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Latitude must be between -90 and 90.']);
+    exit;
+}
+
+if (($_POST['longitude'] ?? '') !== '' && !Validator::isValidLongitude((string) $_POST['longitude'])) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Longitude must be between -180 and 180.']);
+    exit;
+}
+
+if (!Validator::isValidRoomCount((string) ($_POST['bedrooms'] ?? '1'))) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Bedrooms must be a whole number between 0 and 20.']);
+    exit;
+}
+
+if (!Validator::isValidRoomCount((string) ($_POST['bathrooms'] ?? '1'))) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Bathrooms must be a whole number between 0 and 20.']);
+    exit;
+}
+
 if ($title === '' || $price === '' || $location === '') {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Title, price and location are required.']);
     exit;
 }
 
-if (!is_numeric($price) || (float) $price <= 0) {
+if (!Validator::isValidHouseTitle($title)) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'message' => 'Invalid property price.']);
+    echo json_encode(['success' => false, 'message' => 'Title must be 3–255 characters.']);
+    exit;
+}
+
+if (!Validator::isValidLocationText($location)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Location must be 2–255 characters.']);
+    exit;
+}
+
+if (!Validator::isValidHouseType($houseType)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Invalid property type.']);
+    exit;
+}
+
+if (!Validator::isValidDescription($description)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Description is too long.']);
+    exit;
+}
+
+if (!Validator::isValidPrice($price)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Enter a valid price (numbers only, up to 2 decimal places).']);
     exit;
 }
 
@@ -154,17 +203,10 @@ if ($video !== null) {
     }
 
     $inFlightKey = "video:inflight:{$landlordId}";
-    $dailyKey = "video:daily:{$landlordId}:" . date('Y-m-d');
 
     if (RedisThrottle::getCount($inFlightKey) >= MAX_VIDEOS_PROCESSING_PER_LANDLORD) {
         http_response_code(429);
         echo json_encode(['success' => false, 'message' => 'You already have a video being processed. Please wait for it to finish before uploading another.']);
-        exit;
-    }
-
-    if (RedisThrottle::incrWithExpiry($dailyKey, 86400) > MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY) {
-        http_response_code(429);
-        echo json_encode(['success' => false, 'message' => "You've reached today's video upload limit (" . MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY . "). Please try again tomorrow."]);
         exit;
     }
 }
@@ -192,12 +234,15 @@ if ($guardResult['status'] === 'completed') {
     exit;
 }
 
+$videoInflightReserved = false;
+
 try {
 
     $house = new House();
 
     if ($video !== null) {
         RedisThrottle::increment("video:inflight:{$landlordId}");
+        $videoInflightReserved = true;
     }
 
     $houseId = $house->createHouse([
@@ -206,6 +251,7 @@ try {
         'house_type' => $houseType, 'rating' => $rating,
         'latitude' => $latitude, 'longitude' => $longitude,
         'landlord_id' => $landlordId, 'images' => $images, 'video' => $video,
+        'max_listings' => $planLimits['max_listings'],   // ← add this
     ]);
 
     if ($houseId > 0) {
@@ -217,6 +263,10 @@ try {
         exit;
     }
 
+    if ($videoInflightReserved) {
+        RedisThrottle::decrement("video:inflight:{$landlordId}");
+    }
+
     $responseCode = 500;
     $responseBody = json_encode(['success' => false, 'message' => 'Failed to publish property.']);
     $idempotency->complete($idempotencyKey, 'create_house', $responseCode, $responseBody);
@@ -225,6 +275,13 @@ try {
     exit;
 
 } catch (Throwable $e) {
+
+    // createHouse() threw before ever reaching its own video-publish
+    // step (validation failure, DB error, staging failure, etc.) — the
+    // internal decrement inside House.php never ran, so it's on us.
+    if ($videoInflightReserved) {
+        RedisThrottle::decrement("video:inflight:{$landlordId}");
+    }
 
     error_log('[' . date('Y-m-d H:i:s') . '] House creation error: ' . $e->getMessage());
 

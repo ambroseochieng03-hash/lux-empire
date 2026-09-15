@@ -135,6 +135,124 @@ final class Validator
     }
 
     /**
+     * Price: digits, optional single decimal point, up to 2 decimal
+     * places. No sign, no scientific notation, no thousands separators.
+     */
+    public static function isValidPrice(string $price): bool
+    {
+        $price = trim($price);
+
+        if (!preg_match('/^\d{1,9}(\.\d{1,2})?$/', $price)) {
+            return false;
+        }
+
+        return (float) $price > 0;
+    }
+
+    public static function isValidLatitude(string $lat): bool
+    {
+        $lat = trim($lat);
+
+        if ($lat === '') {
+            return true; // optional field
+        }
+
+        if (!preg_match('/^-?\d{1,2}(\.\d+)?$/', $lat)) {
+            return false;
+        }
+
+        $value = (float) $lat;
+
+        return $value >= -90 && $value <= 90;
+    }
+
+    public static function isValidLongitude(string $lng): bool
+    {
+        $lng = trim($lng);
+
+        if ($lng === '') {
+            return true;
+        }
+
+        if (!preg_match('/^-?\d{1,3}(\.\d+)?$/', $lng)) {
+            return false;
+        }
+
+        $value = (float) $lng;
+
+        return $value >= -180 && $value <= 180;
+    }
+
+    /**
+     * Bedrooms / bathrooms: whole numbers, 0–20. (20 is a deliberately
+     * generous ceiling — adjust if a real listing type needs more.)
+     */
+    public static function isValidRoomCount(string $value): bool
+    {
+        $value = trim($value);
+
+        if (!preg_match('/^\d{1,2}$/', $value)) {
+            return false;
+        }
+
+        $intValue = (int) $value;
+
+        return $intValue >= 0 && $intValue <= 20;
+    }
+
+    /**
+     * Free-text fields (title, location, house type, description):
+     * length bounds + a reject-list of raw control characters.
+     * Deliberately does NOT restrict punctuation — titles/locations
+     * legitimately contain commas, apostrophes, ampersands. XSS is
+     * handled at output time via htmlspecialchars(); this is a
+     * length + control-character sanity gate, nothing more.
+     */
+    public static function isValidFreeText(string $value, int $minLength, int $maxLength): bool
+    {
+        $value = trim($value);
+        $length = mb_strlen($value);
+
+        if ($length < $minLength || $length > $maxLength) {
+            return false;
+        }
+
+        if (preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', $value)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public static function isValidHouseTitle(string $title): bool
+    {
+        return self::isValidFreeText($title, 3, 255);
+    }
+
+    public static function isValidLocationText(string $location): bool
+    {
+        return self::isValidFreeText($location, 2, 255);
+    }
+
+    public static function isValidHouseType(string $houseType): bool
+    {
+        if (trim($houseType) === '') {
+            return true; // optional field
+        }
+
+        return self::isValidFreeText($houseType, 2, 100);
+    }
+
+    public static function isValidDescription(string $description): bool
+    {
+        if (trim($description) === '') {
+            return true; // optional field
+        }
+
+        return self::isValidFreeText($description, 0, 5000);
+    }
+
+    /**
      * Dispatches to the correct rule for the driver's single
      * identity field, based on which radio option was selected.
      */

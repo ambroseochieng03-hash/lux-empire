@@ -132,6 +132,23 @@ class MediaService
             );
         }
 
+        // Reject before GD allocates a buffer for it — a small file
+        // can still decode to an enormous pixel grid and exhaust
+        // worker memory (a "decompression bomb").
+        if (($imageInfo[0] * $imageInfo[1]) > 40_000_000) {
+            throw new RuntimeException(
+                'Image dimensions are too large.'
+            );
+        }
+
+        // Cross-check GD's own read of the container against finfo's
+        // — cheap extra assurance the file isn't lying about its type.
+        if (($imageInfo['mime'] ?? null) !== $mime) {
+            throw new RuntimeException(
+                'Image content does not match its declared type.'
+            );
+        }
+
         switch ($mime) {
 
             case 'image/jpeg':
@@ -301,14 +318,18 @@ class MediaService
             escapeshellarg($targetPath);
 
         $command =
-            'ffmpeg'
+            'timeout 120'
+            . ' ffmpeg'
             . ' -y'
+            . ' -protocol_whitelist file,pipe'
             . ' -i ' . $input
+            . ' -map 0:v:0 -map 0:a:0?'   // don't blindly pass through every stream in the container
             . ' -c:v libx264'
             . ' -preset medium'
             . ' -crf 28'
             . ' -c:a aac'
             . ' -movflags +faststart'
+            . ' -max_muxing_queue_size 1024'
             . ' ' . $output
             . ' 2>&1';
 
@@ -414,6 +435,12 @@ class MediaService
             throw new RuntimeException('Unable to create media staging directory.');
         }
 
+        $freeBytes = disk_free_space($stagingDir);
+
+        if ($freeBytes === false || $freeBytes < MIN_FREE_DISK_BYTES) {
+            throw new RuntimeException('Server storage is temporarily full. Please try again shortly.');
+        }
+
         $stagedFilename = 'staged_' . bin2hex(random_bytes(16));
         $stagedPath = $stagingDir . $stagedFilename;
 
@@ -462,6 +489,12 @@ class MediaService
             throw new RuntimeException('Unable to create media staging directory.');
         }
 
+        $freeBytes = disk_free_space($stagingDir);
+
+        if ($freeBytes === false || $freeBytes < MIN_FREE_DISK_BYTES) {
+            throw new RuntimeException('Server storage is temporarily full. Please try again shortly.');
+        }
+
         $stagedFilename = 'staged_' . bin2hex(random_bytes(16));
         $stagedPath = $stagingDir . $stagedFilename;
 
@@ -484,6 +517,20 @@ class MediaService
     public function compressStagedImage(string $stagedPath, string $targetFilename): bool
     {
         $mime = $this->detectMimeType($stagedPath);
+
+        $imageInfo = getimagesize($stagedPath);
+
+        if ($imageInfo === false) {
+            throw new RuntimeException('Invalid image file.');
+        }
+
+        if (($imageInfo[0] * $imageInfo[1]) > 40_000_000) {
+            throw new RuntimeException('Image dimensions are too large.');
+        }
+
+        if (($imageInfo['mime'] ?? null) !== $mime) {
+            throw new RuntimeException('Image content does not match its declared type.');
+        }
 
         switch ($mime) {
             case 'image/jpeg':

@@ -388,22 +388,40 @@ define('NATS_PASS', $_ENV['NATS_PASS'] ?? '');
 
 /*
 |--------------------------------------------------------------------------
-| Media & Account Limits
-|--------------------------------------------------------------------------
-|
-| Sized for a 2 OCPU Oracle Ampere A1 instance with ~150GB usable disk.
-| MAX_LISTINGS_PER_LANDLORD is the free-tier cap — paid tiers (not yet
-| built) will override this per-account rather than change the constant.
+| Upload size caps — sized against your Contabo box (100GB total disk).
+| Worst case: MAX_VIDEOS_PROCESSING_PER_LANDLORD concurrent video jobs
+| across many simultaneous landlords, each staging up to
+| MAX_VIDEO_SIZE_BYTES before compression even starts — on top of
+| MariaDB, Redis, and the OS already living on that same disk. Both
+| values also sit safely under your current post_max_size/
+| upload_max_filesize = 128M, so no php.ini change is required.
 */
 
-define('MAX_IMAGE_SIZE_BYTES', 15 * 1024 * 1024);       // 15MB per image
+define('MAX_IMAGE_SIZE_BYTES', 8 * 1024 * 1024);         // 8MB per image — GD resizes to 1600px wide regardless, so a larger original just wastes staging space
 define('MAX_IMAGES_PER_HOUSE', 10);
-define('MAX_VIDEO_SIZE_BYTES', 300 * 1024 * 1024);      // 300MB per video
+define('MAX_VIDEO_SIZE_BYTES', 100 * 1024 * 1024);        // 100MB per video, pre-compression
+define('MIN_FREE_DISK_BYTES', 5 * 1024 * 1024 * 1024);    // 5GB — staging refuses NEW uploads once free space drops below this     // 300MB per video
 
-define('MAX_VIDEOS_PROCESSING_PER_LANDLORD', 1);         // concurrent in-flight
-define('MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY', 5);
+define('MAX_VIDEOS_PROCESSING_PER_LANDLORD', 1);         // concurrent in-flight — NOT a daily cap, just "wait for the current one"
 
-define('MAX_LISTINGS_PER_LANDLORD', 5);                 // free-tier cap
+/*
+|--------------------------------------------------------------------------
+| Plan Tiers — single source of truth
+|--------------------------------------------------------------------------
+|
+| No time-based ("daily"/"monthly") reset on any of these — once a
+| cap is hit, the landlord deletes something or upgrades.
+| classes/PlanLimits.php reads these constants; nothing else should
+| ever hardcode these numbers.
+*/
+
+define('FREE_MAX_LISTINGS', 3);
+define('FREE_MAX_IMAGES_PER_LISTING', 5);
+define('FREE_VIDEO_ALLOWED', false);
+
+define('PRO_MAX_LISTINGS', 10);
+define('PRO_MAX_IMAGES_PER_LISTING', 10);
+define('PRO_VIDEO_ALLOWED', true);                // free-tier cap
 
 /*
 |--------------------------------------------------------------------------
@@ -485,7 +503,7 @@ define('DARAJA_CALLBACK_URL', $_ENV['DARAJA_CALLBACK_URL'] ?? BASE_URL . '/api/p
 |--------------------------------------------------------------------------
 */
 
-define('PRICE_LANDLORD_PRO_MONTHLY', 5);   // KES
-define('BOOKING_FEE_AMOUNT', 5);            // KES
+define('PRICE_LANDLORD_PRO_MONTHLY', 499);   // KES
+define('BOOKING_FEE_AMOUNT', 150);            // KES
 define('TRUCK_COMMISSION_PERCENT', 10);       // % of trip price
 define('WALLET_MIN_BALANCE_TO_ACCEPT', 0);    // KES — floor before a driver is blocked

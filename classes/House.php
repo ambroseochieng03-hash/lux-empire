@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/MediaService.php';
 require_once __DIR__ . '/MediaJobPublisher.php';
+require_once __DIR__ . '/../config/security/RedisThrottle.php';
 
 class House
 {
@@ -46,361 +47,385 @@ class House
      * the house creation is rolled back and generated
      * media files are removed.
      */
-    public function createHouse(array $data): int
-    {
-        $createdFiles = [];
+        public function createHouse(array $data): int
+        {
+            $createdFiles = [];
 
-        $stagedFiles = [];
+            $stagedFiles = [];
 
-        try {
+            try {
 
-            $title = trim($data['title'] ?? '');
-            $description = trim($data['description'] ?? '');
-            $price = (float) ($data['price'] ?? 0);
-            $location = trim($data['location'] ?? '');
+                $title = trim($data['title'] ?? '');
+                $description = trim($data['description'] ?? '');
+                $price = (float) ($data['price'] ?? 0);
+                $location = trim($data['location'] ?? '');
 
-            $bedrooms = isset($data['bedrooms'])
-                && $data['bedrooms'] !== ''
-                ? (int) $data['bedrooms']
-                : 1;
+                $bedrooms = isset($data['bedrooms'])
+                    && $data['bedrooms'] !== ''
+                    ? (int) $data['bedrooms']
+                    : 1;
 
-            $bathrooms = isset($data['bathrooms'])
-                && $data['bathrooms'] !== ''
-                ? (int) $data['bathrooms']
-                : 1;
+                $bathrooms = isset($data['bathrooms'])
+                    && $data['bathrooms'] !== ''
+                    ? (int) $data['bathrooms']
+                    : 1;
 
-            $houseType = trim($data['house_type'] ?? '');
+                $houseType = trim($data['house_type'] ?? '');
 
-            $rating = isset($data['rating'])
-                ? (int) $data['rating']
-                : 0;
+                $rating = isset($data['rating'])
+                    ? (int) $data['rating']
+                    : 0;
 
-            $landlordId = (int) ($data['landlord_id'] ?? 0);
+                $landlordId = (int) ($data['landlord_id'] ?? 0);
 
-            $latitude = $data['latitude'] ?? null;
-            $longitude = $data['longitude'] ?? null;
+                $latitude = $data['latitude'] ?? null;
+                $longitude = $data['longitude'] ?? null;
 
-            /*
-            * -----------------------------------------
-            * BASIC VALIDATION
-            * -----------------------------------------
-            */
+                /*
+                * -----------------------------------------
+                * BASIC VALIDATION
+                * -----------------------------------------
+                */
 
-            if ($title === '') {
-                throw new InvalidArgumentException(
-                    'Property title is required.'
-                );
-            }
+                if ($title === '') {
+                    throw new InvalidArgumentException(
+                        'Property title is required.'
+                    );
+                }
 
-            if ($price <= 0) {
-                throw new InvalidArgumentException(
-                    'Property price must be greater than zero.'
-                );
-            }
+                if ($price <= 0) {
+                    throw new InvalidArgumentException(
+                        'Property price must be greater than zero.'
+                    );
+                }
 
-            if ($location === '') {
-                throw new InvalidArgumentException(
-                    'Property location is required.'
-                );
-            }
+                if ($location === '') {
+                    throw new InvalidArgumentException(
+                        'Property location is required.'
+                    );
+                }
 
-            if ($landlordId <= 0) {
-                throw new InvalidArgumentException(
-                    'Invalid landlord.'
-                );
-            }
+                if ($landlordId <= 0) {
+                    throw new InvalidArgumentException(
+                        'Invalid landlord.'
+                    );
+                }
 
-            /*
-            * -----------------------------------------
-            * MEDIA INPUT VALIDATION
-            * -----------------------------------------
-            *
-            * The frontend should never send both.
-            * We enforce the same rule on the backend.
-            */
+                /*
+                * -----------------------------------------
+                * ATOMIC LISTING-LIMIT ENFORCEMENT
+                * -----------------------------------------
+                *
+                * The endpoint's own count check (in create_house.php) is
+                * fast-path UX only — it is NOT atomic, two simultaneous
+                * requests can both pass it. This GET_LOCK/RELEASE_LOCK pair
+                * is the real, authoritative enforcement. It serializes
+                * concurrent createHouse() calls for the SAME landlord only
+                * — other landlords are completely unaffected.
+                */
 
-            $images = $data['images'] ?? [];
-            $video = $data['video'] ?? null;
+                $lockName = 'lux_listing_limit:' . $landlordId;
+                $lockStmt = $this->conn->prepare('SELECT GET_LOCK(:lock_name, 5) AS acquired');
+                $lockStmt->execute([':lock_name' => $lockName]);
 
-            if (!is_array($images)) {
-                $images = [];
-            }
+                if ((int) $lockStmt->fetchColumn() !== 1) {
+                    throw new RuntimeException(
+                        'Server is busy processing another request for this account. Please try again.'
+                    );
+                }
 
-            if (!empty($images) && !empty($video)) {
-                throw new RuntimeException(
-                    'A property cannot contain both images and a video.'
-                );
-            }
+                try {
 
-            /*
-            * -----------------------------------------
-            * START TRANSACTION
-            * -----------------------------------------
-            */
+                    $maxListings = (int) ($data['max_listings'] ?? 0);
 
-            $this->conn->beginTransaction();
-
-            /*
-            * -----------------------------------------
-            * INSERT HOUSE
-            * -----------------------------------------
-            */
-
-            $query = "
-                INSERT INTO {$this->table}
-                (
-                    title,
-                    description,
-                    price,
-                    location,
-                    latitude,
-                    longitude,
-                    bedrooms,
-                    bathrooms,
-                    house_type,
-                    landlord_id,
-                    rating,
-                    status
-                )
-                VALUES
-                (
-                    :title,
-                    :description,
-                    :price,
-                    :location,
-                    :latitude,
-                    :longitude,
-                    :bedrooms,
-                    :bathrooms,
-                    :house_type,
-                    :landlord_id,
-                    :rating,
-                    'available'
-                )
-            ";
-
-            $stmt = $this->conn->prepare($query);
-
-            $stmt->execute([
-                ':title' => $title,
-                ':description' => $description,
-                ':price' => $price,
-                ':location' => $location,
-                ':latitude' => $latitude,
-                ':longitude' => $longitude,
-                ':bedrooms' => $bedrooms,
-                ':bathrooms' => $bathrooms,
-                ':house_type' => $houseType,
-                ':landlord_id' => $landlordId,
-                ':rating' => $rating
-            ]);
-
-            $houseId = (int) $this->conn->lastInsertId();
-
-            /*
-            * -----------------------------------------
-            * PROCESS IMAGES
-            * -----------------------------------------
-            */
-
-            $imageJobs = [];
-
-            if (!empty($images)) {
-
-                foreach ($images as $file) {
-
-                    if (
-                        !isset($file['tmp_name'])
-                        ||
-                        !isset($file['error'])
-                        ||
-                        $file['error'] === UPLOAD_ERR_NO_FILE
-                    ) {
-                        continue;
+                    if ($maxListings > 0 && $this->countListingsByLandlord($landlordId) >= $maxListings) {
+                        throw new RuntimeException(
+                            "You've reached the {$maxListings}-listing limit for your plan."
+                        );
                     }
 
-                    $staged = $this->media->stageImage($file);
-                    $stagedFiles[] = $staged['staged_path'];
+                    /*
+                    * -----------------------------------------
+                    * MEDIA INPUT VALIDATION
+                    * -----------------------------------------
+                    *
+                    * The frontend should never send both.
+                    * We enforce the same rule on the backend.
+                    */
 
-                    $stmt = $this->conn->prepare("
-                        INSERT INTO house_images
+                    $images = $data['images'] ?? [];
+                    $video = $data['video'] ?? null;
+
+                    if (!is_array($images)) {
+                        $images = [];
+                    }
+
+                    if (!empty($images) && !empty($video)) {
+                        throw new RuntimeException(
+                            'A property cannot contain both images and a video.'
+                        );
+                    }
+
+                    /*
+                    * -----------------------------------------
+                    * START TRANSACTION
+                    * -----------------------------------------
+                    */
+
+                    $this->conn->beginTransaction();
+
+                    /*
+                    * -----------------------------------------
+                    * INSERT HOUSE
+                    * -----------------------------------------
+                    */
+
+                    $query = "
+                        INSERT INTO {$this->table}
                         (
-                            house_id,
-                            image_path,
-                            status,
-                            staged_path
+                            title,
+                            description,
+                            price,
+                            location,
+                            latitude,
+                            longitude,
+                            bedrooms,
+                            bathrooms,
+                            house_type,
+                            landlord_id,
+                            rating,
+                            status
                         )
                         VALUES
                         (
-                            :house_id,
-                            :image_path,
-                            'processing',
-                            :staged_path
+                            :title,
+                            :description,
+                            :price,
+                            :location,
+                            :latitude,
+                            :longitude,
+                            :bedrooms,
+                            :bathrooms,
+                            :house_type,
+                            :landlord_id,
+                            :rating,
+                            'available'
                         )
-                    ");
+                    ";
+
+                    $stmt = $this->conn->prepare($query);
 
                     $stmt->execute([
-                        ':house_id' => $houseId,
-                        ':image_path' => $staged['final_filename'],
-                        ':staged_path' => $staged['staged_path']
+                        ':title' => $title,
+                        ':description' => $description,
+                        ':price' => $price,
+                        ':location' => $location,
+                        ':latitude' => $latitude,
+                        ':longitude' => $longitude,
+                        ':bedrooms' => $bedrooms,
+                        ':bathrooms' => $bathrooms,
+                        ':house_type' => $houseType,
+                        ':landlord_id' => $landlordId,
+                        ':rating' => $rating
                     ]);
 
-                    $imageJobs[] = [
-                        'media_id'       => (int) $this->conn->lastInsertId(),
-                        'staged_path'    => $staged['staged_path'],
-                        'final_filename' => $staged['final_filename'],
-                    ];
+                    $houseId = (int) $this->conn->lastInsertId();
+
+                    /*
+                    * -----------------------------------------
+                    * PROCESS IMAGES
+                    * -----------------------------------------
+                    */
+
+                    $imageJobs = [];
+
+                    if (!empty($images)) {
+
+                        foreach ($images as $file) {
+
+                            if (
+                                !isset($file['tmp_name'])
+                                ||
+                                !isset($file['error'])
+                                ||
+                                $file['error'] === UPLOAD_ERR_NO_FILE
+                            ) {
+                                continue;
+                            }
+
+                            $staged = $this->media->stageImage($file);
+                            $stagedFiles[] = $staged['staged_path'];
+
+                            $stmt = $this->conn->prepare("
+                                INSERT INTO house_images
+                                (
+                                    house_id,
+                                    image_path,
+                                    status,
+                                    staged_path
+                                )
+                                VALUES
+                                (
+                                    :house_id,
+                                    :image_path,
+                                    'processing',
+                                    :staged_path
+                                )
+                            ");
+
+                            $stmt->execute([
+                                ':house_id' => $houseId,
+                                ':image_path' => $staged['final_filename'],
+                                ':staged_path' => $staged['staged_path']
+                            ]);
+
+                            $imageJobs[] = [
+                                'media_id'       => (int) $this->conn->lastInsertId(),
+                                'staged_path'    => $staged['staged_path'],
+                                'final_filename' => $staged['final_filename'],
+                            ];
+                        }
+                    }
+
+                    /*
+                    * -----------------------------------------
+                    * PROCESS VIDEO
+                    * -----------------------------------------
+                    */
+
+                    $videoJob = null;
+
+                    if (!empty($video)) {
+
+                        $staged = $this->media->stageVideo($video);
+
+                        $stagedFiles[] = $staged['staged_path'];
+
+                        $stmt = $this->conn->prepare("
+                            INSERT INTO house_images
+                            (
+                                house_id,
+                                image_path,
+                                status,
+                                staged_path
+                            )
+                            VALUES
+                            (
+                                :house_id,
+                                :image_path,
+                                'processing',
+                                :staged_path
+                            )
+                        ");
+
+                        $stmt->execute([
+                            ':house_id' => $houseId,
+                            ':image_path' => $staged['final_filename'],
+                            ':staged_path' => $staged['staged_path']
+                        ]);
+
+                        $videoJob = [
+                            'media_id'       => (int) $this->conn->lastInsertId(),
+                            'house_id'       => $houseId,
+                            'landlord_id'    => $landlordId,
+                            'staged_path'    => $staged['staged_path'],
+                            'final_filename' => $staged['final_filename'],
+                        ];
+                    }
+
+                    /*
+                    * -----------------------------------------
+                    * COMMIT
+                    * -----------------------------------------
+                    */
+
+                    $this->conn->commit();
+
+                    foreach ($imageJobs as $imageJob) {
+                        try {
+                            MediaJobPublisher::publishImageJob($imageJob);
+                        } catch (Throwable $e) {
+                            error_log('LUX EMPIRE image job publish failed: ' . $e->getMessage());
+
+                            $failStmt = $this->conn->prepare("UPDATE house_images SET status = 'failed' WHERE id = :id");
+                            $failStmt->execute([':id' => $imageJob['media_id']]);
+                        }
+                    }
+
+                    if ($videoJob !== null) {
+                        try {
+                            MediaJobPublisher::publishVideoJob($videoJob);
+                        } catch (Throwable $e) {
+                            error_log('LUX EMPIRE media job publish failed: ' . $e->getMessage());
+
+                            $failStmt = $this->conn->prepare("
+                                UPDATE house_images SET status = 'failed'
+                                WHERE id = :id
+                            ");
+                            $failStmt->execute([':id' => $videoJob['media_id']]);
+
+                            // The job never reached the worker, so nothing
+                            // will ever release this landlord's in-flight
+                            // video slot unless we release it right here.
+                            RedisThrottle::decrement("video:inflight:{$landlordId}");
+                        }
+                    }
+
+                    return $houseId;
+
+                } finally {
+
+                    $releaseStmt = $this->conn->prepare('SELECT RELEASE_LOCK(:lock_name)');
+                    $releaseStmt->execute([':lock_name' => $lockName]);
                 }
-            }
 
-            /*
-            * -----------------------------------------
-            * PROCESS VIDEO
-            * -----------------------------------------
-            */
+            } catch (Throwable $e) {
 
-            $videoJob = null;
+                /*
+                * -----------------------------------------
+                * ROLLBACK DATABASE
+                * -----------------------------------------
+                */
 
-            if (!empty($video)) {
-
-                $staged = $this->media->stageVideo($video);
-
-                // Staged files live outside the normal media directory,
-                // so they're cleaned up separately from $createdFiles
-                // (which the catch block below hands to
-                // MediaService::delete() — that only knows about the
-                // real upload directory, not staging).
-                $stagedFiles[] = $staged['staged_path'];
-
-                $stmt = $this->conn->prepare("
-                    INSERT INTO house_images
-                    (
-                        house_id,
-                        image_path,
-                        status,
-                        staged_path
-                    )
-                    VALUES
-                    (
-                        :house_id,
-                        :image_path,
-                        'processing',
-                        :staged_path
-                    )
-                ");
-
-                $stmt->execute([
-                    ':house_id' => $houseId,
-                    ':image_path' => $staged['final_filename'],
-                    ':staged_path' => $staged['staged_path']
-                ]);
-
-                // Queued AFTER commit, once we're certain the house
-                // and this row actually exist — see below.
-                $videoJob = [
-                    'media_id'       => (int) $this->conn->lastInsertId(),
-                    'house_id'       => $houseId,
-                    'landlord_id'    => $landlordId,
-                    'staged_path'    => $staged['staged_path'],
-                    'final_filename' => $staged['final_filename'],
-                ];
-            }
-
-            /*
-            * -----------------------------------------
-            * COMMIT
-            * -----------------------------------------
-            */
-
-            $this->conn->commit();
-
-            foreach ($imageJobs as $imageJob) {
-                try {
-                    MediaJobPublisher::publishImageJob($imageJob);
-                } catch (Throwable $e) {
-                    error_log('LUX EMPIRE image job publish failed: ' . $e->getMessage());
-
-                    $failStmt = $this->conn->prepare("UPDATE house_images SET status = 'failed' WHERE id = :id");
-                    $failStmt->execute([':id' => $imageJob['media_id']]);
+                if ($this->conn->inTransaction()) {
+                    $this->conn->rollBack();
                 }
-            }
 
-            // Publish AFTER commit — never before. If we published
-            // first and the transaction then rolled back, a worker
-            // could pick up a job referencing a media_id/house_id
-            // that no longer exists.
-            if ($videoJob !== null) {
-                try {
-                    MediaJobPublisher::publishVideoJob($videoJob);
-                } catch (Throwable $e) {
-                    // House creation already succeeded and is
-                    // committed — we do NOT fail the whole request
-                    // over a queue outage. Mark this one video slot
-                    // as failed so it's visible, and let the landlord
-                    // retry the video specifically later.
-                    error_log('LUX EMPIRE media job publish failed: ' . $e->getMessage());
+                /*
+                * -----------------------------------------
+                * CLEAN GENERATED MEDIA
+                * -----------------------------------------
+                */
 
-                    $failStmt = $this->conn->prepare("
-                        UPDATE house_images SET status = 'failed'
-                        WHERE id = :id
-                    ");
-                    $failStmt->execute([':id' => $videoJob['media_id']]);
+                foreach ($createdFiles as $filename) {
+
+                    try {
+
+                        $this->media->delete($filename);
+
+                    } catch (Throwable $cleanupError) {
+
+                        error_log(
+                            'LUX EMPIRE media cleanup failed: '
+                            . $cleanupError->getMessage()
+                        );
+                    }
                 }
-            }
 
-            return $houseId;
-
-        } catch (Throwable $e) {
-
-            /*
-            * -----------------------------------------
-            * ROLLBACK DATABASE
-            * -----------------------------------------
-            */
-
-            if ($this->conn->inTransaction()) {
-                $this->conn->rollBack();
-            }
-
-            /*
-            * -----------------------------------------
-            * CLEAN GENERATED MEDIA
-            * -----------------------------------------
-            *
-            * Database rollback cannot remove physical
-            * files created by MediaService, so clean
-            * them manually.
-            */
-
-            foreach ($createdFiles as $filename) {
-
-                try {
-
-                    $this->media->delete($filename);
-
-                } catch (Throwable $cleanupError) {
-
-                    error_log(
-                        'LUX EMPIRE media cleanup failed: '
-                        . $cleanupError->getMessage()
-                    );
+                foreach ($stagedFiles as $stagedPath) {
+                    if (is_file($stagedPath)) {
+                        @unlink($stagedPath);
+                    }
                 }
-            }
 
-            foreach ($stagedFiles as $stagedPath) {
-                if (is_file($stagedPath)) {
-                    @unlink($stagedPath);
-                }
+                throw new RuntimeException(
+                    'Error creating house: '
+                    . $e->getMessage(),
+                    0,
+                    $e
+                );
             }
-
-            throw new RuntimeException(
-                'Error creating house: '
-                . $e->getMessage(),
-                0,
-                $e
-            );
         }
-    }
 
     /**
      * ATTACH MULTIPLE IMAGES
@@ -1194,6 +1219,16 @@ class House
                         WHERE id = :id
                     ");
                     $failStmt->execute([':id' => $videoJob['media_id']]);
+
+                    // The job never reached the worker, so nothing will
+                    // ever release this in-flight video slot unless we
+                    // release it right here. Keyed by the REQUESTING
+                    // user, not $trueLandlordId — those differ when an
+                    // admin edits someone else's listing, and it's the
+                    // requester's throttle bucket that update_house.php
+                    // actually incremented.
+                    $throttleOwnerId = (int) ($data['requesting_user_id'] ?? $trueLandlordId);
+                    RedisThrottle::decrement("video:inflight:{$throttleOwnerId}");
                 }
             }
 

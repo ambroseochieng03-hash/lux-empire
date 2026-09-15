@@ -18,19 +18,25 @@ require_once __DIR__ . '/../config/db.php';
 
 final class PlanLimits
 {
-    private const FREE = [
-        'tier' => 'free',
-        'max_listings' => 3,
-        'max_images' => 5,
-        'video_allowed' => false,
-    ];
+    private static function freeLimits(): array
+    {
+        return [
+            'tier' => 'free',
+            'max_listings' => FREE_MAX_LISTINGS,
+            'max_images' => FREE_MAX_IMAGES_PER_LISTING,
+            'video_allowed' => FREE_VIDEO_ALLOWED,
+        ];
+    }
 
-    private const PRO = [
-        'tier' => 'pro',
-        'max_listings' => 15,
-        'max_images' => 20,
-        'video_allowed' => true,
-    ];
+    private static function proLimits(): array
+    {
+        return [
+            'tier' => 'pro',
+            'max_listings' => PRO_MAX_LISTINGS,
+            'max_images' => PRO_MAX_IMAGES_PER_LISTING,
+            'video_allowed' => PRO_VIDEO_ALLOWED,
+        ];
+    }
 
     private static function loadRow(int $landlordId): ?array
     {
@@ -67,7 +73,7 @@ final class PlanLimits
 
     public static function forLandlord(int $landlordId): array
     {
-        return self::isPro($landlordId) ? self::PRO : self::FREE;
+        return self::isPro($landlordId) ? self::proLimits() : self::freeLimits();
     }
 
     /**

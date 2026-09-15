@@ -11,6 +11,9 @@ require_once '../../config/session.php';
 require_once '../../config/csrf.php';
 require_once '../../classes/House.php';
 require_once '../../config/security/DoSProtection.php';
+require_once '../../classes/Validator.php';
+
+$videoInflightReserved = false;
 
 try {
 
@@ -223,6 +226,30 @@ try {
         exit;
     }
 
+    if (!Validator::isValidHouseTitle($title)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Title must be 3–255 characters.']);
+        exit;
+    }
+
+    if (!Validator::isValidLocationText($location)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Location must be 2–255 characters.']);
+        exit;
+    }
+
+    if (!Validator::isValidHouseType($houseType)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Invalid property type.']);
+        exit;
+    }
+
+    if (!Validator::isValidDescription($description)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Description is too long.']);
+        exit;
+    }
+
     if ($bedrooms < 1 || $bathrooms < 1) {
 
         http_response_code(400);
@@ -259,6 +286,30 @@ try {
         ? (float) $longitudeInput
         : null;
 
+    if (($_POST['latitude'] ?? '') !== '' && !Validator::isValidLatitude((string) $_POST['latitude'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Latitude must be between -90 and 90.']);
+        exit;
+    }
+
+    if (($_POST['longitude'] ?? '') !== '' && !Validator::isValidLongitude((string) $_POST['longitude'])) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Longitude must be between -180 and 180.']);
+        exit;
+    }
+
+    if (!Validator::isValidRoomCount((string) ($_POST['bedrooms'] ?? '1'))) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Bedrooms must be a whole number between 0 and 20.']);
+        exit;
+    }
+
+    if (!Validator::isValidRoomCount((string) ($_POST['bathrooms'] ?? '1'))) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Bathrooms must be a whole number between 0 and 20.']);
+        exit;
+    }
+            
     /*
      * ============================================================
      * HOUSE + AUTHORIZATION
@@ -383,7 +434,6 @@ try {
         require_once '../../config/security/RedisThrottle.php';
 
         $inFlightKey = "video:inflight:{$currentUser}";
-        $dailyKey = "video:daily:{$currentUser}:" . date('Y-m-d');
 
         if (RedisThrottle::getCount($inFlightKey) >= MAX_VIDEOS_PROCESSING_PER_LANDLORD) {
             http_response_code(429);
@@ -391,13 +441,8 @@ try {
             exit;
         }
 
-        if (RedisThrottle::incrWithExpiry($dailyKey, 86400) > MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY) {
-            http_response_code(429);
-            echo json_encode(['success' => false, 'message' => "You've reached today's video upload limit (" . MAX_VIDEO_UPLOADS_PER_LANDLORD_PER_DAY . "). Please try again tomorrow."]);
-            exit;
-        }
-
         RedisThrottle::increment($inFlightKey);
+        $videoInflightReserved = true;
     }
 
     /*
@@ -419,7 +464,8 @@ try {
             'rating' => $rating,
             'latitude' => $latitude,
             'longitude' => $longitude,
-            'files' => $files
+            'files' => $files,
+            'requesting_user_id' => $currentUser,
         ]
     );
 
@@ -448,6 +494,11 @@ try {
 
 } catch (InvalidArgumentException $e) {
 
+    if ($videoInflightReserved) {
+        require_once '../../config/security/RedisThrottle.php';
+        RedisThrottle::decrement("video:inflight:{$currentUser}");
+    }
+
     http_response_code(400);
 
     echo json_encode([
@@ -456,6 +507,11 @@ try {
     ]);
 
 } catch (RuntimeException $e) {
+
+    if ($videoInflightReserved) {
+        require_once '../../config/security/RedisThrottle.php';
+        RedisThrottle::decrement("video:inflight:{$currentUser}");
+    }
 
     error_log(
         '[LUX EMPIRE] Update House Error: '
@@ -470,6 +526,11 @@ try {
     ]);
 
 } catch (Throwable $e) {
+
+    if ($videoInflightReserved) {
+        require_once '../../config/security/RedisThrottle.php';
+        RedisThrottle::decrement("video:inflight:{$currentUser}");
+    }
 
     error_log(
         '[LUX EMPIRE] Unexpected Update House Error: '

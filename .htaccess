@@ -130,6 +130,8 @@ RewriteRule ^config(?:/|$) - [F,END]
 RewriteRule ^classes(?:/|$) - [F,END]
 RewriteRule ^includes(?:/|$) - [F,END]
 
+RewriteRule ^storage(?:/|$) - [F,END]
+
 
 RewriteRule ^tenant/notifications/?$ dashboard/tenant/notifications.php [END]
 RewriteRule ^landlord/notifications/?$ dashboard/landlord/notifications.php [END]

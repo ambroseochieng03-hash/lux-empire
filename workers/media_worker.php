@@ -29,12 +29,18 @@ $client = new Client($configuration);
 $stream = $client->getApi()->getStream('MEDIA_JOBS');
 
 $videoConsumer = $stream->getConsumer('media_transcoder');
-$videoConsumer->getConfiguration()->setSubjectFilter('media.video.transcode');
+$videoConsumer->getConfiguration()
+    ->setSubjectFilter('media.video.transcode')
+    ->setAckWait(180)      // seconds — must exceed the `timeout 120` in the ffmpeg command below, or JetStream redelivers a job that's still legitimately running
+    ->setMaxDeliver(3);    // after 3 failed delivery attempts, JetStream drops it instead of retrying forever
 $videoConsumer->create();
 $videoQueue = $videoConsumer->getQueue();
 
 $imageConsumer = $stream->getConsumer('media_image_compressor');
-$imageConsumer->getConfiguration()->setSubjectFilter('media.image.compress');
+$imageConsumer->getConfiguration()
+    ->setSubjectFilter('media.image.compress')
+    ->setAckWait(60)
+    ->setMaxDeliver(3);
 $imageConsumer->create();
 $imageQueue = $imageConsumer->getQueue();
 
@@ -86,12 +92,17 @@ function handleVideoJob($message, PDO $pdo, string $uploadDir): void
             return;
         }
 
-        $input = escapeshellarg($stagedPath);
-        $output = escapeshellarg($targetPath);
+                $input = escapeshellarg($stagedPath);
+                $output = escapeshellarg($targetPath);
 
-        $command = 'nice -n 10 ffmpeg -y -i ' . $input
-            . ' -c:v libx264 -preset medium -crf 28 -c:a aac -movflags +faststart '
-            . $output . ' 2>&1';
+                $command = 'timeout 120 nice -n 10 ffmpeg -y'
+                    . ' -protocol_whitelist file,pipe'
+                    . ' -i ' . $input
+                    . ' -map 0:v:0 -map 0:a:0?'
+                    . ' -c:v libx264 -preset medium -crf 28 -c:a aac -movflags +faststart'
+                    . ' -max_muxing_queue_size 1024'
+                    . ' ' . $output
+                    . ' 2>&1';
 
         exec($command, $outputLines, $returnCode);
 

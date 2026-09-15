@@ -80,6 +80,72 @@ enforced; this is UX only, never trusted as the real gate.
                 return /^[A-Za-z]{3} \d{3}[A-Za-z]$/.test(value.trim());
             },
             message: 'Enter a valid plate number (e.g. KDA 123A).'
+        },
+
+        price: {
+            test(value) {
+                const v = value.trim();
+                if (!/^\d{1,9}(\.\d{1,2})?$/.test(v)) return false;
+                return parseFloat(v) > 0;
+            },
+            message: 'Enter a valid price (numbers only, up to 2 decimal places).'
+        },
+
+        latitude: {
+            test(value) {
+                const v = value.trim();
+                if (v === '') return true;
+                if (!/^-?\d{1,2}(\.\d+)?$/.test(v)) return false;
+                const n = parseFloat(v);
+                return n >= -90 && n <= 90;
+            },
+            message: 'Latitude must be a number between -90 and 90.'
+        },
+
+        longitude: {
+            test(value) {
+                const v = value.trim();
+                if (v === '') return true;
+                if (!/^-?\d{1,3}(\.\d+)?$/.test(v)) return false;
+                const n = parseFloat(v);
+                return n >= -180 && n <= 180;
+            },
+            message: 'Longitude must be a number between -180 and 180.'
+        },
+
+        room_count: {
+            test(value) {
+                const v = value.trim();
+                if (!/^\d{1,2}$/.test(v)) return false;
+                const n = parseInt(v, 10);
+                return n >= 0 && n <= 20;
+            },
+            message: 'Enter a whole number between 0 and 20.'
+        },
+
+        house_title: {
+            test(value) {
+                const v = value.trim();
+                return v.length >= 3 && v.length <= 255;
+            },
+            message: 'Title must be 3–255 characters.'
+        },
+
+        location: {
+            test(value) {
+                const v = value.trim();
+                return v.length >= 2 && v.length <= 255;
+            },
+            message: 'Location must be 2–255 characters.'
+        },
+
+        house_type: {
+            test(value) {
+                const v = value.trim();
+                if (v === '') return true;
+                return v.length >= 2 && v.length <= 100;
+            },
+            message: 'Property type must be 2–100 characters.'
         }
     };
 

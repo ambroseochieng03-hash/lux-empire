@@ -324,6 +324,7 @@ require_once '../../includes/sidebar.php';
                         maxlength="255"
                         placeholder="Luxury Penthouse in Westlands"
                         class="landlord-input"
+                        data-validate="house_title"
                     >
 
                 </div>
@@ -372,6 +373,7 @@ require_once '../../includes/sidebar.php';
                             step="0.01"
                             placeholder="85000"
                             class="landlord-input"
+                            data-validate="price"
                         >
 
                     </div>
@@ -392,6 +394,7 @@ require_once '../../includes/sidebar.php';
                             maxlength="255"
                             placeholder="Westlands, Nairobi"
                             class="landlord-input"
+                            data-validate="location"
                         >
 
                     </div>
@@ -411,6 +414,7 @@ require_once '../../includes/sidebar.php';
                             min="0"
                             value="1"
                             class="landlord-input"
+                            data-validate="room_count"
                         >
 
                     </div>
@@ -430,6 +434,7 @@ require_once '../../includes/sidebar.php';
                             min="0"
                             value="1"
                             class="landlord-input"
+                            data-validate="room_count"
                         >
 
                     </div>
@@ -545,6 +550,7 @@ require_once '../../includes/sidebar.php';
                             step="any"
                             placeholder="-1.2676"
                             class="landlord-input"
+                            data-validate="latitude"
                         >
 
                     </div>
@@ -564,6 +570,7 @@ require_once '../../includes/sidebar.php';
                             step="any"
                             placeholder="36.8108"
                             class="landlord-input"
+                            data-validate="longitude"
                         >
 
                     </div>
@@ -670,6 +677,7 @@ require_once '../../includes/sidebar.php';
 
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/payment-modal.css">
+<script src="<?php echo BASE_URL; ?>/assets/js/form-validation.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/idempotency.js"></script>
 <script>
     window.LUX_PAYMENT_CONFIG = {
@@ -715,6 +723,10 @@ require_once '../../includes/sidebar.php';
     }
 
     async function submitForm() {
+
+        if (!window.LuxFormValidation.validateForm(form)) {
+            return;
+        }
 
         document.getElementById('addHouseIdemKey').value = window.LuxIdempotency.get(form);
 
