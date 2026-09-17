@@ -4,6 +4,9 @@ require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
 requireRoleAccess('driver');
 
+require_once '../../config/csrf.php';
+$csrfToken = Csrf::token();
+
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
@@ -330,6 +333,12 @@ require_once '../../includes/sidebar.php';
 </div>
 
 <!-- MAPS JS -->
+<script>
+    window.LUX_TRACKER_CONFIG = {
+        baseUrl: "<?php echo BASE_URL; ?>",
+        csrfToken: "<?php echo htmlspecialchars($csrfToken, ENT_QUOTES); ?>"
+    };
+</script>
 <script src="<?php echo BASE_URL; ?>/assets/js/maps.js"></script>
 
 <script

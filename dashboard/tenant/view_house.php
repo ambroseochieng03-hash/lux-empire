@@ -340,6 +340,8 @@ require_once '../../includes/sidebar.php';
         csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"
     };
 </script>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/form-validation.css">
+<script src="<?php echo BASE_URL; ?>/assets/js/form-validation.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/payment-modal.js"></script>
 
 <?php require_once '../../includes/footer.php'; ?>

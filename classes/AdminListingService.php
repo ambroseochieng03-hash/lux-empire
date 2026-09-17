@@ -24,9 +24,18 @@ final class AdminListingService
         $this->conn = $database->connect();
     }
 
-    public function listListings(): array
+    /**
+     * Returns ['listings' => [...], 'total' => int]. $limit capped
+     * at 100 server-side.
+     */
+    public function listListings(int $limit = 50, int $offset = 0): array
     {
-        $stmt = $this->conn->query("
+        $limit = max(1, min(100, $limit));
+        $offset = max(0, $offset);
+
+        $total = (int) $this->conn->query("SELECT COUNT(*) FROM houses")->fetchColumn();
+
+        $stmt = $this->conn->prepare("
             SELECT
                 h.id, h.title, h.location, h.price, h.status AS booking_status,
                 h.house_type, h.is_hidden, h.is_flagged, h.flag_reason,
@@ -35,11 +44,18 @@ final class AdminListingService
             FROM houses h
             JOIN users u ON h.landlord_id = u.id
             ORDER BY h.created_at DESC
+            LIMIT :limit OFFSET :offset
         ");
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
 
+        return [
+            'listings' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'total' => $total,
+        ];
+    }
     public function getListingsForLandlord(int $landlordId): array
     {
         $stmt = $this->conn->prepare("
@@ -89,6 +105,53 @@ final class AdminListingService
         }
 
         return ['video' => $video, 'images' => $images];
+    }
+
+    /**
+     * BATCH MEDIA FETCH — same shape as getListingMedia() but for
+     * many houses in ONE query instead of one query per house. Use
+     * this instead of calling getListingMedia() inside a foreach
+     * over a list of listings (that's an N+1 query bug).
+     *
+     * Returns [house_id => ['video' => ..., 'images' => [...]], ...]
+     */
+    public function getMediaForListingIds(array $houseIds): array
+    {
+        $houseIds = array_values(array_unique(array_map('intval', $houseIds)));
+
+        if (empty($houseIds)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($houseIds), '?'));
+
+        $stmt = $this->conn->prepare("
+            SELECT house_id, image_path
+            FROM house_images
+            WHERE house_id IN ({$placeholders}) AND status = 'ready'
+            ORDER BY house_id ASC, id ASC
+        ");
+        $stmt->execute($houseIds);
+
+        $baseUrl = BASE_URL . '/assets/uploads/house_images/';
+        $grouped = [];
+
+        foreach ($houseIds as $id) {
+            $grouped[$id] = ['video' => null, 'images' => []];
+        }
+
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $id = (int) $row['house_id'];
+            $url = $baseUrl . $row['image_path'];
+
+            if (preg_match('/\.mp4$/i', $row['image_path'])) {
+                $grouped[$id]['video'] = $url;
+            } else {
+                $grouped[$id]['images'][] = $url;
+            }
+        }
+
+        return $grouped;
     }
 
     public function toggleHidden(int $houseId, int $adminId): ?bool

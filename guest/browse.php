@@ -381,6 +381,8 @@ require_once __DIR__ . '/../includes/navbar.php';
         csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"
     };
 </script>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/form-validation.css">
+<script src="<?php echo BASE_URL; ?>/assets/js/form-validation.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/payment-modal.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/tenant-register-modal.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/guest-browse.js"></script>

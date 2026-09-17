@@ -621,4 +621,65 @@ ALTER TABLE bookings
     FOREIGN KEY (house_id)
     REFERENCES houses(id);
 
-SHOW CREATE TABLE bookings\G    
+SHOW CREATE TABLE bookings\G  
+
+-- ============================================================
+-- HOUSES — every listing page filters is_hidden + status first,
+-- then optionally price/house_type/keyword. This composite covers
+-- the filter that's on EVERY query (runFilterQuery in House.php).
+-- ============================================================
+ALTER TABLE houses ADD INDEX idx_hidden_status (is_hidden, status);
+ALTER TABLE houses ADD INDEX idx_price (price);
+ALTER TABLE houses ADD INDEX idx_house_type (house_type);
+
+-- Your keyword search uses LIKE '%word%' which a normal index CANNOT
+-- use (leading wildcard). A FULLTEXT index lets MySQL actually use
+-- an index for this instead of scanning every row. This requires
+-- changing the query to MATCH(...) AGAINST(...) — see note below.
+ALTER TABLE houses ADD FULLTEXT INDEX idx_fulltext_search (title, location, description);
+
+-- ============================================================
+-- BOOKINGS — landlord "pending work queue" and tenant "my bookings"
+-- are your two hottest booking reads.
+-- ============================================================
+ALTER TABLE bookings ADD INDEX idx_landlord_status (landlord_id, status);
+ALTER TABLE bookings ADD INDEX idx_tenant_house_id (tenant_id, house_id, id);
+ALTER TABLE bookings ADD INDEX idx_tenant_date (tenant_id, booking_date);
+
+-- ============================================================
+-- TRUCK REQUESTS — driver's active trip lookup and tenant's active
+-- trip lookup both filter by status set, every poll.
+-- ============================================================
+ALTER TABLE truck_requests ADD INDEX idx_driver_status (driver_id, status);
+ALTER TABLE truck_requests ADD INDEX idx_tenant_status (tenant_id, status);
+
+-- ============================================================
+-- MESSAGES — every chat poll does WHERE conversation_id=? AND id>?
+-- ORDER BY id ASC. This composite makes that an index-only range scan.
+-- ============================================================
+ALTER TABLE messages ADD INDEX idx_conv_id (conversation_id, id);
+
+-- ============================================================
+-- NOTIFICATIONS — polled by every user, every heartbeat. This is
+-- one of your hottest tables at 8,500+ active users.
+-- ============================================================
+ALTER TABLE notifications ADD INDEX idx_user_read_created (user_id, is_read, created_at);
+
+-- ============================================================
+-- PAYMENTS — admin review queues and refund queues both filter
+-- on flags + status, full table scan otherwise as payments grow.
+-- ============================================================
+ALTER TABLE payments ADD INDEX idx_review_status (needs_admin_review, status);
+ALTER TABLE payments ADD INDEX idx_refund (refund_required, refund_resolved_at);
+
+-- ============================================================
+-- HOUSE IMAGES — fetch_houses.php filters status='ready' per house.
+-- ============================================================
+ALTER TABLE house_images ADD INDEX idx_house_status (house_id, status);
+
+-- ============================================================
+-- USERS — admin user list filters by role; role+status filters
+-- (suspended/pending review) also common in admin dashboards.
+-- ============================================================
+ALTER TABLE users ADD INDEX idx_role (role);
+ALTER TABLE users ADD INDEX idx_role_status (role, status);

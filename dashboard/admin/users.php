@@ -13,8 +13,22 @@ require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
 
+$page = max(1, (int) ($_GET['page'] ?? 1));
+
+$roleFilter = $_GET['role'] ?? '';
+$allowedRoles = ['tenant', 'landlord', 'driver', 'admin'];
+if (!in_array($roleFilter, $allowedRoles, true)) {
+    $roleFilter = null;
+}
+
+$perPage = 50;
+$offset = ($page - 1) * $perPage;
+
 $adminUserService = new AdminUserService();
-$users = $adminUserService->listUsers();
+$listResult = $adminUserService->listUsers($roleFilter, $perPage, $offset);
+$users = $listResult['users'];
+$totalUsers = $listResult['total'];
+$totalPages = max(1, (int) ceil($totalUsers / $perPage));
 
 $csrfToken = Csrf::token();
 ?>
@@ -44,11 +58,11 @@ $csrfToken = Csrf::token();
 
     <div class="lux-admin-toolbar">
         <select class="lux-admin-filter-select" id="luxUserRoleFilter">
-            <option value="">All Roles</option>
-            <option value="tenant">Tenants</option>
-            <option value="landlord">Landlords</option>
-            <option value="driver">Drivers</option>
-            <option value="admin">Admins</option>
+            <option value="" <?php echo $roleFilter === null ? 'selected' : ''; ?>>All Roles</option>
+            <option value="tenant" <?php echo $roleFilter === 'tenant' ? 'selected' : ''; ?>>Tenants</option>
+            <option value="landlord" <?php echo $roleFilter === 'landlord' ? 'selected' : ''; ?>>Landlords</option>
+            <option value="driver" <?php echo $roleFilter === 'driver' ? 'selected' : ''; ?>>Drivers</option>
+            <option value="admin" <?php echo $roleFilter === 'admin' ? 'selected' : ''; ?>>Admins</option>
         </select>
     </div>
 
@@ -167,6 +181,20 @@ $csrfToken = Csrf::token();
 
     </div>
 
+    <?php if ($totalPages > 1): ?>
+    <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-top:30px;">
+        <?php if ($page > 1): ?>
+            <a class="lux-btn lux-btn-ghost" href="?page=<?php echo $page - 1; ?><?php echo $roleFilter ? '&role=' . urlencode($roleFilter) : ''; ?>">&laquo; Previous</a>
+        <?php endif; ?>
+
+        <span style="color:var(--gray);">Page <?php echo $page; ?> of <?php echo $totalPages; ?> (<?php echo $totalUsers; ?> users)</span>
+
+        <?php if ($page < $totalPages): ?>
+            <a class="lux-btn lux-btn-ghost" href="?page=<?php echo $page + 1; ?><?php echo $roleFilter ? '&role=' . urlencode($roleFilter) : ''; ?>">Next &raquo;</a>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
 </main>
 
 </div>
@@ -223,6 +251,7 @@ $csrfToken = Csrf::token();
 </div>
 
 <script src="<?php echo BASE_URL; ?>/assets/js/admin/admin-core.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/idempotency.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/admin/users.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
 

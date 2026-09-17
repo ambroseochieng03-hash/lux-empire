@@ -20,9 +20,29 @@ final class AdminBookingService
         $this->conn = $database->connect();
     }
 
-    public function listBookings(): array
+    /**
+     * Returns ['bookings' => [...], 'total' => int]. $limit capped
+     * at 100 server-side so a manipulated query string can't force a
+     * full table scan render.
+     */
+    public function listBookings(?string $status = null, int $limit = 50, int $offset = 0): array
     {
-        $stmt = $this->conn->query("
+        $limit = max(1, min(100, $limit));
+        $offset = max(0, $offset);
+
+        $where = '';
+        $params = [];
+
+        if ($status !== null) {
+            $where = " WHERE b.status = :status";
+            $params[':status'] = $status;
+        }
+
+        $countStmt = $this->conn->prepare("SELECT COUNT(*) FROM bookings b{$where}");
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        $stmt = $this->conn->prepare("
             SELECT
                 b.id, b.status, b.booking_date,
                 h.id AS house_id, COALESCE(h.title, b.house_title_snapshot) AS house_title,
@@ -32,10 +52,23 @@ final class AdminBookingService
             LEFT JOIN houses h ON b.house_id = h.id
             JOIN users tenant ON b.tenant_id = tenant.id
             JOIN users landlord ON b.landlord_id = landlord.id
+            {$where}
             ORDER BY b.id DESC
+            LIMIT :limit OFFSET :offset
         ");
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return [
+            'bookings' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'total' => $total,
+        ];
     }
 
     public function deleteBooking(int $bookingId, int $adminId, string $reason): bool

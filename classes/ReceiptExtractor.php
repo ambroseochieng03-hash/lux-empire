@@ -15,17 +15,21 @@ final class ReceiptExtractor
 {
     public static function extract(string $input): ?string
     {
+        require_once __DIR__ . '/Validator.php';
+
         $input = trim($input);
 
-        if (preg_match('/\b([A-Z0-9]{8,12})\s+Confirmed\b/i', $input, $matches)) {
-            return strtoupper($matches[1]);
+        if (!Validator::isValidMpesaReceiptInput($input)) {
+            return null;
         }
 
-        if (preg_match('/^[A-Z0-9]{8,12}$/i', $input)) {
+        if (Validator::isValidMpesaReceiptCode($input)) {
             return strtoupper($input);
         }
 
-        return null;
+        preg_match('/\b([A-Za-z][A-Za-z0-9]{9})\s+Confirmed\b/i', $input, $matches);
+
+        return strtoupper($matches[1]);
     }
 
     /**

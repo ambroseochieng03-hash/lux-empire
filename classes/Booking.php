@@ -388,9 +388,90 @@ class Booking {
 }
 
     /**
-     * GET BOOKINGS BY LANDLORD (all statuses — history)
+     * BOOKING STATS FOR LANDLORD DASHBOARD
+     *
+     * Used by dashboard/landlord/dashboard.php for the Total/
+     * Pending/Approved stat cards. One aggregate query — never
+     * fetches the underlying booking rows just to count them in
+     * PHP, so this stays fast no matter how many bookings a
+     * landlord accumulates over years on the platform.
      */
-    public function getBookingsByLandlord($landlord_id) {
+    public function getBookingStatsForLandlord(int $landlordId): array
+    {
+        $stmt = $this->conn->prepare("
+            SELECT
+                COUNT(*) AS total,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
+                SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS approved
+            FROM " . $this->table . "
+            WHERE landlord_id = :landlord_id
+        ");
+
+        $stmt->execute([':landlord_id' => $landlordId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return [
+            'total' => (int) ($row['total'] ?? 0),
+            'pending' => (int) ($row['pending'] ?? 0),
+            'approved' => (int) ($row['approved'] ?? 0),
+        ];
+    }
+
+    /**
+     * RECENT BOOKINGS FOR LANDLORD DASHBOARD
+     *
+     * Feeds the "Recent Booking Activity" widget. Bounded by
+     * $limit at the SQL level — never fetches more rows than the
+     * widget actually shows.
+     */
+    public function getRecentBookingsByLandlord(int $landlordId, int $limit = 5): array
+    {
+        $limit = max(1, min(20, $limit));
+
+        $stmt = $this->conn->prepare("
+            SELECT
+                b.id,
+                b.status,
+                b.booking_date
+            FROM " . $this->table . " b
+            WHERE b.landlord_id = :landlord_id
+            ORDER BY b.id DESC
+            LIMIT :limit
+        ");
+
+        $stmt->bindValue(':landlord_id', $landlordId, PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * FULL BOOKING HISTORY FOR LANDLORD (paginated, 90-day default)
+     *
+     * Not wired to any page yet — this is here so a future
+     * "Booking History" page can be built directly on it, using the
+     * pattern already used for /dashboard/admin/*: pass $days = null
+     * for all-time; nothing is ever permanently hidden, the 90-day
+     * default just keeps the common case fast. Returns
+     * ['bookings' => [...], 'total' => int].
+     */
+    public function getBookingHistoryForLandlord(int $landlordId, int $limit = 20, int $offset = 0, ?int $days = 90): array
+    {
+        $limit = max(1, min(100, $limit));
+        $offset = max(0, $offset);
+
+        $where = "b.landlord_id = :landlord_id";
+        $params = [':landlord_id' => $landlordId];
+
+        if ($days !== null) {
+            $where .= " AND b.booking_date >= (NOW() - INTERVAL :days DAY)";
+            $params[':days'] = $days;
+        }
+
+        $countStmt = $this->conn->prepare("SELECT COUNT(*) FROM " . $this->table . " b WHERE {$where}");
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
 
         $query = "SELECT
                     b.*,
@@ -420,17 +501,25 @@ class Booking {
                 JOIN users u
                 ON b.tenant_id = u.id
 
-                WHERE b.landlord_id = :landlord_id
+                WHERE {$where}
 
-                ORDER BY b.id DESC";
+                ORDER BY b.id DESC
+                LIMIT :limit OFFSET :offset";
 
         $stmt = $this->conn->prepare($query);
 
-        $stmt->bindParam(':landlord_id', $landlord_id);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
 
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
         $stmt->execute();
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return [
+            'bookings' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'total' => $total,
+        ];
     }
 
     /**

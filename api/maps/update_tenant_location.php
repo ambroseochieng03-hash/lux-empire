@@ -6,6 +6,7 @@ require_once '../../includes/auth_check.php';
 requireRoleAccess('tenant');
 
 require_once '../../config/db.php';
+require_once '../../config/csrf.php';
 
 $db = new Database();
 $pdo = $db->connect();
@@ -27,6 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
     exit;
 }
+
+Csrf::requireValid($_POST['csrf_token'] ?? null);
 
 $tenant_id = (int) Session::user()['id'];
 

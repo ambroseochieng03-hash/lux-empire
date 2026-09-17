@@ -36,6 +36,7 @@ final class Session
         */
 
         self::configureCookies();
+        self::configureRedisSessionStorage();
 
         /*
         |--------------------------------------------------------------------------
@@ -135,6 +136,44 @@ final class Session
             'session.use_cookies',
             '1'
         );
+    }
+
+
+    /**
+     * Store sessions in Redis instead of local disk files.
+     *
+     * Required before this app can run behind more than one web
+     * server — file-based sessions (session.save_handler = files)
+     * live on one server's local disk only, so a user's very next
+     * request landing on a different server would find them logged
+     * out. Uses phpredis's own built-in session handler — the same
+     * extension config/RedisConnection.php already uses for caching
+     * — so no custom SessionHandlerInterface class is needed.
+     *
+     * Falls back to PHP's default file-based sessions automatically
+     * if REDIS_HOST isn't set, so local development without Redis
+     * running keeps working unmodified.
+     */
+    private static function configureRedisSessionStorage(): void
+    {
+        // Same default-to-localhost fallback as
+        // config/RedisConnection.php's own pconnect() call — your
+        // .env apparently doesn't set REDIS_HOST explicitly (Redis
+        // caching has been working this whole time only because of
+        // that same fallback there), so this needs to match it
+        // rather than require a variable that was never actually set.
+        $host = $_ENV['REDIS_HOST'] ?? '127.0.0.1';
+        $port = (int) ($_ENV['REDIS_PORT'] ?? 6379);
+        $pass = $_ENV['REDIS_PASS'] ?? '';
+
+        $savePath = "tcp://{$host}:{$port}?database=0";
+
+        if ($pass !== '') {
+            $savePath .= '&auth=' . rawurlencode($pass);
+        }
+
+        ini_set('session.save_handler', 'redis');
+        ini_set('session.save_path', $savePath);
     }
 
 

@@ -36,8 +36,13 @@ try {
         // Attach full media (all images / the video) per house — the
         // 'image' field from filterHouses() is just the first thumbnail,
         // not enough to render the same carousel/video the PHP pages do.
+        // Batched into ONE query instead of one query per house.
+        $mediaByHouse = $houseModel->getMediaForHouseIds(
+            array_map(static fn ($h) => (int) $h['id'], $result['houses'])
+        );
+
         foreach ($result['houses'] as &$house) {
-            $house['media'] = $houseModel->getHouseMedia((int) $house['id']);
+            $house['media'] = $mediaByHouse[(int) $house['id']] ?? [];
         }
         unset($house);
 

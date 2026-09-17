@@ -13,8 +13,22 @@ require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
 
+$page = max(1, (int) ($_GET['page'] ?? 1));
+
+$statusFilter = $_GET['status'] ?? '';
+$allowedStatuses = ['pending', 'approved', 'rejected', 'cancelled'];
+if (!in_array($statusFilter, $allowedStatuses, true)) {
+    $statusFilter = null;
+}
+
+$perPage = 50;
+$offset = ($page - 1) * $perPage;
+
 $bookingService = new AdminBookingService();
-$bookings = $bookingService->listBookings();
+$listResult = $bookingService->listBookings($statusFilter, $perPage, $offset);
+$bookings = $listResult['bookings'];
+$totalBookings = $listResult['total'];
+$totalPages = max(1, (int) ceil($totalBookings / $perPage));
 
 $csrfToken = Csrf::token();
 ?>
@@ -43,11 +57,11 @@ $csrfToken = Csrf::token();
 
     <div class="lux-admin-toolbar">
         <select class="lux-admin-filter-select" id="luxBookingStatusFilter">
-            <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="" <?php echo $statusFilter === null ? 'selected' : ''; ?>>All Statuses</option>
+            <option value="pending" <?php echo $statusFilter === 'pending' ? 'selected' : ''; ?>>Pending</option>
+            <option value="approved" <?php echo $statusFilter === 'approved' ? 'selected' : ''; ?>>Approved</option>
+            <option value="rejected" <?php echo $statusFilter === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
+            <option value="cancelled" <?php echo $statusFilter === 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
         </select>
     </div>
 
@@ -89,6 +103,20 @@ $csrfToken = Csrf::token();
         <?php endforeach; ?>
 
     </div>
+
+    <?php if ($totalPages > 1): ?>
+    <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-top:30px;">
+        <?php if ($page > 1): ?>
+            <a class="lux-btn lux-btn-ghost" href="?page=<?php echo $page - 1; ?><?php echo $statusFilter ? '&status=' . urlencode($statusFilter) : ''; ?>">&laquo; Previous</a>
+        <?php endif; ?>
+
+        <span style="color:var(--gray);">Page <?php echo $page; ?> of <?php echo $totalPages; ?> (<?php echo $totalBookings; ?> bookings)</span>
+
+        <?php if ($page < $totalPages): ?>
+            <a class="lux-btn lux-btn-ghost" href="?page=<?php echo $page + 1; ?><?php echo $statusFilter ? '&status=' . urlencode($statusFilter) : ''; ?>">Next &raquo;</a>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
 </main>
 

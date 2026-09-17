@@ -341,6 +341,16 @@ class House
 
                     $this->conn->commit();
 
+                    // Filter dropdown data just changed — don't make
+                    // tenants wait up to 5 minutes to see it.
+                    try {
+                        require_once __DIR__ . '/../config/RedisConnection.php';
+                        RedisConnection::get()->del('cache:filter_meta');
+                    } catch (Throwable $e) {
+                        // Cache invalidation failing is not fatal — worst
+                        // case the old data serves for up to 5 more minutes.
+                    }
+
                     foreach ($imageJobs as $imageJob) {
                         try {
                             MediaJobPublisher::publishImageJob($imageJob);
@@ -599,6 +609,48 @@ class House
         ]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * BATCH MEDIA FETCH — same data as getHouseMedia() but for many
+     * houses in ONE query instead of one query per house. Use this
+     * anywhere you're about to loop over a list of houses and call
+     * getHouseMedia() inside the loop (that's an N+1 query bug).
+     *
+     * Returns [house_id => [media_row, media_row, ...], ...]
+     */
+    public function getMediaForHouseIds(array $houseIds): array
+    {
+        $houseIds = array_values(array_unique(array_map('intval', $houseIds)));
+
+        if (empty($houseIds)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($houseIds), '?'));
+
+        $stmt = $this->conn->prepare("
+            SELECT id, house_id, image_path, status, created_at
+            FROM house_images
+            WHERE house_id IN ({$placeholders})
+            ORDER BY house_id ASC, id ASC
+        ");
+
+        $stmt->execute($houseIds);
+
+        $grouped = [];
+
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $grouped[(int) $row['house_id']][] = $row;
+        }
+
+        // Every requested id gets an entry, even if it has zero media,
+        // so callers can safely do $mediaByHouse[$id] ?? [] without checking.
+        foreach ($houseIds as $id) {
+            $grouped[$id] = $grouped[$id] ?? [];
+        }
+
+        return $grouped;
     }
 
     /**
@@ -1195,6 +1247,19 @@ class House
 
             $this->conn->commit();
 
+            // Filter dropdown data AND this specific house's detail
+            // cache just changed — clear both rather than waiting
+            // out their TTLs.
+            try {
+                require_once __DIR__ . '/../config/RedisConnection.php';
+                $redis = RedisConnection::get();
+                $redis->del('cache:filter_meta');
+                $redis->del("cache:house:{$id}");
+            } catch (Throwable $e) {
+                // Cache invalidation failing is not fatal — worst
+                // case the old data serves until its TTL expires.
+            }
+
             foreach ($imageJobs as $imageJob) {
                 if (!isset($imageJob['media_id'])) {
                     continue; // no new images were actually part of this update
@@ -1375,6 +1440,19 @@ class House
         $stmt->execute([
             ':id' => $id
         ]);
+
+        // Filter dropdown data AND this specific house's detail
+        // cache just changed — clear both rather than waiting
+        // out their TTLs.
+        try {
+        require_once __DIR__ . '/../config/RedisConnection.php';
+        $redis = RedisConnection::get();
+        $redis->del('cache:filter_meta');
+        $redis->del("cache:house:{$id}");
+        } catch (Throwable $e) {
+        // Cache invalidation failing is not fatal — worst
+        // case the old data serves until its TTL expires.
+        }
 
         if ($stmt->rowCount() === 0) {
             return false;
@@ -1609,8 +1687,16 @@ class House
         $distanceSelect = '';
 
         if (!empty($filters['keyword'])) {
-            $where[] = "(h.title LIKE :keyword OR h.location LIKE :keyword OR h.description LIKE :keyword)";
-            $params[':keyword'] = '%' . $filters['keyword'] . '%';
+            // Real prepared statements (PDO::ATTR_EMULATE_PREPARES is
+            // false) cannot bind one value to the same named
+            // placeholder used more than once — each occurrence needs
+            // its own name, all bound to the same value. Same fix
+            // already applied below for :inst_lat/:inst_lat2.
+            $where[] = "(h.title LIKE :keyword_title OR h.location LIKE :keyword_location OR h.description LIKE :keyword_description)";
+            $keywordValue = '%' . $filters['keyword'] . '%';
+            $params[':keyword_title'] = $keywordValue;
+            $params[':keyword_location'] = $keywordValue;
+            $params[':keyword_description'] = $keywordValue;
         }
 
         if (isset($filters['min_price']) && $filters['min_price'] !== '') {

@@ -4,11 +4,13 @@ require_once '../../includes/auth_check.php';
 requireRoleAccess('driver');
 
 require_once '../../config/db.php';
+require_once '../../config/csrf.php';
 
 $db = new Database();
 $pdo = $db->connect();
 
 $driver_id = (int) Session::user()['id'];
+$csrfToken = Csrf::token();
 
 $stmt = $pdo->prepare("
     SELECT
@@ -175,6 +177,7 @@ body { overflow-x: hidden; }
                     <form action="<?php echo BASE_URL; ?>/api/trucks/update_trip_status.php" method="POST">
                         <input type="hidden" name="trip_id" value="<?php echo $trip['id']; ?>">
                         <input type="hidden" name="status" value="arrived_at_pickup">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES); ?>">
                         <button class="lux-btn" style="border:none; padding:16px 28px; border-radius:18px; cursor:pointer;">
                             <i class="fa-solid fa-location-dot"></i> Arrived at Pickup
                         </button>
@@ -185,6 +188,7 @@ body { overflow-x: hidden; }
                     <form action="<?php echo BASE_URL; ?>/api/trucks/update_trip_status.php" method="POST">
                         <input type="hidden" name="trip_id" value="<?php echo $trip['id']; ?>">
                         <input type="hidden" name="status" value="in_transit">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES); ?>">
                         <button class="lux-btn" style="border:none; padding:16px 28px; border-radius:18px; cursor:pointer;">
                             <i class="fa-solid fa-play"></i> Start Trip
                         </button>
@@ -195,6 +199,7 @@ body { overflow-x: hidden; }
                     <form action="<?php echo BASE_URL; ?>/api/trucks/update_trip_status.php" method="POST">
                         <input type="hidden" name="trip_id" value="<?php echo $trip['id']; ?>">
                         <input type="hidden" name="status" value="completed">
+                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES); ?>">
                         <button style="background:lightgreen; color:black; border:none; padding:16px 28px; border-radius:18px; cursor:pointer; font-weight:bold;">
                             <i class="fa-solid fa-flag-checkered"></i> Complete Trip
                         </button>
@@ -209,6 +214,7 @@ body { overflow-x: hidden; }
 
                         <form action="<?php echo BASE_URL; ?>/api/trucks/delete_trip.php" method="POST">
                             <input type="hidden" name="trip_id" value="<?php echo $trip['id']; ?>">
+                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES); ?>">
                             <button type="submit" style="background:linear-gradient(135deg,#ff3b3b,#ff1744); color:white; border:none; padding:16px 24px; border-radius:18px; cursor:pointer; font-weight:bold;">
                                 <i class="fa-solid fa-trash"></i> Delete Trip
                             </button>
@@ -226,6 +232,7 @@ body { overflow-x: hidden; }
             <script>
                 window.LUX_TRIP_CONFIG = {
                     baseUrl: "<?php echo BASE_URL; ?>",
+                    csrfToken: "<?php echo htmlspecialchars($csrfToken, ENT_QUOTES); ?>",
                     tripId: <?php echo (int) $trip['id']; ?>,
                     target: {
                         lat: <?php echo $trip['status'] === 'in_transit'

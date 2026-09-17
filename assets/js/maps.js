@@ -183,7 +183,9 @@ function updateDriverPosition(latitude, longitude, accuracy)
 
 function sendLocationToServer(latitude, longitude)
 {
-    fetch("../../api/maps/update_driver_location.php", {
+    const cfg = window.LUX_TRACKER_CONFIG || {};
+
+    fetch((cfg.baseUrl || "") + "/api/maps/update_driver_location.php", {
 
         method: "POST",
 
@@ -196,6 +198,8 @@ function sendLocationToServer(latitude, longitude)
             "latitude=" + encodeURIComponent(latitude)
             +
             "&longitude=" + encodeURIComponent(longitude)
+            +
+            "&csrf_token=" + encodeURIComponent(cfg.csrfToken || "")
 
     })
 

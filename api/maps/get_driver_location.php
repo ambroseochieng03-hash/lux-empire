@@ -7,6 +7,7 @@ require_once '../../includes/auth_check.php';
 header('Content-Type: application/json');
 
 require_once '../../config/db.php';
+require_once '../../config/RedisConnection.php';
 
 $db = new Database();
 $pdo = $db->connect();
@@ -76,19 +77,37 @@ if (!$authorized) {
 
 try {
 
-    $stmt = $pdo->prepare("
-        SELECT
-            latitude,
-            longitude,
-            updated_at
-        FROM driver_locations
-        WHERE driver_id = ?
-        LIMIT 1
-    ");
+    $location = null;
 
-    $stmt->execute([$driver_id]);
+    try {
+        $cached = RedisConnection::get()->get("driverloc:current:{$driver_id}");
+        if ($cached !== false && is_array($cached)) {
+            $location = $cached;
+        }
+    } catch (Throwable $e) {
+        // Redis unreachable — fall through to the MySQL copy below.
+    }
 
-    $location = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($location === null) {
+
+        // Redis miss (driver hasn't pinged since a Redis restart, or
+        // the 300s TTL expired, or Redis is briefly down) — MySQL's
+        // copy is at most ~10s stale thanks to the throttled write
+        // in update_driver_location.php.
+        $stmt = $pdo->prepare("
+            SELECT
+                latitude,
+                longitude,
+                updated_at
+            FROM driver_locations
+            WHERE driver_id = ?
+            LIMIT 1
+        ");
+
+        $stmt->execute([$driver_id]);
+
+        $location = $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 
     if (!$location) {
         echo json_encode(['success' => false, 'message' => 'Driver location not found.']);

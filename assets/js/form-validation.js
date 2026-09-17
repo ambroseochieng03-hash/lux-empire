@@ -75,6 +75,26 @@ enforced; this is UX only, never trusted as the real gate.
             message: 'Password must be at least 8 characters.'
         },
 
+        mpesa_receipt: {
+            test(value) {
+                const v = value.trim();
+                if (v === '') return false;
+
+                const bareCode = /^[A-Za-z][A-Za-z0-9]{9}$/;
+                if (bareCode.test(v)) {
+                    return /\d/.test(v);
+                }
+
+                const messageMatch = v.match(/\b([A-Za-z][A-Za-z0-9]{9})\s+Confirmed\b/i);
+                if (messageMatch) {
+                    return /\d/.test(messageMatch[1]);
+                }
+
+                return false;
+            },
+            message: 'Enter a valid 10-character M-Pesa code, or paste the full confirmation message exactly as received.'
+        },
+
         vehicle_plate: {
             test(value) {
                 return /^[A-Za-z]{3} \d{3}[A-Za-z]$/.test(value.trim());

@@ -14,8 +14,12 @@ if (!Session::isAuthenticated()) {
     exit(json_encode(['error' => 'Not authenticated.']));
 }
 
+require_once '../../config/csrf.php';
+
 $user = Session::user();
 DoSProtection::check((int) $user['id']);
+
+Csrf::requireValid($_POST['csrf_token'] ?? null);
 
 $conversationId = (int) ($_POST['conversation_id'] ?? 0);
 

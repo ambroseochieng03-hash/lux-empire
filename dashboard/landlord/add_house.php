@@ -12,6 +12,8 @@ require_once '../../includes/sidebar.php';
 
 ?>
 
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/form-validation.css">
+
 <style>
 
 /* =========================================
@@ -685,6 +687,7 @@ require_once '../../includes/sidebar.php';
         csrfToken: "<?php echo htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8'); ?>"
     };
 </script>
+
 <script src="<?php echo BASE_URL; ?>/assets/js/payment-modal.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/limit-modal.js"></script>
 

@@ -65,7 +65,7 @@ Usage:
             ${config.description ? `<p class="lux-payment-description">${config.description}</p>` : ''}
             ${amountRow}
             <label class="lux-payment-label">M-Pesa Phone Number
-                <input type="tel" id="luxPaymentPhone" class="lux-payment-input" placeholder="07XX XXX XXX" value="${config.defaultPhone || ''}">
+                <input type="tel" id="luxPaymentPhone" class="lux-payment-input" data-validate="phone_required" placeholder="07XX XXX XXX" value="${config.defaultPhone || ''}">
             </label>
             <div class="lux-payment-error" id="luxPaymentError" hidden></div>
             <button type="button" class="lux-btn lux-payment-pay-btn" id="luxPaymentPayBtn" style="width:100%;">
@@ -116,7 +116,7 @@ Usage:
                 Amount: <strong>${displayAmount}</strong><br><br>
                 After paying, paste the M-Pesa confirmation message (or just the code) below.
             </p>
-            <textarea id="luxPaybillReceiptInput" class="lux-payment-input" rows="3" placeholder="e.g. UIEQ46JHI7 Confirmed..."></textarea>
+                        <textarea id="luxPaybillReceiptInput" class="lux-payment-input" data-validate="mpesa_receipt" rows="3" placeholder="e.g. UIEQ46JHI7 Confirmed..."></textarea>
             <div class="lux-payment-error" id="luxPaybillError" hidden></div>
             <button type="button" class="lux-btn" id="luxPaybillSubmitBtn" style="width:100%; margin-top:10px;">Submit</button>
             <button type="button" class="lux-btn lux-payment-retry-btn" id="luxPaybillBackBtn" style="width:100%; margin-top:8px;">Back</button>
@@ -125,12 +125,10 @@ Usage:
         body.querySelector('#luxPaybillBackBtn').addEventListener('click', () => renderPhoneStep(config));
 
         body.querySelector('#luxPaybillSubmitBtn').addEventListener('click', async () => {
-            const input = document.getElementById('luxPaybillReceiptInput').value.trim();
-            const errorEl = document.getElementById('luxPaybillError');
+            const inputEl = document.getElementById('luxPaybillReceiptInput');
+            const input = inputEl.value.trim();
 
-            if (!input) {
-                errorEl.textContent = 'Paste the M-Pesa message or code.';
-                errorEl.hidden = false;
+            if (window.LuxFormValidation && !window.LuxFormValidation.validateField(inputEl)) {
                 return;
             }
 
@@ -194,19 +192,17 @@ Usage:
         const body = modalEl.querySelector('.lux-payment-modal-body');
         body.innerHTML = `
             <p class="lux-payment-waiting-text">This is taking longer than expected. If you already paid, paste the M-Pesa confirmation message (or just the code) below.</p>
-            <textarea id="luxManualReceiptInput" class="lux-payment-input" rows="3" placeholder="e.g. UIEQ46JHI7 Confirmed. Ksh5.00 sent to..."></textarea>
+            <textarea id="luxManualReceiptInput" class="lux-payment-input" data-validate="mpesa_receipt" rows="3" placeholder="e.g. UIEQ46JHI7 Confirmed. Ksh5.00 sent to..."></textarea>
             <div class="lux-payment-error" id="luxManualError" hidden></div>
             <button type="button" class="lux-btn" id="luxManualVerifyBtn" style="width:100%; margin-top:10px;">Verify Payment</button>
             <button type="button" class="lux-payment-retry-btn" id="luxManualRetryBtn" style="width:100%; margin-top:8px;">Start a New Payment Instead</button>
         `;
 
         body.querySelector('#luxManualVerifyBtn').addEventListener('click', async () => {
-            const input = document.getElementById('luxManualReceiptInput').value.trim();
-            const errorEl = document.getElementById('luxManualError');
+            const inputEl = document.getElementById('luxManualReceiptInput');
+            const input = inputEl.value.trim();
 
-            if (!input) {
-                errorEl.textContent = 'Paste the M-Pesa message or code.';
-                errorEl.hidden = false;
+            if (window.LuxFormValidation && !window.LuxFormValidation.validateField(inputEl)) {
                 return;
             }
 
@@ -247,12 +243,12 @@ Usage:
     }
 
     async function initiate(config) {
-        const phone = modalEl.querySelector('#luxPaymentPhone').value.trim();
+        const phoneInput = modalEl.querySelector('#luxPaymentPhone');
+        const phone = phoneInput.value.trim();
         const amountInput = modalEl.querySelector('#luxPaymentAmount');
         const amount = amountInput ? parseFloat(amountInput.value) : undefined;
 
-        if (!phone) {
-            showError('Enter your M-Pesa phone number.');
+        if (window.LuxFormValidation && !window.LuxFormValidation.validateField(phoneInput)) {
             return;
         }
 

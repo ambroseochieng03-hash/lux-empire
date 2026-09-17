@@ -73,6 +73,8 @@ require_once '../../includes/sidebar.php';
 
 ?>
 
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/form-validation.css">
+
 <style>
 
 .edit-main{

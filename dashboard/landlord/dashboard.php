@@ -39,25 +39,19 @@ if ($user === null) {
 
 // Fetch data
 $houses = $houseModel->getHousesByLandlord($landlordId);
-$bookings = $bookingModel->getBookingsByLandlord($landlordId);
 
-// Stats
+// Stats — single aggregate query at the database, never fetches
+// the full booking list into PHP just to count it (that gets
+// slower every month a landlord stays active on the platform).
+$bookingStats = $bookingModel->getBookingStatsForLandlord($landlordId);
 $totalProperties = count($houses);
-$totalBookings = count($bookings);
+$totalBookings = $bookingStats['total'];
+$pendingBookings = $bookingStats['pending'];
+$approvedBookings = $bookingStats['approved'];
 
-$pendingBookings = 0;
-$approvedBookings = 0;
-
-foreach ($bookings as $booking) {
-
-    if ($booking['status'] === 'pending') {
-        $pendingBookings++;
-    }
-
-    if ($booking['status'] === 'approved') {
-        $approvedBookings++;
-    }
-}
+// The "Recent Booking Activity" widget only ever shows 5 rows —
+// fetch exactly that, not the landlord's entire history.
+$recentBookings = $bookingModel->getRecentBookingsByLandlord($landlordId, 5);
 
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
@@ -350,9 +344,9 @@ require_once '../../includes/sidebar.php';
 
         </div>
 
-        <?php if (count($bookings) > 0): ?>
+        <?php if (count($recentBookings) > 0): ?>
 
-            <?php foreach (array_slice($bookings, 0, 5) as $booking): ?>
+            <?php foreach ($recentBookings as $booking): ?>
 
                 <div class="tenant-flex" style="
                     padding:18px;

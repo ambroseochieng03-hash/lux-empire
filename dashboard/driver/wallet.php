@@ -63,6 +63,8 @@ require_once '../../includes/sidebar.php';
         csrfToken: "<?php echo htmlspecialchars(Csrf::token(), ENT_QUOTES, 'UTF-8'); ?>"
     };
 </script>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/form-validation.css">
+<script src="<?php echo BASE_URL; ?>/assets/js/form-validation.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/payment-modal.js"></script>
 <script>
     const topUpBtn = document.getElementById('topUpWalletBtn');

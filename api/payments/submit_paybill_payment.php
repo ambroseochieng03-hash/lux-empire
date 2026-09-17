@@ -43,6 +43,14 @@ if (!Csrf::validate($body['csrf_token'] ?? null)) {
 $purpose = trim($body['purpose'] ?? '');
 $receiptInput = trim($body['receipt_input'] ?? '');
 
+require_once '../../classes/Validator.php';
+
+if (!Validator::isValidMpesaReceiptInput($receiptInput)) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => "That doesn't look like a valid M-Pesa code or confirmation message. Please paste it exactly as received."]);
+    exit;
+}
+
 if ($receiptInput === '') {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Paste the M-Pesa message or code.']);

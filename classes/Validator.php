@@ -268,4 +268,49 @@ final class Validator
 
         return false;
     }
+
+    /**
+     * M-Pesa receipt code: Safaricom confirmation codes are always
+     * exactly 10 characters, start with a letter, and are a mix of
+     * uppercase letters and digits. Rejects a plain word or any
+     * arbitrary 10-character string that isn't actually a code —
+     * requires at least one digit present.
+     */
+    public static function isValidMpesaReceiptCode(string $code): bool
+    {
+        $code = trim($code);
+
+        if (!preg_match('/^[A-Za-z][A-Za-z0-9]{9}$/', $code)) {
+            return false;
+        }
+
+        return (bool) preg_match('/\d/', $code);
+    }
+
+    /**
+     * Accepts EITHER a bare 10-character receipt code, OR a full
+     * M-Pesa confirmation message containing one ("XXXXXXXXXX
+     * Confirmed..."). Used for the "I already paid" input where the
+     * person might paste either. Rejects everything else — this is
+     * not a general free-text field, it's specifically gated to
+     * something that actually looks like M-Pesa output.
+     */
+    public static function isValidMpesaReceiptInput(string $input): bool
+    {
+        $input = trim($input);
+
+        if ($input === '') {
+            return false;
+        }
+
+        if (self::isValidMpesaReceiptCode($input)) {
+            return true;
+        }
+
+        if (preg_match('/\b([A-Za-z][A-Za-z0-9]{9})\s+Confirmed\b/i', $input, $matches)) {
+            return self::isValidMpesaReceiptCode($matches[1]);
+        }
+
+        return false;
+    }
 }

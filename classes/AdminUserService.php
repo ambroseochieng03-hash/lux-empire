@@ -23,27 +23,51 @@ final class AdminUserService
         $this->conn = $database->connect();
     }
 
-    public function listUsers(?string $role = null): array
+    /**
+     * Returns ['users' => [...], 'total' => int]. $limit is capped
+     * at 100 server-side regardless of what's passed in, so a typo
+     * or a malicious query string can't force a full table scan render.
+     */
+    public function listUsers(?string $role = null, int $limit = 50, int $offset = 0): array
     {
-        $sql = "SELECT
-                    id, full_name, email, phone, role, status,
-                    is_flagged, flag_reason, verified_at, verified_by,
-                    created_at
-                FROM users";
+        $limit = max(1, min(100, $limit));
+        $offset = max(0, $offset);
 
+        $where = '';
         $params = [];
 
         if ($role !== null) {
-            $sql .= " WHERE role = :role";
+            $where = " WHERE role = :role";
             $params[':role'] = $role;
         }
 
-        $sql .= " ORDER BY created_at DESC";
+        $countStmt = $this->conn->prepare("SELECT COUNT(*) FROM users{$where}");
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
 
-        $stmt = $this->conn->prepare($sql);
-        $stmt->execute($params);
+        $stmt = $this->conn->prepare("
+            SELECT
+                id, full_name, email, phone, role, status,
+                is_flagged, flag_reason, verified_at, verified_by,
+                created_at
+            FROM users
+            {$where}
+            ORDER BY created_at DESC
+            LIMIT :limit OFFSET :offset
+        ");
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return [
+            'users' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'total' => $total,
+        ];
     }
 
     public function getUserById(int $id): ?array

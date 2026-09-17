@@ -13,8 +13,22 @@ require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
 
+$page = max(1, (int) ($_GET['page'] ?? 1));
+
+$statusFilter = $_GET['status'] ?? '';
+$allowedStatuses = ['pending', 'accepted', 'in_transit', 'completed', 'cancelled'];
+if (!in_array($statusFilter, $allowedStatuses, true)) {
+    $statusFilter = null;
+}
+
+$perPage = 50;
+$offset = ($page - 1) * $perPage;
+
 $truckService = new AdminTruckService();
-$requests = $truckService->listRequests();
+$listResult = $truckService->listRequests($statusFilter, $perPage, $offset);
+$requests = $listResult['requests'];
+$totalRequests = $listResult['total'];
+$totalPages = max(1, (int) ceil($totalRequests / $perPage));
 
 $csrfToken = Csrf::token();
 ?>
@@ -44,12 +58,12 @@ $csrfToken = Csrf::token();
 
     <div class="lux-admin-toolbar">
         <select class="lux-admin-filter-select" id="luxTruckStatusFilter">
-            <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="accepted">Accepted</option>
-            <option value="in_transit">In Transit</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="" <?php echo $statusFilter === null ? 'selected' : ''; ?>>All Statuses</option>
+            <option value="pending" <?php echo $statusFilter === 'pending' ? 'selected' : ''; ?>>Pending</option>
+            <option value="accepted" <?php echo $statusFilter === 'accepted' ? 'selected' : ''; ?>>Accepted</option>
+            <option value="in_transit" <?php echo $statusFilter === 'in_transit' ? 'selected' : ''; ?>>In Transit</option>
+            <option value="completed" <?php echo $statusFilter === 'completed' ? 'selected' : ''; ?>>Completed</option>
+            <option value="cancelled" <?php echo $statusFilter === 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
         </select>
     </div>
 
@@ -96,6 +110,20 @@ $csrfToken = Csrf::token();
         <?php endforeach; ?>
 
     </div>
+
+    <?php if ($totalPages > 1): ?>
+    <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-top:30px;">
+        <?php if ($page > 1): ?>
+            <a class="lux-btn lux-btn-ghost" href="?page=<?php echo $page - 1; ?><?php echo $statusFilter ? '&status=' . urlencode($statusFilter) : ''; ?>">&laquo; Previous</a>
+        <?php endif; ?>
+
+        <span style="color:var(--gray);">Page <?php echo $page; ?> of <?php echo $totalPages; ?> (<?php echo $totalRequests; ?> requests)</span>
+
+        <?php if ($page < $totalPages): ?>
+            <a class="lux-btn lux-btn-ghost" href="?page=<?php echo $page + 1; ?><?php echo $statusFilter ? '&status=' . urlencode($statusFilter) : ''; ?>">Next &raquo;</a>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
 </main>
 

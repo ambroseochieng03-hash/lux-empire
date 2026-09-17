@@ -4,6 +4,7 @@ require_once '../../includes/auth_check.php';
 requireRoleAccess('driver');
 
 require_once '../../config/db.php';
+require_once '../../config/csrf.php';
 require_once '../../classes/Notification.php';
 require_once '../../classes/Mailer.php';
 
@@ -13,6 +14,8 @@ $pdo = $db->connect();
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     die("Invalid request.");
 }
+
+Csrf::requireValid($_POST['csrf_token'] ?? null);
 
 $driver_id = (int) Session::user()['id'];
 

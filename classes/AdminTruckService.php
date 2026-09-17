@@ -22,9 +22,28 @@ final class AdminTruckService
         $this->conn = $database->connect();
     }
 
-    public function listRequests(): array
+    /**
+     * Returns ['requests' => [...], 'total' => int]. $limit capped
+     * at 100 server-side.
+     */
+    public function listRequests(?string $status = null, int $limit = 50, int $offset = 0): array
     {
-        $stmt = $this->conn->query("
+        $limit = max(1, min(100, $limit));
+        $offset = max(0, $offset);
+
+        $where = '';
+        $params = [];
+
+        if ($status !== null) {
+            $where = " WHERE tr.status = :status";
+            $params[':status'] = $status;
+        }
+
+        $countStmt = $this->conn->prepare("SELECT COUNT(*) FROM truck_requests tr{$where}");
+        $countStmt->execute($params);
+        $total = (int) $countStmt->fetchColumn();
+
+        $stmt = $this->conn->prepare("
             SELECT
                 tr.id, tr.pickup_location, tr.destination, tr.status,
                 tr.price, tr.requested_at,
@@ -33,10 +52,23 @@ final class AdminTruckService
             FROM truck_requests tr
             JOIN users tenant ON tr.tenant_id = tenant.id
             LEFT JOIN users driver ON tr.driver_id = driver.id
+            {$where}
             ORDER BY tr.requested_at DESC
+            LIMIT :limit OFFSET :offset
         ");
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $stmt->execute();
+
+        return [
+            'requests' => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'total' => $total,
+        ];
     }
 
     public function deletePendingRequest(int $requestId, int $adminId, string $reason): bool

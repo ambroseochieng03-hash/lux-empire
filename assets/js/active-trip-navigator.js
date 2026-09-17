@@ -159,6 +159,7 @@
         const formData = new URLSearchParams();
         formData.append('latitude', pos.lat);
         formData.append('longitude', pos.lng);
+        formData.append('csrf_token', cfg.csrfToken);
 
         fetch(`${cfg.baseUrl}/api/maps/update_driver_location.php`, { method: 'POST', body: formData })
             .catch(err => console.error('Location update failed', err));

@@ -177,8 +177,27 @@ class Chat
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function getMessages(int $conversationId, int $afterId = 0): array
+    public function getMessages(int $conversationId, int $afterId = 0, int $initialLimit = 50): array
     {
+        if ($afterId === 0) {
+            // First load of a conversation: only the most recent N,
+            // fetched newest-first then reversed back into chronological
+            // order — never the entire history in one query.
+            $stmt = $this->conn->prepare("
+                SELECT * FROM messages
+                WHERE conversation_id = :id
+                ORDER BY id DESC
+                LIMIT :limit
+            ");
+            $stmt->bindValue(':id', $conversationId, PDO::PARAM_INT);
+            $stmt->bindValue(':limit', $initialLimit, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return array_reverse($stmt->fetchAll(PDO::FETCH_ASSOC));
+        }
+
+        // Polling for new messages since $afterId — naturally bounded,
+        // no LIMIT needed here.
         $stmt = $this->conn->prepare("
             SELECT * FROM messages
             WHERE conversation_id = :id AND id > :after

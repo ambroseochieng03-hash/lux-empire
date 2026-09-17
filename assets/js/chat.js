@@ -168,6 +168,7 @@
         typingDebounce = setTimeout(() => {
             const formData = new URLSearchParams();
             formData.append('conversation_id', activeConversationId);
+            formData.append('csrf_token', csrfToken);
             api('typing_status.php', { method: 'POST', body: formData });
         }, 300);
     });

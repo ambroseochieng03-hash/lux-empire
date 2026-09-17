@@ -76,6 +76,7 @@ $csrfToken = Csrf::token();
 </div>
 
 <script src="<?php echo BASE_URL; ?>/assets/js/admin/admin-core.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/idempotency.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/admin/messages.js"></script>
 
 <?php require_once '../../includes/footer.php'; ?>

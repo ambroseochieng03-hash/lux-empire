@@ -19,20 +19,21 @@ $csrfToken = Csrf::token();
  */
 $search = trim($_GET['search'] ?? '');
 
-if (!empty($search)) {
-    $houses = $houseModel->searchHouses($search);
-} else {
-    $houses = $houseModel->getAllHouses();
-}
+$page = max(1, (int) ($_GET['page'] ?? 1));
+$perPage = 24;
+$offset = ($page - 1) * $perPage;
 
-/**
- * Hide anything admin has hidden. This data is already present on
- * every row (House::getAllHouses()/searchHouses() SELECT h.*), so
- * this filters at the page level rather than touching House.php.
- */
-$houses = array_values(array_filter($houses, static function ($house) {
-    return (int) ($house['is_hidden'] ?? 0) === 0;
-}));
+$filterResult = $houseModel->filterHouses(
+    ['keyword' => $search, 'sort' => 'newest'],
+    $perPage,
+    $offset
+);
+
+$houses = $filterResult['houses'];
+$totalHouses = $filterResult['total'];
+$totalPages = (int) ceil($totalHouses / $perPage);
+// is_hidden is already excluded inside filterHouses()'s runFilterQuery() WHERE clause —
+// no need to filter again here.
 
 require_once '../../classes/VerificationLookup.php';
 
@@ -121,12 +122,16 @@ require_once '../../includes/sidebar.php';
 
             <?php if (count($houses) > 0): ?>
 
+                <?php
+                $mediaByHouse = $houseModel->getMediaForHouseIds(array_map(static fn ($h) => (int) $h['id'], $houses));
+                ?>
+
                 <?php foreach ($houses as $house): ?>
 
                     <?php
                         $houseId = (int) $house['id'];
 
-                        $mediaItems = $houseModel->getHouseMedia($houseId);
+                        $mediaItems = $mediaByHouse[$houseId] ?? [];
 
                         $imageUrls = [];
                         $videoUrl  = null;
@@ -392,6 +397,20 @@ require_once '../../includes/sidebar.php';
             <?php endif; ?>
 
         </div>
+        
+        <?php if ($totalPages > 1): ?>
+        <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin-top:30px;">
+            <?php if ($page > 1): ?>
+                <a class="lux-btn lux-explore-btn-view" href="?page=<?php echo $page - 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">&laquo; Previous</a>
+            <?php endif; ?>
+
+            <span style="color:var(--gray);">Page <?php echo $page; ?> of <?php echo $totalPages; ?> (<?php echo $totalHouses; ?> properties)</span>
+
+            <?php if ($page < $totalPages): ?>
+                <a class="lux-btn lux-explore-btn-view" href="?page=<?php echo $page + 1; ?><?php echo $search !== '' ? '&search=' . urlencode($search) : ''; ?>">Next &raquo;</a>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
 
     </main>
 
@@ -437,6 +456,8 @@ require_once '../../includes/sidebar.php';
         csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"
     };
 </script>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/form-validation.css">
+<script src="<?php echo BASE_URL; ?>/assets/js/form-validation.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/payment-modal.js"></script>
 
 <?php require_once '../../includes/footer.php'; ?>

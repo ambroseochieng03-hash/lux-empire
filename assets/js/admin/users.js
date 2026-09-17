@@ -21,10 +21,14 @@
     if (roleFilter) {
         roleFilter.addEventListener('change', function () {
             var value = roleFilter.value;
-            grid.querySelectorAll('.lux-entity-card').forEach(function (card) {
-                var matches = !value || card.getAttribute('data-role') === value;
-                card.style.display = matches ? '' : 'none';
-            });
+            var url = new URL(window.location.href);
+            if (value) {
+                url.searchParams.set('role', value);
+            } else {
+                url.searchParams.delete('role');
+            }
+            url.searchParams.delete('page'); // changing the filter always starts back at page 1
+            window.location.href = url.toString();
         });
     }
 
@@ -156,6 +160,8 @@
     var dmBody = document.getElementById('luxDmBody');
     var dmTargetUserId = null;
 
+    var dmIdempotencyKey = null;
+
     grid.addEventListener('click', function (event) {
         var btn = event.target.closest('[data-action="message"]');
         if (!btn) { return; }
@@ -163,6 +169,7 @@
         dmTargetUserId = btn.getAttribute('data-user-id');
         dmSubject.value = '';
         dmBody.value = '';
+        dmIdempotencyKey = LuxIdempotency.generate(); // fresh key per opened attempt
         dmModal.classList.add('is-open');
         dmModal.setAttribute('aria-hidden', 'false');
     });
@@ -174,7 +181,9 @@
         });
     });
 
-    document.getElementById('luxDmSend').addEventListener('click', function () {
+    var luxDmSendBtn = document.getElementById('luxDmSend');
+
+    luxDmSendBtn.addEventListener('click', function () {
         var subject = dmSubject.value.trim();
         var body = dmBody.value.trim();
 
@@ -183,14 +192,36 @@
             return;
         }
 
+        if (luxDmSendBtn.disabled) {
+            // Already sending this exact attempt — ignore further
+            // clicks until it resolves.
+            return;
+        }
+
+        luxDmSendBtn.disabled = true;
+        var originalText = luxDmSendBtn.textContent;
+        luxDmSendBtn.textContent = 'Sending...';
+
         LuxAdmin.request(baseUrl + '/api/admin/direct_message_send.php', {
-            body: { user_id: dmTargetUserId, subject: subject, body: body }
+            body: {
+                user_id: dmTargetUserId,
+                subject: subject,
+                body: body,
+                idempotency_key: dmIdempotencyKey
+            }
         }).then(function () {
             LuxAdmin.toast('Message sent.', 'success');
             dmModal.classList.remove('is-open');
             dmModal.setAttribute('aria-hidden', 'true');
         }).catch(function (err) {
             LuxAdmin.toast(err.message, 'error');
+            // Keep the same key on failure — if this attempt
+            // actually succeeded server-side despite the client
+            // seeing an error, a retry with the same key replays
+            // that result instead of sending the message again.
+        }).finally(function () {
+            luxDmSendBtn.disabled = false;
+            luxDmSendBtn.textContent = originalText;
         });
     });
 
