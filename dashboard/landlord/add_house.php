@@ -744,7 +744,33 @@ require_once '../../includes/sidebar.php';
                 body: new FormData(form),
             });
 
-            const data = await response.json();
+            // A 413 (body too large — Nginx's client_max_body_size,
+            // or PHP's post_max_size), a 502/504 from PHP-FPM timing
+            // out on a big video, or any other server-level failure
+            // returns a plain HTML error page, not JSON. Parsing that
+            // as JSON always throws — which is exactly why every one
+            // of these used to collapse into the same generic
+            // "Network error", hiding what actually happened.
+            let data;
+
+            try {
+                data = await response.json();
+            } catch (parseError) {
+
+                window.LuxIdempotency.reset(form);
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+
+                if (response.status === 413) {
+                    showError('That upload is too large for the server to accept. Try fewer or smaller images, or a shorter video.', false);
+                } else if (response.status === 504 || response.status === 502) {
+                    showError('The server took too long processing this upload. Try a smaller video, or try again.', false);
+                } else {
+                    showError('The server returned an unexpected response (HTTP ' + response.status + '). Please try again or contact support if this continues.', false);
+                }
+
+                return;
+            }
 
             if (data.success) {
                 window.location.href = "<?php echo BASE_URL; ?>/dashboard/landlord/manage_houses.php?success=" + encodeURIComponent(data.message);
@@ -758,9 +784,12 @@ require_once '../../includes/sidebar.php';
             showError(data.message || 'Unable to publish property.', LIMIT_CODES.includes(data.error_code));
 
         } catch (e) {
+            // This catch now only covers genuine network failures —
+            // DNS failure, connection refused, no internet — since
+            // both response branches above are already handled.
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
-            showError('Network error. Please try again.', false);
+            showError('Could not reach the server. Check your connection and try again.', false);
         }
     }
 

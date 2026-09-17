@@ -30,7 +30,7 @@ class Database {
             error_log(
                 "[" . date("Y-m-d H:i:s") . "] DB Connection Error: " . $exception->getMessage() . PHP_EOL,
                 3,
-                $_SERVER['DOCUMENT_ROOT'] . '/house_truck_platform/logs/error.log'
+                dirname(__DIR__) . '/logs/error.log'
             );
 
             die("LUX EMPIRE system connection failed.");

@@ -753,9 +753,19 @@ editHouseForm.addEventListener(
 
             } catch (jsonError) {
 
-                throw new Error(
-                    'The server returned an invalid response.'
-                );
+                // A 413 (body too large), a 502/504 from PHP-FPM
+                // timing out on a big video, or any other
+                // server-level failure returns a plain HTML error
+                // page, not JSON — this is what used to collapse
+                // into the generic "invalid response" message
+                // regardless of the real cause.
+                if (response.status === 413) {
+                    throw new Error('That upload is too large for the server to accept. Try fewer or smaller images, or a shorter video.');
+                } else if (response.status === 504 || response.status === 502) {
+                    throw new Error('The server took too long processing this upload. Try a smaller video, or try again.');
+                } else {
+                    throw new Error('The server returned an unexpected response (HTTP ' + response.status + '). Please try again or contact support if this continues.');
+                }
             }
 
             if (!response.ok || !result.success) {

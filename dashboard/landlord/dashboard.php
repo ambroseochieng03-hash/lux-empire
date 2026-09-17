@@ -334,7 +334,7 @@ require_once '../../includes/sidebar.php';
                 Recent Booking Activity
             </h2>
 
-            <a href="booking_requests.php"
+            <a href="<?php echo BASE_URL; ?>/booking-requests"
                style="
                     color:var(--gold);
                     text-decoration:none;

@@ -159,10 +159,10 @@ define(
 
 /*
 |--------------------------------------------------------------------------
-| Upload Directories
+| Upload Directories - For Apache.
 |--------------------------------------------------------------------------
 */
-
+/*
 define(
     'UPLOAD_PATH_HOUSES',
     $_SERVER['DOCUMENT_ROOT']
@@ -179,6 +179,40 @@ define(
     'UPLOAD_PATH_DRIVER_DOCS',
     $_SERVER['DOCUMENT_ROOT']
     . '/house_truck_platform/assets/uploads/driver_docs/'
+);
+
+*/
+
+/*
+ * CHANGED from $_SERVER['DOCUMENT_ROOT'] . '/house_truck_platform/...'
+ * to a fixed path derived from this file's own location instead.
+ *
+ * The old Apache setup apparently had DOCUMENT_ROOT pointing at a
+ * PARENT directory (e.g. /srv/http) with house_truck_platform as a
+ * subfolder, so appending '/house_truck_platform/...' was correct
+ * THEN. Nginx's config sets `root` directly to
+ * /srv/http/house_truck_platform (see nginx.conf) — no parent-folder
+ * layer — so DOCUMENT_ROOT now equals that path already, and the
+ * old code would append '/house_truck_platform/...' a SECOND time,
+ * pointing at a directory that doesn't exist. dirname(__DIR__) is
+ * this file's own parent's parent (config/app.php -> config/ ->
+ * project root) — correct regardless of what any web server reports
+ * as DOCUMENT_ROOT, so this can never break again on a future
+ * server-config change.
+ */
+define(
+    'UPLOAD_PATH_HOUSES',
+    dirname(__DIR__) . '/assets/uploads/house_images/'
+);
+
+define(
+    'UPLOAD_PATH_IDS',
+    dirname(__DIR__) . '/assets/uploads/user_ids/'
+);
+
+define(
+    'UPLOAD_PATH_DRIVER_DOCS',
+    dirname(__DIR__) . '/assets/uploads/driver_docs/'
 );
 
 
