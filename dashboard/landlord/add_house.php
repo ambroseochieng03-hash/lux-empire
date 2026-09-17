@@ -274,6 +274,51 @@ require_once '../../includes/sidebar.php';
     border-color: var(--gold);
 }
 
+.landlord-checkbox-label{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    color:white;
+    font-weight:600;
+    cursor:pointer;
+    user-select:none;
+}
+
+.landlord-checkbox-input{
+    position:absolute;
+    opacity:0;
+    width:0;
+    height:0;
+}
+
+.landlord-checkbox-box{
+    width:22px;
+    height:22px;
+    border-radius:6px;
+    border:2px solid rgba(212,175,55,0.5);
+    background:rgba(255,255,255,0.05);
+    position:relative;
+    transition:0.2s;
+    flex-shrink:0;
+}
+
+.landlord-checkbox-input:checked + .landlord-checkbox-box{
+    background:var(--gold);
+    border-color:var(--gold);
+}
+
+.landlord-checkbox-input:checked + .landlord-checkbox-box::after{
+    content:'✓';
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:black;
+    font-size:0.85rem;
+    font-weight:bold;
+}
+
 </style>
 
 
@@ -392,11 +437,13 @@ require_once '../../includes/sidebar.php';
                         <input
                             type="text"
                             name="location"
+                            id="landlordLocationInput"
                             required
                             maxlength="255"
                             placeholder="Westlands, Nairobi"
                             class="landlord-input"
                             data-validate="location"
+                            autocomplete="off"
                         >
 
                     </div>
@@ -533,49 +580,30 @@ require_once '../../includes/sidebar.php';
 
 
                 <!-- =====================================
-                     LOCATION COORDINATES
+                     LOCATION COORDINATES — never shown, never
+                     typeable. Auto-filled from the Location field
+                     above via Google Places Autocomplete (script at
+                     the bottom of this page). Submitted as part of
+                     the same form POST under the same field names
+                     the backend already expects.
                 ====================================== -->
 
-                <div class="landlord-grid">
-
-                    <!-- LATITUDE -->
-
-                    <div class="landlord-form-group">
-
-                        <label class="landlord-label">
-                            Latitude
-                        </label>
-
-                        <input
-                            type="number"
-                            name="latitude"
-                            step="any"
-                            placeholder="-1.2676"
-                            class="landlord-input"
-                            data-validate="latitude"
-                        >
-
-                    </div>
+                <input type="hidden" name="latitude" id="landlordLatitudeInput">
+                <input type="hidden" name="longitude" id="landlordLongitudeInput">
 
 
-                    <!-- LONGITUDE -->
+                <!-- =====================================
+                     PARKING
+                ====================================== -->
 
-                    <div class="landlord-form-group">
+                <div class="landlord-form-group">
 
-                        <label class="landlord-label">
-                            Longitude
-                        </label>
-
-                        <input
-                            type="number"
-                            name="longitude"
-                            step="any"
-                            placeholder="36.8108"
-                            class="landlord-input"
-                            data-validate="longitude"
-                        >
-
-                    </div>
+                    <label class="landlord-checkbox-label">
+                        <input type="hidden" name="has_parking" value="0">
+                        <input type="checkbox" name="has_parking" value="1" class="landlord-checkbox-input">
+                        <span class="landlord-checkbox-box"></span>
+                        Parking Available
+                    </label>
 
                 </div>
 
@@ -691,6 +719,55 @@ require_once '../../includes/sidebar.php';
 <script src="<?php echo BASE_URL; ?>/assets/js/payment-modal.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/limit-modal.js"></script>
 
+<script
+    src="https://maps.googleapis.com/maps/api/js?key=<?php echo GOOGLE_MAPS_API_KEY; ?>&libraries=places&callback=initLuxLocationAutocomplete"
+    async
+    defer
+></script>
+
+<script>
+function initLuxLocationAutocomplete() {
+    const input = document.getElementById('landlordLocationInput');
+    const latInput = document.getElementById('landlordLatitudeInput');
+    const lngInput = document.getElementById('landlordLongitudeInput');
+
+    if (!input || !window.google || !window.google.maps || !window.google.maps.places) {
+        return;
+    }
+
+    const autocomplete = new google.maps.places.Autocomplete(input, {
+        fields: ['geometry'],
+        componentRestrictions: { country: 'ke' }
+    });
+
+    autocomplete.addListener('place_changed', function () {
+        const place = autocomplete.getPlace();
+
+        if (!place.geometry || !place.geometry.location) {
+            // Person typed free text and hit Enter without picking a
+            // suggestion from the dropdown — we have no coordinates
+            // for that, so leave the hidden fields empty rather than
+            // guessing or submitting stale coordinates.
+            latInput.value = '';
+            lngInput.value = '';
+            return;
+        }
+
+        latInput.value = place.geometry.location.lat();
+        lngInput.value = place.geometry.location.lng();
+    });
+
+    // Editing the text after a suggestion was picked invalidates the
+    // coordinates that were filled in for the PREVIOUS text — clear
+    // them so we never submit lat/lng for a place the person no
+    // longer has selected.
+    input.addEventListener('input', function () {
+        latInput.value = '';
+        lngInput.value = '';
+    });
+}
+</script>
+
 <script>
 (function () {
 
@@ -700,24 +777,35 @@ require_once '../../includes/sidebar.php';
 
     const LIMIT_CODES = ['LISTING_LIMIT_REACHED', 'IMAGE_LIMIT_REACHED', 'VIDEO_REQUIRES_PRO'];
 
-    function showError(message, showUpgrade) {
+    function showError(message, errorCode, isPro) {
 
-        if (showUpgrade) {
-            window.LuxLimitModal.show({
-                message: message,
-                onUpgrade: () => {
-                    window.LuxPayment.open({
-                        purpose: 'landlord_pro',
-                        title: 'Upgrade to Pro',
-                        amountLabel: 'KES 499 / month',
-                        onSuccess: () => {
-                            // Files already selected in the form are still
-                            // there — nothing was lost, no page reload.
-                            submitForm();
-                        }
-                    });
-                }
-            });
+        if (LIMIT_CODES.includes(errorCode)) {
+
+            if (isPro) {
+                // Already Pro — upgrading won't help. Offer to manage
+                // existing listings instead.
+                window.LuxLimitModal.show({
+                    message: message,
+                    mode: 'manage'
+                });
+            } else {
+                window.LuxLimitModal.show({
+                    message: message,
+                    mode: 'upgrade',
+                    onUpgrade: () => {
+                        window.LuxPayment.open({
+                            purpose: 'landlord_pro',
+                            title: 'Upgrade to Pro',
+                            amountLabel: 'KES 499 / month',
+                            onSuccess: () => {
+                                // Files already selected in the form are still
+                                // there — nothing was lost, no page reload.
+                                submitForm();
+                            }
+                        });
+                    }
+                });
+            }
             return;
         }
 
@@ -762,11 +850,11 @@ require_once '../../includes/sidebar.php';
                 submitBtn.textContent = originalText;
 
                 if (response.status === 413) {
-                    showError('That upload is too large for the server to accept. Try fewer or smaller images, or a shorter video.', false);
+                    showError('That upload is too large for the server to accept. Try fewer or smaller images, or a shorter video.', null, false);
                 } else if (response.status === 504 || response.status === 502) {
-                    showError('The server took too long processing this upload. Try a smaller video, or try again.', false);
+                    showError('The server took too long processing this upload. Try a smaller video, or try again.', null, false);
                 } else {
-                    showError('The server returned an unexpected response (HTTP ' + response.status + '). Please try again or contact support if this continues.', false);
+                    showError('The server returned an unexpected response (HTTP ' + response.status + '). Please try again or contact support if this continues.', null, false);
                 }
 
                 return;
@@ -781,7 +869,7 @@ require_once '../../includes/sidebar.php';
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
 
-            showError(data.message || 'Unable to publish property.', LIMIT_CODES.includes(data.error_code));
+            showError(data.message || 'Unable to publish property.', data.error_code, !!data.is_pro);
 
         } catch (e) {
             // This catch now only covers genuine network failures —

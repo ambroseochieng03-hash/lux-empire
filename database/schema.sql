@@ -683,3 +683,6 @@ ALTER TABLE house_images ADD INDEX idx_house_status (house_id, status);
 -- ============================================================
 ALTER TABLE users ADD INDEX idx_role (role);
 ALTER TABLE users ADD INDEX idx_role_status (role, status);
+
+ALTER TABLE houses
+    ADD COLUMN has_parking TINYINT(1) NOT NULL DEFAULT 0 AFTER rating;

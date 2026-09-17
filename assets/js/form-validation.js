@@ -183,6 +183,15 @@ enforced; this is UX only, never trusted as the real gate.
         return errorEl;
     }
 
+    function triggerShake(input) {
+        input.classList.remove('lux-field-shake');
+        // Force a reflow so removing + re-adding the class actually
+        // restarts the CSS animation, instead of silently doing
+        // nothing because the class was technically already there.
+        void input.offsetWidth;
+        input.classList.add('lux-field-shake');
+    }
+
     function validateField(input) {
 
         const type = input.dataset.validate;
@@ -194,6 +203,7 @@ enforced; this is UX only, never trusted as the real gate.
 
         const errorEl = getErrorEl(input);
         const isValid = rule.test(input.value);
+        const wasAlreadyInvalid = input.classList.contains('field-invalid');
 
         if (isValid) {
             input.classList.remove('field-invalid');
@@ -202,6 +212,13 @@ enforced; this is UX only, never trusted as the real gate.
             input.classList.add('field-invalid');
             errorEl.textContent = rule.message;
             errorEl.hidden = false;
+
+            // Shake only on the transition INTO invalid — not on every
+            // keystroke while it's already red, or it'd shake
+            // continuously while someone is mid-correction.
+            if (!wasAlreadyInvalid) {
+                triggerShake(input);
+            }
         }
 
         return isValid;
@@ -222,6 +239,14 @@ enforced; this is UX only, never trusted as the real gate.
             validateField(event.target);
         }
     }, true);
+
+    // Tidy up the shake class once its one-shot animation finishes,
+    // so triggerShake() can reliably restart it again later.
+    document.addEventListener('animationend', (event) => {
+        if (event.target.classList && event.target.classList.contains('lux-field-shake')) {
+            event.target.classList.remove('lux-field-shake');
+        }
+    });
 
     /*
      * Validates every [data-validate] field inside `container`.

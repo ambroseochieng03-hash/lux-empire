@@ -16,6 +16,30 @@ require_once '../../config/security/DoSProtection.php';
 require_once '../../config/security/RedisThrottle.php';
 require_once '../../classes/Validator.php';
 
+/**
+ * Returns a message safe to show to the user. Walks the exception
+ * chain: if the ROOT cause is a raw system/driver failure (a
+ * PDOException, TypeError, or Error — never something House.php or
+ * MediaService.php deliberately throws with a human-readable
+ * message), $fallback is returned instead and nothing about the
+ * real cause reaches the response body. The real exception is
+ * still logged separately, in full, by the caller.
+ */
+function lux_public_error_message(Throwable $e, string $fallback): string
+{
+    $root = $e;
+
+    while ($root->getPrevious() !== null) {
+        $root = $root->getPrevious();
+    }
+
+    if ($root instanceof PDOException || $root instanceof TypeError || $root instanceof Error) {
+        return $fallback;
+    }
+
+    return preg_replace('/^Error (creating|updating) house:\s*/', '', $e->getMessage());
+}
+
 Session::start();
 
 if (!Session::isAuthenticated()) {
@@ -57,6 +81,7 @@ $houseType = trim($_POST['house_type'] ?? '');
 $rating = (int) ($_POST['rating'] ?? 0);
 $latitude = ($_POST['latitude'] ?? '') !== '' ? (float) $_POST['latitude'] : null;
 $longitude = ($_POST['longitude'] ?? '') !== '' ? (float) $_POST['longitude'] : null;
+$hasParking = (($_POST['has_parking'] ?? '0') === '1') ? 1 : 0;
 
 if (($_POST['latitude'] ?? '') !== '' && !Validator::isValidLatitude((string) $_POST['latitude'])) {
     http_response_code(400);
@@ -170,12 +195,20 @@ if (!empty($images) && $video !== null) {
 $houseModelForLimits = new House();
 $planLimits = PlanLimits::forLandlord($landlordId);
 
+// Only the Pro tier ever has video_allowed = true, so this is a
+// reliable, zero-extra-query way to tell which tier we're dealing
+// with without needing to touch PlanLimits.php.
+$isPro = !empty($planLimits['video_allowed']);
+
 if ($houseModelForLimits->countListingsByLandlord($landlordId) >= $planLimits['max_listings']) {
     http_response_code(403);
     echo json_encode([
         'success' => false,
-        'message' => "You've reached the " . $planLimits['max_listings'] . "-listing limit for your plan.",
+        'message' => $isPro
+            ? "You've reached your Pro plan's " . $planLimits['max_listings'] . "-listing limit. Delete an existing listing, or edit one of your current listings instead."
+            : "You've reached the " . $planLimits['max_listings'] . "-listing limit for your plan.",
         'error_code' => 'LISTING_LIMIT_REACHED',
+        'is_pro' => $isPro,
     ]);
     exit;
 }
@@ -184,8 +217,11 @@ if (count($images) > $planLimits['max_images']) {
     http_response_code(403);
     echo json_encode([
         'success' => false,
-        'message' => 'You can upload up to ' . $planLimits['max_images'] . ' images per property on your plan.',
+        'message' => $isPro
+            ? 'You can upload up to ' . $planLimits['max_images'] . ' images per property on your Pro plan. Remove some images from this listing and try again.'
+            : 'You can upload up to ' . $planLimits['max_images'] . ' images per property on your plan.',
         'error_code' => 'IMAGE_LIMIT_REACHED',
+        'is_pro' => $isPro,
     ]);
     exit;
 }
@@ -198,6 +234,7 @@ if ($video !== null) {
             'success' => false,
             'message' => 'Video uploads are a Pro feature.',
             'error_code' => 'VIDEO_REQUIRES_PRO',
+            'is_pro' => false,
         ]);
         exit;
     }
@@ -248,7 +285,7 @@ try {
     $houseId = $house->createHouse([
         'title' => $title, 'description' => $description, 'price' => $price,
         'location' => $location, 'bedrooms' => $bedrooms, 'bathrooms' => $bathrooms,
-        'house_type' => $houseType, 'rating' => $rating,
+        'house_type' => $houseType, 'rating' => $rating, 'has_parking' => $hasParking,
         'latitude' => $latitude, 'longitude' => $longitude,
         'landlord_id' => $landlordId, 'images' => $images, 'video' => $video,
         'max_listings' => $planLimits['max_listings'],   // ← add this
@@ -283,10 +320,18 @@ try {
         RedisThrottle::decrement("video:inflight:{$landlordId}");
     }
 
+    // Full detail (including any raw DB error text) goes to the log
+    // only. The user gets a generic message unless the failure was
+    // one of our own deliberately human-readable exceptions.
     error_log('[' . date('Y-m-d H:i:s') . '] House creation error: ' . $e->getMessage());
 
+    $publicMessage = lux_public_error_message(
+        $e,
+        "We couldn't publish this property right now. Please try again, and contact support if this continues."
+    );
+
     $responseCode = 500;
-    $responseBody = json_encode(['success' => false, 'message' => $e->getMessage()]);
+    $responseBody = json_encode(['success' => false, 'message' => $publicMessage]);
     $idempotency->complete($idempotencyKey, 'create_house', $responseCode, $responseBody);
     http_response_code($responseCode);
     echo $responseBody;

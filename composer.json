@@ -3,6 +3,7 @@
         "phpmailer/phpmailer": "^7.1",
         "vlucas/phpdotenv": "^5.6",
         "idct/php-nats-jetstream-client": "^2.8",
-        "basis-company/nats": "^1.2"
+        "basis-company/nats": "^1.2",
+        "aws/aws-sdk-php": "^3.395"
     }
 }

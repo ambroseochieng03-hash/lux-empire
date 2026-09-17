@@ -501,7 +501,7 @@ $csrfToken = Csrf::token();
 
                                 <?php else: ?>
 
-                                    <a href="<?php echo BASE_URL; ?>/dashboard/landlord/edit_house.php?id=<?php echo $house['id']; ?>"
+                                    <a href="<?php echo BASE_URL; ?>/edit-property?id=<?php echo $house['id']; ?>"
                                     class="action-btn edit-btn">
                                         Edit
                                     </a>

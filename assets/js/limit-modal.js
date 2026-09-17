@@ -3,13 +3,25 @@
 LUX EMPIRE — PLAN LIMIT MODAL
 =========================================
 Shown when a landlord hits a plan limit (listings/images/video) on
-add or edit. Opens the payment modal on "Upgrade to Pro".
+add or edit.
+
+Two modes:
+  - 'upgrade' (default) — Free-tier landlord. Shows an "Upgrade to
+    Pro" button that opens the payment modal.
+  - 'manage' — Pro-tier landlord who has hit their (higher) cap.
+    Upgrading would do nothing for them, so instead this offers to
+    take them to Manage Listings so they can delete or edit an
+    existing card.
 
 Usage:
   window.LuxLimitModal.show({
       message: "You've reached the 3-listing limit for your plan.",
-      onUpgrade: function () { ... },   // called when the person clicks Upgrade
-      onDismiss: function () { ... }    // optional — called on "Not now" / close
+      mode: 'upgrade',                  // or 'manage'
+      onUpgrade: function () { ... },   // 'upgrade' mode only
+      onPrimary: function () { ... },   // 'manage' mode only, optional
+                                         // (defaults to navigating to
+                                         // manage_houses.php)
+      onDismiss: function () { ... }    // optional — called on close
   });
 =========================================
 */
@@ -27,8 +39,8 @@ Usage:
             <div class="lux-limit-modal">
                 <div class="lux-limit-modal-message"></div>
                 <div class="lux-limit-modal-actions">
-                    <button type="button" class="lux-btn lux-limit-modal-upgrade">Upgrade to Pro — KES 499/mo</button>
-                    <button type="button" class="lux-limit-modal-dismiss">Not now</button>
+                    <button type="button" class="lux-btn lux-limit-modal-upgrade"></button>
+                    <button type="button" class="lux-limit-modal-dismiss"></button>
                 </div>
             </div>
         `;
@@ -48,6 +60,8 @@ Usage:
     function show(config) {
         ensureModal();
 
+        const mode = config.mode || 'upgrade';
+
         modalEl.querySelector('.lux-limit-modal-message').textContent =
             config.message || 'You have reached a limit on your current plan.';
 
@@ -61,10 +75,32 @@ Usage:
         const newDismissBtn = dismissBtn.cloneNode(true);
         dismissBtn.parentNode.replaceChild(newDismissBtn, dismissBtn);
 
-        newUpgradeBtn.addEventListener('click', () => {
-            close();
-            if (typeof config.onUpgrade === 'function') config.onUpgrade();
-        });
+        if (mode === 'manage') {
+
+            // Already Pro and hit a cap upgrading can't fix — never
+            // show an "Upgrade" button here, it would just take their
+            // money for nothing.
+            newUpgradeBtn.textContent = 'Manage My Listings';
+            newUpgradeBtn.addEventListener('click', () => {
+                close();
+                if (typeof config.onPrimary === 'function') {
+                    config.onPrimary();
+                } else {
+                    const base = (window.LUX_PAYMENT_CONFIG && window.LUX_PAYMENT_CONFIG.baseUrl) || '';
+                    window.location.href = base + '/dashboard/landlord/manage_houses.php';
+                }
+            });
+            newDismissBtn.textContent = 'Close';
+
+        } else {
+
+            newUpgradeBtn.textContent = 'Upgrade to Pro — KES 499/mo';
+            newUpgradeBtn.addEventListener('click', () => {
+                close();
+                if (typeof config.onUpgrade === 'function') config.onUpgrade();
+            });
+            newDismissBtn.textContent = 'Not now';
+        }
 
         newDismissBtn.addEventListener('click', () => {
             close();

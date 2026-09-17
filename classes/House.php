@@ -76,6 +76,8 @@ class House
                     ? (int) $data['rating']
                     : 0;
 
+                $hasParking = !empty($data['has_parking']) ? 1 : 0;
+
                 $landlordId = (int) ($data['landlord_id'] ?? 0);
 
                 $latitude = $data['latitude'] ?? null;
@@ -194,6 +196,7 @@ class House
                             house_type,
                             landlord_id,
                             rating,
+                            has_parking,
                             status
                         )
                         VALUES
@@ -209,6 +212,7 @@ class House
                             :house_type,
                             :landlord_id,
                             :rating,
+                            :has_parking,
                             'available'
                         )
                     ";
@@ -226,7 +230,8 @@ class House
                         ':bathrooms' => $bathrooms,
                         ':house_type' => $houseType,
                         ':landlord_id' => $landlordId,
-                        ':rating' => $rating
+                        ':rating' => $rating,
+                        ':has_parking' => $hasParking
                     ]);
 
                     $houseId = (int) $this->conn->lastInsertId();
@@ -886,6 +891,8 @@ class House
                 ? (int) $data['rating']
                 : 5;
 
+            $hasParking = !empty($data['has_parking']) ? 1 : 0;
+
             $latitude =
                 ($data['latitude'] ?? '') !== ''
                 ? (float) $data['latitude']
@@ -1123,7 +1130,8 @@ class House
                     bedrooms = :bedrooms,
                     bathrooms = :bathrooms,
                     house_type = :house_type,
-                    rating = :rating
+                    rating = :rating,
+                    has_parking = :has_parking
                 WHERE id = :id
             ";
 
@@ -1140,6 +1148,7 @@ class House
                 ':bathrooms' => $bathrooms,
                 ':house_type' => $houseType,
                 ':rating' => $rating,
+                ':has_parking' => $hasParking,
                 ':id' => $id
             ]);
 

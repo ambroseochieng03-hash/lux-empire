@@ -68,6 +68,37 @@ require_once '../../includes/sidebar.php';
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/house-filters.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/verification-badges.css">
 
+<style>
+.lux-explore-parking-row{
+    margin-top:6px;
+}
+
+.lux-parking-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:4px 12px;
+    border-radius:999px;
+    background:linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.08));
+    border:1px solid rgba(212,175,55,0.4);
+    color:var(--gold);
+    font-size:0.72rem;
+    font-weight:600;
+    letter-spacing:0.2px;
+    white-space:nowrap;
+    animation: luxParkingPulse 2.6s ease-in-out infinite;
+}
+
+.lux-parking-badge i{
+    font-size:0.7rem;
+}
+
+@keyframes luxParkingPulse{
+    0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.25); }
+    50%      { box-shadow: 0 0 0 5px rgba(212,175,55,0); }
+}
+</style>
+
 <div class="lux-explore-page">
 
     <!-- MAIN -->
@@ -304,17 +335,36 @@ require_once '../../includes/sidebar.php';
                             </div>
 
                             <!-- META -->
+                            <?php
+                                $bedroomsCount = (int) ($house['bedrooms'] ?? 0);
+                                $bathroomsCount = (int) ($house['bathrooms'] ?? 0);
+                            ?>
+
+                            <?php if ($bedroomsCount > 0 || $bathroomsCount > 0): ?>
                             <div class="tenant-meta lux-explore-meta-row2">
 
+                                <?php if ($bedroomsCount > 0): ?>
                                 <span>
-                                    <?php echo $house['bedrooms']; ?> Bedrooms
+                                    <?php echo $bedroomsCount; ?> Bedroom<?php echo $bedroomsCount === 1 ? '' : 's'; ?>
                                 </span>
+                                <?php endif; ?>
 
+                                <?php if ($bathroomsCount > 0): ?>
                                 <span>
-                                    <?php echo $house['bathrooms']; ?> Bathrooms
+                                    <?php echo $bathroomsCount; ?> Bathroom<?php echo $bathroomsCount === 1 ? '' : 's'; ?>
                                 </span>
+                                <?php endif; ?>
 
                             </div>
+                            <?php endif; ?>
+
+                            <?php if (!empty($house['has_parking'])): ?>
+                            <div class="lux-explore-parking-row">
+                                <span class="lux-parking-badge">
+                                    <i class="fa-solid fa-square-parking"></i> Parking Available
+                                </span>
+                            </div>
+                            <?php endif; ?>
 
                             <!-- BUTTONS -->
                             <div class="tenant-actions lux-explore-actions">

@@ -152,6 +152,51 @@ require_once '../../includes/sidebar.php';
     color:white;
 }
 
+.landlord-checkbox-label{
+    display:inline-flex;
+    align-items:center;
+    gap:10px;
+    color:white;
+    font-weight:600;
+    cursor:pointer;
+    user-select:none;
+}
+
+.landlord-checkbox-input{
+    position:absolute;
+    opacity:0;
+    width:0;
+    height:0;
+}
+
+.landlord-checkbox-box{
+    width:22px;
+    height:22px;
+    border-radius:6px;
+    border:2px solid rgba(212,175,55,0.5);
+    background:rgba(255,255,255,0.05);
+    position:relative;
+    transition:0.2s;
+    flex-shrink:0;
+}
+
+.landlord-checkbox-input:checked + .landlord-checkbox-box{
+    background:var(--gold);
+    border-color:var(--gold);
+}
+
+.landlord-checkbox-input:checked + .landlord-checkbox-box::after{
+    content:'✓';
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:black;
+    font-size:0.85rem;
+    font-weight:bold;
+}
+
 /* MOBILE */
 
 @media (max-width: 992px){
@@ -287,7 +332,8 @@ require_once '../../includes/sidebar.php';
                         required
                         value="<?= htmlspecialchars($house['title'] ?? '') ?>"
                         class="lux-input"
-                                            >
+                        data-validate="house_title"
+                    >
 
                 </div>
 
@@ -357,10 +403,12 @@ require_once '../../includes/sidebar.php';
                     <input
                         type="text"
                         name="location"
+                        id="editLocationInput"
                         required
                         value="<?= htmlspecialchars($house['location'] ?? '') ?>"
                         class="lux-input"
                         data-validate="location"
+                        autocomplete="off"
                     >
 
                 </div>
@@ -400,6 +448,27 @@ require_once '../../includes/sidebar.php';
                         >
 
                     </div>
+
+                </div>
+
+                <!-- LOCATION COORDINATES — never shown, never
+                     typeable. Pre-filled with this property's
+                     existing coordinates, and only overwritten if
+                     the landlord picks a new suggestion from the
+                     Location field above. -->
+                <input type="hidden" name="latitude" id="editLatitudeInput" value="<?= htmlspecialchars((string) ($house['latitude'] ?? '')) ?>">
+                <input type="hidden" name="longitude" id="editLongitudeInput" value="<?= htmlspecialchars((string) ($house['longitude'] ?? '')) ?>">
+
+                <!-- PARKING -->
+
+                <div class="input-group">
+
+                    <label class="landlord-checkbox-label">
+                        <input type="hidden" name="has_parking" value="0">
+                        <input type="checkbox" name="has_parking" value="1" class="landlord-checkbox-input" <?= !empty($house['has_parking']) ? 'checked' : '' ?>>
+                        <span class="landlord-checkbox-box"></span>
+                        Parking Available
+                    </label>
 
                 </div>
 
@@ -779,17 +848,27 @@ editHouseForm.addEventListener(
                         submitButton.textContent = submitButton.dataset.originalText || 'Save Changes';
                     }
 
-                    window.LuxLimitModal.show({
-                        message: result.message || 'Plan limit reached.',
-                        onUpgrade: () => {
-                            window.LuxPayment.open({
-                                purpose: 'landlord_pro',
-                                title: 'Upgrade to Pro',
-                                amountLabel: 'KES 499 / month',
-                                onSuccess: () => { editHouseForm.requestSubmit(); }
-                            });
-                        }
-                    });
+                    if (result.is_pro) {
+                        // Already Pro — upgrading won't help. Offer to
+                        // manage existing listings instead.
+                        window.LuxLimitModal.show({
+                            message: result.message || 'Plan limit reached.',
+                            mode: 'manage'
+                        });
+                    } else {
+                        window.LuxLimitModal.show({
+                            message: result.message || 'Plan limit reached.',
+                            mode: 'upgrade',
+                            onUpgrade: () => {
+                                window.LuxPayment.open({
+                                    purpose: 'landlord_pro',
+                                    title: 'Upgrade to Pro',
+                                    amountLabel: 'KES 499 / month',
+                                    onSuccess: () => { editHouseForm.requestSubmit(); }
+                                });
+                            }
+                        });
+                    }
 
                     return;
                 }
@@ -885,6 +964,49 @@ editHouseForm.addEventListener(
 <script src="<?php echo BASE_URL; ?>/assets/js/payment-modal.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/limit-modal.js"></script>
 
-<?php require_once '../../includes/footer.php'; ?>
+<script
+    src="https://maps.googleapis.com/maps/api/js?key=<?php echo GOOGLE_MAPS_API_KEY; ?>&libraries=places&callback=initLuxLocationAutocomplete"
+    async
+    defer
+></script>
+
+<script>
+function initLuxLocationAutocomplete() {
+    const input = document.getElementById('editLocationInput');
+    const latInput = document.getElementById('editLatitudeInput');
+    const lngInput = document.getElementById('editLongitudeInput');
+
+    if (!input || !window.google || !window.google.maps || !window.google.maps.places) {
+        return;
+    }
+
+    const autocomplete = new google.maps.places.Autocomplete(input, {
+        fields: ['geometry'],
+        componentRestrictions: { country: 'ke' }
+    });
+
+    autocomplete.addListener('place_changed', function () {
+        const place = autocomplete.getPlace();
+
+        if (!place.geometry || !place.geometry.location) {
+            latInput.value = '';
+            lngInput.value = '';
+            return;
+        }
+
+        latInput.value = place.geometry.location.lat();
+        lngInput.value = place.geometry.location.lng();
+    });
+
+    // Only clear the pre-filled coordinates once the landlord actually
+    // starts editing the text — until they do, the existing
+    // coordinates stay exactly as they were, so an edit that doesn't
+    // touch Location no longer silently wipes them.
+    input.addEventListener('input', function () {
+        latInput.value = '';
+        lngInput.value = '';
+    });
+}
+</script>
 
 <?php require_once '../../includes/footer.php'; ?>

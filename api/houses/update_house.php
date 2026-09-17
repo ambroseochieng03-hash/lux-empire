@@ -13,6 +13,30 @@ require_once '../../classes/House.php';
 require_once '../../config/security/DoSProtection.php';
 require_once '../../classes/Validator.php';
 
+/**
+ * Returns a message safe to show to the user. Walks the exception
+ * chain: if the ROOT cause is a raw system/driver failure (a
+ * PDOException, TypeError, or Error — never something House.php or
+ * MediaService.php deliberately throws with a human-readable
+ * message), $fallback is returned instead and nothing about the
+ * real cause reaches the response body. The real exception is
+ * still logged separately, in full, by the caller.
+ */
+function lux_public_error_message(Throwable $e, string $fallback): string
+{
+    $root = $e;
+
+    while ($root->getPrevious() !== null) {
+        $root = $root->getPrevious();
+    }
+
+    if ($root instanceof PDOException || $root instanceof TypeError || $root instanceof Error) {
+        return $fallback;
+    }
+
+    return preg_replace('/^Error (creating|updating) house:\s*/', '', $e->getMessage());
+}
+
 $videoInflightReserved = false;
 
 try {
@@ -161,6 +185,8 @@ try {
     $rating = (int) (
         $_POST['rating'] ?? 5
     );
+
+    $hasParking = (($_POST['has_parking'] ?? '0') === '1') ? 1 : 0;
 
     $latitudeInput =
         trim($_POST['latitude'] ?? '');
@@ -402,6 +428,11 @@ try {
 
         $planLimits = PlanLimits::forLandlord($currentUser);
 
+        // Only the Pro tier ever has video_allowed = true, so this is a
+        // reliable, zero-extra-query way to tell which tier we're
+        // dealing with without needing to touch PlanLimits.php.
+        $isPro = !empty($planLimits['video_allowed']);
+
         if ($hasImages) {
             $imageCount = 0;
             foreach ($files['images']['error'] as $error) {
@@ -412,8 +443,11 @@ try {
                 http_response_code(403);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'You can upload up to ' . $planLimits['max_images'] . ' images per property on your plan.',
+                    'message' => $isPro
+                        ? 'You can upload up to ' . $planLimits['max_images'] . ' images per property on your Pro plan. Remove some images from this listing and try again.'
+                        : 'You can upload up to ' . $planLimits['max_images'] . ' images per property on your plan.',
                     'error_code' => 'IMAGE_LIMIT_REACHED',
+                    'is_pro' => $isPro,
                 ]);
                 exit;
             }
@@ -425,6 +459,7 @@ try {
                 'success' => false,
                 'message' => 'Video uploads are a Pro feature. Upgrade to add video to your listings.',
                 'error_code' => 'VIDEO_REQUIRES_PRO',
+                'is_pro' => false,
             ]);
             exit;
         }
@@ -462,6 +497,7 @@ try {
             'bathrooms' => $bathrooms,
             'house_type' => $houseType,
             'rating' => $rating,
+            'has_parking' => $hasParking,
             'latitude' => $latitude,
             'longitude' => $longitude,
             'files' => $files,
@@ -513,6 +549,9 @@ try {
         RedisThrottle::decrement("video:inflight:{$currentUser}");
     }
 
+    // Full detail (including any raw DB error text) goes to the log
+    // only. The user gets a generic message unless the failure was
+    // one of our own deliberately human-readable exceptions.
     error_log(
         '[LUX EMPIRE] Update House Error: '
         . $e->getMessage()
@@ -522,7 +561,10 @@ try {
 
     echo json_encode([
         'success' => false,
-        'message' => $e->getMessage()
+        'message' => lux_public_error_message(
+            $e,
+            "We couldn't update this property right now. Please try again, and contact support if this continues."
+        )
     ]);
 
 } catch (Throwable $e) {

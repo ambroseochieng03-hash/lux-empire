@@ -75,7 +75,8 @@ foreach ($mediaItems as $mediaItem) {
  *   - otherwise: clickable "Book Now" (AJAX, handled by bookings.js)
  */
 $isOwnHouse = ((int) $house['landlord_id'] === $tenantId);
-$isHouseBooked = ($house['status'] === 'booked');
+$isHouseBooked = in_array($house['status'], ['booked', 'unavailable'], true);
+$isHouseReserved = ($house['status'] === 'reserved');
 
 $tenantBooking = $bookingModel->getTenantBookingForHouse($tenantId, $houseId);
 $tenantStatus = $tenantBooking['status'] ?? null;
@@ -89,6 +90,33 @@ require_once '../../includes/sidebar.php';
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
+
+<style>
+.lux-parking-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 14px;
+    border-radius:999px;
+    background:linear-gradient(135deg, rgba(212,175,55,0.18), rgba(212,175,55,0.08));
+    border:1px solid rgba(212,175,55,0.4);
+    color:var(--gold);
+    font-size:0.8rem;
+    font-weight:600;
+    letter-spacing:0.2px;
+    white-space:nowrap;
+    animation: luxParkingPulse 2.6s ease-in-out infinite;
+}
+
+.lux-parking-badge i{
+    font-size:0.78rem;
+}
+
+@keyframes luxParkingPulse{
+    0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.25); }
+    50%      { box-shadow: 0 0 0 5px rgba(212,175,55,0); }
+}
+</style>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bookings.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/verification-badges.css">
 
@@ -200,15 +228,23 @@ require_once '../../includes/sidebar.php';
             </p>
 
             <!-- DETAILS GRID -->
+            <?php
+                $bedroomsCount = (int) ($house['bedrooms'] ?? 0);
+                $bathroomsCount = (int) ($house['bathrooms'] ?? 0);
+            ?>
             <div class="house-grid">
 
+                <?php if ($bedroomsCount > 0): ?>
                 <div class="house-box">
-                    <i class="fa-solid fa-bed vh-gold-icon"></i> Bedrooms: <?php echo $house['bedrooms']; ?>
+                    <i class="fa-solid fa-bed vh-gold-icon"></i> Bedrooms: <?php echo $bedroomsCount; ?>
                 </div>
+                <?php endif; ?>
 
+                <?php if ($bathroomsCount > 0): ?>
                 <div class="house-box">
-                    <i class="fa-solid fa-bath vh-gold-icon"></i> Bathrooms: <?php echo $house['bathrooms']; ?>
+                    <i class="fa-solid fa-bath vh-gold-icon"></i> Bathrooms: <?php echo $bathroomsCount; ?>
                 </div>
+                <?php endif; ?>
 
                 <div class="house-box">
                     <i class="fa-solid fa-location-dot vh-gold-icon"></i> Location: <?php echo htmlspecialchars($house['location']); ?>
@@ -223,6 +259,14 @@ require_once '../../includes/sidebar.php';
                         }
                     ?>
                 </div>
+
+                <?php if (!empty($house['has_parking'])): ?>
+                <div class="house-box">
+                    <span class="lux-parking-badge">
+                        <i class="fa-solid fa-square-parking"></i> Parking Available
+                    </span>
+                </div>
+                <?php endif; ?>
 
             </div>
 
@@ -285,6 +329,12 @@ require_once '../../includes/sidebar.php';
 
                     <button type="button" class="lux-btn vh-action-btn lux-explore-btn-pending" disabled>
                         Booked by You
+                    </button>
+
+                <?php elseif ($isHouseReserved): ?>
+
+                    <button type="button" class="lux-btn vh-action-btn lux-explore-btn-pending" disabled>
+                        Booked
                     </button>
 
                 <?php else: ?>
