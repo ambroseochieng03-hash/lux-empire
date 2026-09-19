@@ -2,47 +2,45 @@
 
 /**
  * LUX EMPIRE
- * Cron job — permanently removes listings that have been booked for
- * more than 48 hours, including their physical media files on disk.
+ * Cron job — media cleanup for accepted bookings.
  *
- * Reuses House::deleteHouse() unmodified (that class is frozen) —
- * it already fetches the house's media rows before deleting, then
- * removes the physical files afterward, so nothing here duplicates
- * that logic.
+ * Once a landlord has accepted a booking (houses.status = 'booked') and
+ * LANDLORD_BOOKED_VISIBLE_HOURS have passed, the listing is hidden from
+ * the landlord and the admin, so its photos/video have no purpose. This
+ * script deletes those media files from disk and their house_images rows.
  *
- * IMPORTANT: deleting the house cascades (ON DELETE CASCADE per
- * schema.sql) to its bookings row too. The completed booking's
- * history is therefore also permanently gone from the admin
- * Bookings oversight page once this runs — this script does not
- * archive it first. If a permanent audit record of completed
- * bookings is ever needed, add an INSERT into a booking_archive
- * table here, before the deleteHouse() call below.
+ * The houses row itself is NEVER deleted (and neither are its bookings),
+ * so history and future disputes still have something to point at.
  *
- * Suggested cron entry (runs every 15 minutes):
- *   /15 * * * * php /path/to/lux-empire/scripts/cleanup_expired_listings.php >> /path/to/lux-empire/logs/cleanup.log 2>&1
+ * Usage:
+ *   php scripts/cleanup_expired_listings.php            # do it
+ *   php scripts/cleanup_expired_listings.php --dry-run  # only report
  */
 
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/RedisConnection.php';
 require_once __DIR__ . '/../classes/House.php';
+
+$dryRun = in_array('--dry-run', $argv ?? [], true);
+$hours = (int) LANDLORD_BOOKED_VISIBLE_HOURS;
 
 $database = new Database();
 $pdo = $database->connect();
 
-$stmt = $pdo->prepare("
-    SELECT id, title, landlord_id
-    FROM houses
-    WHERE status = 'booked'
-    AND booked_at IS NOT NULL
-    AND booked_at < (NOW() - INTERVAL 48 HOUR)
-");
-$stmt->execute();
-$expiredHouses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$expiredHouses = $pdo->query("
+    SELECT h.id, h.title, h.landlord_id
+    FROM houses h
+    WHERE h.status = 'booked'
+    AND h.booked_at IS NOT NULL
+    AND h.booked_at < (NOW() - INTERVAL {$hours} HOUR)
+    AND EXISTS (SELECT 1 FROM house_images hi WHERE hi.house_id = h.id)
+")->fetchAll(PDO::FETCH_ASSOC);
 
 if (empty($expiredHouses)) {
-    echo "[" . date('Y-m-d H:i:s') . "] No expired booked listings to clean up." . PHP_EOL;
+    echo "[" . date('Y-m-d H:i:s') . "] No expired booked listings with media to clean up." . PHP_EOL;
     exit(0);
 }
 
@@ -50,16 +48,31 @@ $houseModel = new House();
 
 foreach ($expiredHouses as $expired) {
 
-    try {
-        $deleted = $houseModel->deleteHouse((int) $expired['id']);
+    $houseId = (int) $expired['id'];
+    $media = $houseModel->getHouseMedia($houseId);
 
-        if ($deleted) {
-            echo "[" . date('Y-m-d H:i:s') . "] Deleted expired listing #{$expired['id']} (\"{$expired['title']}\") for landlord #{$expired['landlord_id']}." . PHP_EOL;
-        } else {
-            echo "[" . date('Y-m-d H:i:s') . "] Listing #{$expired['id']} was already gone." . PHP_EOL;
-        }
-    } catch (Throwable $e) {
-        error_log('LUX EMPIRE cleanup_expired_listings failed for house #' . $expired['id'] . ': ' . $e->getMessage());
-        echo "[" . date('Y-m-d H:i:s') . "] FAILED to delete listing #{$expired['id']}: " . $e->getMessage() . PHP_EOL;
+    if ($dryRun) {
+        echo "[" . date('Y-m-d H:i:s') . "] DRY RUN: would delete " . count($media) . " media file(s) for listing #{$houseId} (\"{$expired['title']}\")." . PHP_EOL;
+        continue;
     }
+
+    $deletedCount = 0;
+
+    foreach ($media as $item) {
+        try {
+            if ($houseModel->deleteMedia((int) $item['id'])) {
+                $deletedCount++;
+            }
+        } catch (Throwable $e) {
+            error_log('LUX EMPIRE cleanup_expired_listings: media #' . $item['id'] . ' of house #' . $houseId . ' failed — ' . $e->getMessage());
+        }
+    }
+
+    try {
+        RedisConnection::get()->del("cache:house:{$houseId}");
+    } catch (Throwable $e) {
+        // Cache invalidation failing is not fatal.
+    }
+
+    echo "[" . date('Y-m-d H:i:s') . "] Removed {$deletedCount}/" . count($media) . " media file(s) for listing #{$houseId} (\"{$expired['title']}\"), landlord #{$expired['landlord_id']}. House row kept." . PHP_EOL;
 }

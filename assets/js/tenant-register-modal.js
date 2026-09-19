@@ -144,12 +144,17 @@ googleClientId } to be set by the page before this script runs.
                     return;
                 }
 
+                const bookingCfg = window.LUX_BOOKING_CONFIG || {};
+                const fee = Number(bookingCfg.bookingFee) || 0;
+                const feeLabel = 'KES ' + fee.toLocaleString();
+                const responseHours = Number(bookingCfg.reservationHours) || 48;
+
                 window.LuxPayment.open({
                     purpose: 'booking_fee',
                     houseId: pending.houseId,
                     title: 'Secure This Listing',
-                    description: 'A KES 150 booking fee sends your request to the landlord and locks this property so no one else can book it while they decide. If the landlord declines, your fee is refunded.',
-                    amountLabel: 'KES 150 booking fee',
+                    description: `A ${feeLabel} booking fee sends your request to the landlord and reserves this property so no one else can book it while they decide. If the landlord declines, or doesn't respond within ${responseHours} hours, your fee is refunded automatically.`,
+                    amountLabel: `${feeLabel} booking fee`,
                     onSuccess: () => {
                         window.location.href = cfg.baseUrl + '/tenant/my-bookings';
                     }

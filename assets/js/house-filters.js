@@ -26,24 +26,14 @@ Works on any page that includes:
     const currentTenantId = window.LUX_CURRENT_TENANT_ID || null;
     const isGuest = !!window.LUX_IS_GUEST;
 
-    // Keep our local booking-status cache in sync with bookings.js,
-    // so a filter/search re-render right after a successful "Book
-    // Now" doesn't forget about it and show a clickable button again.
-    document.addEventListener('click', (event) => {
-        const btn = event.target.closest('.book-now-btn');
-        if (!btn) return;
-
-        const houseId = parseInt(btn.dataset.houseId, 10);
-        if (!houseId) return;
-
-        // bookings.js's own handler runs async; we just need to know
-        // a request went out for this house so a re-render treats it
-        // as pending rather than bookable again. If bookings.js's
-        // call fails, the button reverts and this optimistic entry
-        // becomes stale until the next real page load — acceptable,
-        // since a failed booking is a rare path and the worst case
-        // is just a "Request Pending" card the user can refresh.
-        bookingStatus[houseId] = 'pending';
+    // bookings.js fires this ONLY after the booking fee was actually paid,
+    // so a filter/search re-render never shows "Request Pending" for a
+    // payment the tenant cancelled.
+    document.addEventListener('lux:booking-paid', (event) => {
+        const houseId = parseInt(event.detail && event.detail.houseId, 10);
+        if (houseId) {
+            bookingStatus[houseId] = 'pending';
+        }
     });
 
     let state = {
@@ -395,20 +385,20 @@ Works on any page that includes:
     function buildCard(house) {
         const houseId = parseInt(house.id, 10);
         const isOwnHouse = currentTenantId && parseInt(house.landlord_id, 10) === currentTenantId;
-        const isBooked = house.status === 'booked';
+        const isBookable = (typeof house.is_bookable === 'boolean') ? house.is_bookable : house.status === 'available';
+        const label = house.availability_label || 'Unavailable';
         const status = bookingStatus[houseId];
         const variant = window.LUX_CARD_VARIANT || 'guest';
 
         const card = document.createElement('div');
-        card.className = 'lux-card tenant-card lux-explore-card' + (isBooked ? ' lux-explore-card-unavailable' : '');
+        card.className = 'lux-card tenant-card lux-explore-card' + (isBookable ? '' : ' lux-explore-card-unavailable');
         card.dataset.houseId = houseId;
-        if (variant === 'tenant') {
-            card.dataset.houseStatus = house.status;
-        }
+        card.dataset.houseStatus = house.status || 'available';
+        card.dataset.houseLabel = isBookable ? '' : label;
 
-        const unavailableBadge = isBooked
-            ? '<div class="lux-explore-unavailable-badge">No Longer Available</div>'
-            : '';
+        const unavailableBadge = isBookable
+            ? ''
+            : '<div class="lux-explore-unavailable-badge">' + escapeHtml(label) + '</div>';
 
         const mediaHtml = buildMediaHtml(house);
 
@@ -416,12 +406,12 @@ Works on any page that includes:
 
         if (isOwnHouse) {
             actionHtml = '';
-        } else if (isBooked) {
-            actionHtml = '<button type="button" class="lux-explore-btn-book lux-explore-btn-unavailable" disabled>Unavailable</button>';
         } else if (status === 'pending') {
             actionHtml = '<button type="button" class="lux-explore-btn-book lux-explore-btn-pending" disabled>Request Pending</button>';
         } else if (status === 'approved') {
             actionHtml = '<button type="button" class="lux-explore-btn-book lux-explore-btn-pending" disabled>Booked by You</button>';
+        } else if (!isBookable) {
+            actionHtml = '<button type="button" class="lux-explore-btn-book lux-explore-btn-unavailable" disabled>' + escapeHtml(label) + '</button>';
         } else if (variant === 'guest') {
             actionHtml = `<button type="button" class="lux-explore-btn-book guest-book-btn" data-house-id="${houseId}" data-house-title="${escapeAttr(house.title)}">Book Now</button>`;
         } else {
@@ -431,14 +421,19 @@ Works on any page that includes:
         let viewDetailsHtml;
         let ratingHtml = '';
         let chatHtml = '';
+        let parkingHtml = '';
 
         if (variant === 'tenant') {
 
-            viewDetailsHtml = `<a href="${cfg.baseUrl}/dashboard/tenant/view_house.php?id=${houseId}" class="lux-btn lux-explore-btn-view">View Details</a>`;
+            viewDetailsHtml = `<a href="${cfg.baseUrl}/tenant/view-house?id=${houseId}" class="lux-btn lux-explore-btn-view">View Details</a>`;
 
             const rating = parseInt(house.rating, 10) || 0;
             if (rating > 0) {
                 ratingHtml = `<div class="lux-explore-rating">${'★ '.repeat(rating)}${'☆ '.repeat(5 - rating)}</div>`;
+            }
+
+            if (parseInt(house.has_parking, 10) === 1) {
+                parkingHtml = '<div class="lux-explore-parking-row"><span class="lux-parking-badge"><i class="fa-solid fa-square-parking"></i> Parking Available</span></div>';
             }
 
             if (!isOwnHouse) {
@@ -459,7 +454,7 @@ Works on any page that includes:
         }
 
         card.innerHTML = `
-            <div class="tenant-image lux-explore-media">
+            <div class="tenant-image lux-explore-media${isBookable ? '' : ' lux-unavailable-media'}">
                 ${unavailableBadge}
                 ${mediaHtml}
                 <div class="lux-explore-price-badge">KES ${Number(house.price).toLocaleString()}</div>
@@ -472,6 +467,7 @@ Works on any page that includes:
                     <span>${escapeHtml(house.location)}</span>
                     <span>${house.bedrooms} Beds · ${house.bathrooms} Baths</span>
                 </div>
+                ${parkingHtml}
                 <div class="tenant-actions lux-explore-actions">
                     ${viewDetailsHtml}
                     ${actionHtml}

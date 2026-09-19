@@ -95,6 +95,17 @@ enforced; this is UX only, never trusted as the real gate.
             message: 'Enter a valid 10-character M-Pesa code, or paste the full confirmation message exactly as received.'
         },
 
+        mpesa_ref: {
+            test(value) {
+                const v = value.trim().toUpperCase();
+                if (!/^[A-Z][A-Z0-9]{9}$/.test(v)) return false;
+                if (!/\d/.test(v)) return false;
+                if ((v.match(/[A-Z]/g) || []).length < 2) return false;
+                return new Set(v.split('')).size >= 5;
+            },
+            message: 'Enter a valid 10-character M-Pesa reference (letters and numbers, starts with a letter, e.g. QGH7X2K9LM).'
+        },
+
         vehicle_plate: {
             test(value) {
                 return /^[A-Za-z]{3} \d{3}[A-Za-z]$/.test(value.trim());
@@ -136,11 +147,12 @@ enforced; this is UX only, never trusted as the real gate.
         room_count: {
             test(value) {
                 const v = value.trim();
+                if (v === '') return true; // blank is treated as 0
                 if (!/^\d{1,2}$/.test(v)) return false;
                 const n = parseInt(v, 10);
                 return n >= 0 && n <= 20;
             },
-            message: 'Enter a whole number between 0 and 20.'
+            message: 'Enter a whole number between 0 and 20 (leave blank for 0).'
         },
 
         house_title: {

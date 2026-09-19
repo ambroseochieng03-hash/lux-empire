@@ -82,6 +82,9 @@ assets/js/tenant-register-modal.js, which must load before this file).
             }
 
             const houseId = btn.dataset.houseId;
+            const cardEl = btn.closest('.lux-explore-card');
+            const houseStatus = cardEl ? (cardEl.dataset.houseStatus || 'available') : 'available';
+            const houseLabel = cardEl ? (cardEl.dataset.houseLabel || 'Unavailable') : 'Unavailable';
 
             content.innerHTML = '<div class="guest-detail-loading">Loading...</div>';
             modal.classList.add('is-open');
@@ -97,7 +100,7 @@ assets/js/tenant-register-modal.js, which must load before this file).
                     return;
                 }
 
-                renderHouseDetail(content, data.house);
+                renderHouseDetail(content, data.house, houseStatus, houseLabel);
 
             } catch (error) {
                 content.innerHTML = '<p class="guest-detail-loading">Network error. Please try again.</p>';
@@ -105,11 +108,13 @@ assets/js/tenant-register-modal.js, which must load before this file).
         });
     }
 
-    function renderHouseDetail(content, house) {
+    function renderHouseDetail(content, house, houseStatus, houseLabel) {
 
         const images = (house.images || []).map((path) => `${cfg.baseUrl}/assets/uploads/house_images/${path}`);
         const videoUrl = images.find((url) => /\.mp4$/i.test(url));
         const imageUrls = images.filter((url) => !/\.mp4$/i.test(url));
+
+        const isAvailable = !houseStatus || houseStatus === 'available';
 
         let mediaHtml;
 
@@ -121,8 +126,18 @@ assets/js/tenant-register-modal.js, which must load before this file).
             mediaHtml = '';
         }
 
+        const bookButtonHtml = isAvailable
+            ? `<button type="button" class="lux-explore-btn-book guest-book-btn"
+                       data-house-id="${house.id}"
+                       data-house-title="${escapeHtml(house.title)}">
+                   Book Now
+               </button>`
+            : `<button type="button" class="lux-explore-btn-book lux-explore-btn-unavailable" disabled>
+                   ${escapeHtml(houseLabel || 'Unavailable')}
+               </button>`;
+
         content.innerHTML = `
-            <div class="guest-detail-media">${mediaHtml}</div>
+            <div class="guest-detail-media${isAvailable ? '' : ' lux-unavailable-media'}">${mediaHtml}</div>
             <h2 class="guest-detail-title">${escapeHtml(house.title)}</h2>
             <div class="guest-detail-price">KES ${Number(house.price).toLocaleString()}</div>
             <div class="guest-detail-meta">
@@ -131,11 +146,7 @@ assets/js/tenant-register-modal.js, which must load before this file).
                 <span>${house.bathrooms} Bathrooms</span>
             </div>
             <p class="guest-detail-desc">${escapeHtml(house.description)}</p>
-            <button type="button" class="lux-explore-btn-book guest-book-btn"
-                    data-house-id="${house.id}"
-                    data-house-title="${escapeHtml(house.title)}">
-                Book Now
-            </button>
+            ${bookButtonHtml}
         `;
     }
 
@@ -236,17 +247,27 @@ assets/js/tenant-register-modal.js, which must load before this file).
 
             event.preventDefault();
 
+            const tripType = document.getElementById('tripTypeInput').value;
+            const scheduledAt = document.getElementById('scheduledAtInput').value;
+
             const fields = {
+                trip_type: tripType,
+                scheduled_at: tripType === 'scheduled' ? scheduledAt : '',
+                items_description: document.getElementById('itemsDescriptionInput').value,
                 pickup_location: document.getElementById('pickupLocationInput').value,
                 destination: document.getElementById('destinationInput').value,
-                price: document.getElementById('guestTruckPrice').value,
                 pickup_lat: document.getElementById('pickupLatInput').value,
                 pickup_lng: document.getElementById('pickupLngInput').value,
                 destination_lat: document.getElementById('destinationLatInput').value,
                 destination_lng: document.getElementById('destinationLngInput').value
             };
 
-            if (!fields.pickup_location || !fields.destination || !fields.price) {
+            if (!fields.pickup_location || !fields.destination) {
+                return;
+            }
+
+            if (tripType === 'scheduled' && !scheduledAt) {
+                alert('Choose the date and time for your scheduled move.');
                 return;
             }
 

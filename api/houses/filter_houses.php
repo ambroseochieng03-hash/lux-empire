@@ -7,6 +7,7 @@ header('Content-Type: application/json');
 require_once '../../config/db.php';
 require_once '../../config/security/DoSProtection.php';
 require_once '../../classes/House.php';
+require_once '../../classes/ListingState.php';
 
 DoSProtection::check();
 
@@ -17,43 +18,51 @@ try {
     $limit  = isset($_GET['limit'])  ? max(1, min(24, (int) $_GET['limit'])) : 12;
     $offset = isset($_GET['offset']) ? max(0, (int) $_GET['offset']) : 0;
 
-        $filters = [
-            'keyword'         => trim($_GET['keyword'] ?? ''),
-            'min_price'       => $_GET['min_price'] ?? '',
-            'max_price'       => $_GET['max_price'] ?? '',
-            'house_type'      => trim($_GET['house_type'] ?? ''),
-            'location'        => trim($_GET['location'] ?? ''),
-            'bedrooms'        => $_GET['bedrooms'] ?? '',
-            'bathrooms'       => $_GET['bathrooms'] ?? '',
-            'institution_id'  => $_GET['institution_id'] ?? '',      
-            'max_distance_km' => $_GET['max_distance_km'] ?? '',     
-            'sort'            => trim($_GET['sort'] ?? 'newest'),
-            '_mode'           => trim($_GET['mode'] ?? 'exact'),
-        ];
+    $filters = [
+        'keyword'         => trim($_GET['keyword'] ?? ''),
+        'min_price'       => $_GET['min_price'] ?? '',
+        'max_price'       => $_GET['max_price'] ?? '',
+        'house_type'      => trim($_GET['house_type'] ?? ''),
+        'location'        => trim($_GET['location'] ?? ''),
+        'bedrooms'        => $_GET['bedrooms'] ?? '',
+        'bathrooms'       => $_GET['bathrooms'] ?? '',
+        'institution_id'  => $_GET['institution_id'] ?? '',
+        'max_distance_km' => $_GET['max_distance_km'] ?? '',
+        'sort'            => trim($_GET['sort'] ?? 'newest'),
+        '_mode'           => trim($_GET['mode'] ?? 'exact'),
+    ];
 
-        $result = $houseModel->filterHouses($filters, $limit, $offset);
+    $result = $houseModel->filterHouses($filters, $limit, $offset);
 
-        // Attach full media (all images / the video) per house — the
-        // 'image' field from filterHouses() is just the first thumbnail,
-        // not enough to render the same carousel/video the PHP pages do.
-        // Batched into ONE query instead of one query per house.
-        $mediaByHouse = $houseModel->getMediaForHouseIds(
-            array_map(static fn ($h) => (int) $h['id'], $result['houses'])
-        );
+    // Attach full media (all images / the video) per house — the 'image'
+    // field from filterHouses() is just the first thumbnail. Batched into
+    // ONE query instead of one query per house.
+    $mediaByHouse = $houseModel->getMediaForHouseIds(
+        array_map(static fn ($h) => (int) $h['id'], $result['houses'])
+    );
 
-        foreach ($result['houses'] as &$house) {
-            $house['media'] = $mediaByHouse[(int) $house['id']] ?? [];
-        }
-        unset($house);
+    foreach ($result['houses'] as &$house) {
 
-        echo json_encode([
-            'success'     => true,
-            'houses'      => $result['houses'],
-            'total'       => $result['total'],
-            'exact_match' => $result['exact_match'],
-            'relaxed'     => $result['relaxed'],
-            'has_more'    => ($offset + $limit) < $result['total'],
-        ]);
+        $house['media'] = $mediaByHouse[(int) $house['id']] ?? [];
+
+        // This endpoint is PUBLIC (guests call it) — never hand out
+        // landlord contact details from it.
+        unset($house['landlord_email'], $house['landlord_phone']);
+
+        $status = (string) ($house['status'] ?? 'available');
+        $house['is_bookable'] = ListingState::isBookable($status);
+        $house['availability_label'] = ListingState::label($status);
+    }
+    unset($house);
+
+    echo json_encode([
+        'success'     => true,
+        'houses'      => $result['houses'],
+        'total'       => $result['total'],
+        'exact_match' => $result['exact_match'],
+        'relaxed'     => $result['relaxed'],
+        'has_more'    => ($offset + $limit) < $result['total'],
+    ]);
 
 } catch (Throwable $e) {
 

@@ -686,3 +686,49 @@ ALTER TABLE users ADD INDEX idx_role_status (role, status);
 
 ALTER TABLE houses
     ADD COLUMN has_parking TINYINT(1) NOT NULL DEFAULT 0 AFTER rating;
+
+-- LUX EMPIRE
+-- Migration: automatic refunds
+--
+-- One row per refund EVER, not per attempt — retries reuse the SAME
+-- row via status transitions, never a new INSERT. uniq_payment_refund
+-- is the real, DB-enforced guarantee that a payment can never be
+-- refunded twice, regardless of what the application code does or
+-- how many times a NATS message gets redelivered.
+
+CREATE TABLE refunds (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    refund_reference VARCHAR(64) NOT NULL,
+    payment_id INT NOT NULL,
+    user_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    reason ENUM('booking_rejected','house_unavailable','admin_manual') NOT NULL,
+    status ENUM('pending','processing','completed','failed') NOT NULL DEFAULT 'pending',
+    attempts INT UNSIGNED NOT NULL DEFAULT 0,
+    mpesa_conversation_id VARCHAR(100) NULL,
+    mpesa_originator_conversation_id VARCHAR(100) NULL,
+    mpesa_transaction_id VARCHAR(50) NULL,
+    last_error TEXT NULL,
+    metadata JSON NULL,
+    nats_published_at TIMESTAMP NULL,
+    completed_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_refund_reference (refund_reference),
+    UNIQUE KEY uniq_payment_refund (payment_id),
+    INDEX idx_status_created (status, created_at),
+    FOREIGN KEY (payment_id) REFERENCES payments(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;    
+
+-- LUX EMPIRE
+-- Migration: refund admin-review + reconciliation tracking columns
+ALTER TABLE refunds
+    ADD COLUMN needs_admin_review TINYINT(1) NOT NULL DEFAULT 0 AFTER last_error,
+    ADD COLUMN admin_notes TEXT NULL AFTER needs_admin_review,
+    ADD COLUMN resolved_by_admin_id INT NULL AFTER admin_notes,
+    ADD COLUMN last_reconcile_attempt_at TIMESTAMP NULL AFTER resolved_by_admin_id,
+    ADD CONSTRAINT fk_refunds_resolved_by FOREIGN KEY (resolved_by_admin_id) REFERENCES users(id) ON DELETE SET NULL;
+
+ALTER TABLE refunds ADD INDEX idx_needs_review (needs_admin_review);

@@ -109,6 +109,83 @@ without re-binding handlers.
         }
     }
 
+
+    /*
+    =========================================
+    LANDLORD CONFIRMATION MODAL
+    =========================================
+    Resolves true if the landlord confirms, false on Cancel / Esc /
+    clicking outside. Reuses the .lux-booking-modal look.
+    */
+
+    function confirmLandlordAction(action) {
+
+        const copy = {
+            reject: {
+                title: 'Decline this request?',
+                message: 'The tenant will be notified and their booking fee will be refunded automatically. The property goes back on the market.',
+                confirmLabel: 'Yes, decline',
+                icon: 'fa-solid fa-triangle-exclamation'
+            },
+            accept: {
+                title: 'Approve this request?',
+                message: 'The property will be marked as booked and will disappear from tenant listings shortly afterwards. This cannot be undone.',
+                confirmLabel: 'Yes, approve',
+                icon: 'fa-solid fa-circle-question'
+            }
+        }[action];
+
+        if (!copy) {
+            return Promise.resolve(true);
+        }
+
+        return new Promise((resolve) => {
+
+            const modal = document.createElement('div');
+            modal.className = 'lux-booking-modal is-visible lux-confirm-modal';
+            modal.setAttribute('aria-hidden', 'false');
+
+            modal.innerHTML = `
+                <div class="lux-booking-modal-overlay" data-confirm-cancel></div>
+                <div class="lux-booking-modal-box" role="alertdialog" aria-modal="true">
+                    <div class="lux-booking-modal-icon"><i class="${copy.icon}"></i></div>
+                    <div class="lux-booking-modal-title">${copy.title}</div>
+                    <div class="lux-booking-modal-message">${copy.message}</div>
+                    <div class="lux-booking-modal-actions">
+                        <button type="button" class="lux-booking-modal-cancel" data-confirm-cancel>Cancel</button>
+                        <button type="button" class="lux-booking-modal-ok" data-confirm-ok>${copy.confirmLabel}</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            function finish(result) {
+                document.removeEventListener('keydown', onKey);
+                modal.remove();
+                resolve(result);
+            }
+
+            function onKey(event) {
+                if (event.key === 'Escape') {
+                    finish(false);
+                }
+            }
+
+            document.addEventListener('keydown', onKey);
+
+            modal.addEventListener('click', (event) => {
+                if (event.target.closest('[data-confirm-ok]')) {
+                    finish(true);
+                } else if (event.target.closest('[data-confirm-cancel]')) {
+                    finish(false);
+                }
+            });
+
+            modal.querySelector('.lux-booking-modal-cancel').focus();
+        });
+    }
+
     /*
     =========================================
     HELPERS
@@ -188,18 +265,26 @@ without re-binding handlers.
                 return;
             }
 
+            const fee = Number(cfg.bookingFee) || 0;
+            const feeLabel = 'KES ' + fee.toLocaleString();
+            const responseHours = Number(cfg.reservationHours) || 48;
+
             window.LuxPayment.open({
                 purpose: 'booking_fee',
                 houseId: houseId,
                 title: 'Secure This Listing',
-                description: 'A KES 150 booking fee sends your request to the landlord and locks this property so no one else can book it while they decide. If the landlord declines, your fee is refunded.',
-                amountLabel: 'KES 150 booking fee',
+                description: `A ${feeLabel} booking fee sends your request to the landlord and reserves this property so no one else can book it while they decide. If the landlord declines, or doesn't respond within ${responseHours} hours, your fee is refunded automatically.`,
+                amountLabel: `${feeLabel} booking fee`,
                 onSuccess: () => {
                     button.textContent = 'Payment Received — Awaiting Landlord';
                     button.classList.remove('book-now-btn');
                     button.classList.add('lux-explore-btn-pending');
                     button.disabled = true;
                     showBookingModal('Payment received — the landlord has been notified.', 'success');
+
+                    document.dispatchEvent(new CustomEvent('lux:booking-paid', {
+                        detail: { houseId: houseId }
+                    }));
                 }
             });
         });
@@ -225,6 +310,12 @@ without re-binding handlers.
             const action = button.dataset.action;
 
             if (!bookingId || !action) {
+                return;
+            }
+
+            const confirmed = await confirmLandlordAction(action);
+
+            if (!confirmed) {
                 return;
             }
 

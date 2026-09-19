@@ -15,7 +15,7 @@
 
     /*
     
-    nats stream update APP_EMAILS --subjects "email.landlord_verified,email.driver_verified,email.new_booking_request,email.new_truck_request,email.booking_accepted,email.booking_rejected,email.truck_request_accepted,email.truck_daily_reminder,email.truck_hour_reminder,email.truck_tenant_reminder,email.admin_broadcast,email.admin_direct_message,email.emergency_acknowledged,email.payment_confirmed"
+    nats stream update APP_EMAILS --subjects "email.landlord_verified,email.driver_verified,email.new_booking_request,email.new_truck_request,email.booking_accepted,email.booking_rejected,email.truck_request_accepted,email.truck_daily_reminder,email.truck_hour_reminder,email.truck_tenant_reminder,email.admin_broadcast,email.admin_direct_message,email.emergency_acknowledged,email.payment_confirmed,email.landlord_pro_activated,email.wallet_negative,email.refund_completed"
     
     */
 
@@ -59,7 +59,8 @@ $consumers = [
     'email.emergency_acknowledged' => 'app_email_emergency_acknowledged',
     'email.payment_confirmed' => 'app_email_payment_confirmed',
     'email.landlord_pro_activated'  => 'app_email_landlord_pro_activated',
-    'email.wallet_negative' => 'app_email_wallet_negative'
+    'email.wallet_negative' => 'app_email_wallet_negative',
+    'email.refund_completed' => 'app_email_refund_completed'
 ];
 
 $stream = $client->getApi()->getStream('APP_EMAILS');

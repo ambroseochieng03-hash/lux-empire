@@ -98,13 +98,24 @@ $isHttps =
     ||
     str_contains($host, 'ngrok');
 
-define(
-    'BASE_URL',
-    ($isHttps ? 'https' : 'http')
-    . '://'
-    . $host
-    . '/luxempire'
-);
+/*
+ * Web requests derive the URL from the Host header. Workers, timers and
+ * scripts (mail worker, refund worker, cleanup jobs) have NO request, so
+ * without this every link they put in an email or notification would be
+ * http://localhost/luxempire/... Set APP_PUBLIC_URL in .env to the public
+ * URL of the site INCLUDING the /luxempire path.
+ */
+if (!isset($_SERVER['HTTP_HOST']) && !empty($_ENV['APP_PUBLIC_URL'])) {
+    define('BASE_URL', rtrim((string) $_ENV['APP_PUBLIC_URL'], '/'));
+} else {
+    define(
+        'BASE_URL',
+        ($isHttps ? 'https' : 'http')
+        . '://'
+        . $host
+        . '/luxempire'
+    );
+}
 
 
 /*
@@ -538,6 +549,108 @@ define('DARAJA_CALLBACK_URL', $_ENV['DARAJA_CALLBACK_URL'] ?? BASE_URL . '/api/p
 */
 
 define('PRICE_LANDLORD_PRO_MONTHLY', 499);   // KES
-define('BOOKING_FEE_AMOUNT', 150);            // KES
+define('BOOKING_FEE_AMOUNT', 5);            // KES
 define('TRUCK_COMMISSION_PERCENT', 10);       // % of trip price
 define('WALLET_MIN_BALANCE_TO_ACCEPT', 0);    // KES — floor before a driver is blocked
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Auto-Refunds (M-Pesa B2C)
+|--------------------------------------------------------------------------
+|
+| B2C is a SEPARATE Safaricom API product from the STK/C2B config
+| above — its own app registration on the Daraja portal, its own
+| Initiator name + initiator password, often its own shortcode.
+|
+| SANDBOX: log into the Daraja app you added the B2C API product to,
+| then visit https://developer.safaricom.co.ke/test_credentials while
+| logged in — that page shows YOUR sandbox B2C shortcode (varies per
+| app, never assume a number). Initiator name/password for sandbox
+| are Safaricom's fixed published test values (see .env defaults).
+|
+| Daraja wants the initiator password RSA-encrypted with Safaricom's
+| OWN public certificate, then base64-encoded — never the raw
+| password. That encryption happens at request time in
+| Payment::getB2cSecurityCredential() from the password + the cert
+| file at DARAJA_B2C_CERT_PATH (see storage/mpesa/cert.cer).
+|--------------------------------------------------------------------------
+*/
+
+define('DARAJA_B2C_SHORTCODE', $_ENV['DARAJA_B2C_SHORTCODE'] ?? '');
+define('DARAJA_INITIATOR_NAME', $_ENV['DARAJA_INITIATOR_NAME'] ?? '');
+define('DARAJA_INITIATOR_PASSWORD', $_ENV['DARAJA_INITIATOR_PASSWORD'] ?? 'Safaricom999!*!');
+define('DARAJA_B2C_CERT_PATH', $_ENV['DARAJA_B2C_CERT_PATH'] ?? dirname(__DIR__) . '/storage/mpesa/cert.cer');
+
+/*
+| Safaricom's rebuilt developer portal no longer serves the
+| certificate at any of the old static URLs — the Test Credentials
+| page inside your logged-in app dashboard can hand you the
+| already-encrypted Security Credential directly instead. When this
+| is set, it's used as-is and DARAJA_B2C_CERT_PATH is never touched.
+| Leave empty to use the cert-file + runtime-encryption path (needed
+| for production, where you encrypt YOUR OWN initiator password
+| yourself rather than using a value Safaricom generated for you).
+*/
+define('DARAJA_SECURITY_CREDENTIAL_PRECOMPUTED', $_ENV['DARAJA_SECURITY_CREDENTIAL_PRECOMPUTED'] ?? '');
+
+/*
+| Daraja never signs its callbacks — a shared secret in the query
+| string is the only thing stopping a stranger from POSTing a fake
+| "refund completed" event at these otherwise-public URLs. Generate
+| a long random value for .env; this is NOT a Daraja credential.
+*/
+/*
+| These four URLs are hit by Safaricom's servers, not a browser — and
+| unlike STK (initiated from a real web request, where BASE_URL
+| correctly reflects whatever host the tenant is actually on), B2C
+| refunds are sent from workers/refund_worker.php and
+| scripts/reconcile_stuck_refunds.php, both running under systemd
+| with NO HTTP request context at all. There, $_SERVER['HTTP_HOST']
+| is undefined and BASE_URL silently falls back to
+| 'http://localhost/luxempire' — unreachable from Safaricom.
+| DARAJA_PUBLIC_BASE_URL must be set explicitly in .env to your
+| current publicly-reachable URL (your ngrok URL for now, your real
+| domain in production) — it does NOT depend on request context.
+*/
+define('DARAJA_PUBLIC_BASE_URL', $_ENV['DARAJA_PUBLIC_BASE_URL'] ?? BASE_URL);
+
+define('DARAJA_CALLBACK_SECRET', $_ENV['DARAJA_CALLBACK_SECRET'] ?? '');
+
+define('DARAJA_B2C_RESULT_URL', ($_ENV['DARAJA_B2C_RESULT_URL'] ?? DARAJA_PUBLIC_BASE_URL . '/api/payments/mpesa_b2c_result_callback.php') . '?token=' . urlencode(DARAJA_CALLBACK_SECRET));
+define('DARAJA_B2C_TIMEOUT_URL', ($_ENV['DARAJA_B2C_TIMEOUT_URL'] ?? DARAJA_PUBLIC_BASE_URL . '/api/payments/mpesa_b2c_timeout_callback.php') . '?token=' . urlencode(DARAJA_CALLBACK_SECRET));
+define('DARAJA_STATUS_QUERY_RESULT_URL', ($_ENV['DARAJA_STATUS_QUERY_RESULT_URL'] ?? DARAJA_PUBLIC_BASE_URL . '/api/payments/mpesa_status_query_result_callback.php') . '?token=' . urlencode(DARAJA_CALLBACK_SECRET));
+define('DARAJA_STATUS_QUERY_TIMEOUT_URL', ($_ENV['DARAJA_STATUS_QUERY_TIMEOUT_URL'] ?? DARAJA_PUBLIC_BASE_URL . '/api/payments/mpesa_status_query_timeout_callback.php') . '?token=' . urlencode(DARAJA_CALLBACK_SECRET));
+
+/*
+| A 'processing' refund with no result callback after this long is
+| AMBIGUOUS, not failed — never auto-resend blind, that's exactly how
+| you'd pay someone twice. The reconciliation sweep asks Safaricom's
+| own Transaction Status API before ever touching its status, and
+| ALWAYS flags the row for admin visibility regardless of whether
+| that query resolves automatically.
+*/
+define('REFUND_STUCK_PROCESSING_TIMEOUT_SECONDS', 300);
+define('REFUND_MAX_ATTEMPTS', 3);
+
+/*
+|--------------------------------------------------------------------------
+| Booked-listing lifecycle
+|--------------------------------------------------------------------------
+| After a landlord ACCEPTS a booking (houses.status = 'booked'):
+|   - tenants/guests stop seeing the house after TENANT_BOOKED_VISIBLE_HOURS
+|   - landlord + admin stop seeing it after LANDLORD_BOOKED_VISIBLE_HOURS,
+|     and scripts/cleanup_expired_listings.php deletes its media from disk
+| The houses row itself is never deleted.
+*/
+define('TENANT_BOOKED_VISIBLE_HOURS', 6);
+define('LANDLORD_BOOKED_VISIBLE_HOURS', 24);
+
+/*
+| A paid booking request the landlord never answers must not lock the
+| house (and the tenant's money) forever. After this many hours,
+| scripts/expire_stale_reservations.php declines it automatically,
+| releases the house and queues the refund.
+*/
+define('RESERVATION_RESPONSE_HOURS', 48);

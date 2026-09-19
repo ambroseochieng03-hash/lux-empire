@@ -63,12 +63,12 @@ class House
                 $bedrooms = isset($data['bedrooms'])
                     && $data['bedrooms'] !== ''
                     ? (int) $data['bedrooms']
-                    : 1;
+                    : 0;
 
                 $bathrooms = isset($data['bathrooms'])
                     && $data['bathrooms'] !== ''
                     ? (int) $data['bathrooms']
-                    : 1;
+                    : 0;
 
                 $houseType = trim($data['house_type'] ?? '');
 
@@ -637,7 +637,7 @@ class House
         $stmt = $this->conn->prepare("
             SELECT id, house_id, image_path, status, created_at
             FROM house_images
-            WHERE house_id IN ({$placeholders})
+            WHERE house_id IN ({$placeholders}) AND status = 'ready'
             ORDER BY house_id ASC, id ASC
         ");
 
@@ -659,14 +659,33 @@ class House
     }
 
     /**
+     * Availability filter for everything a TENANT or GUEST can see.
+     * A house the landlord has ACCEPTED (status 'booked') stops being
+     * listed TENANT_BOOKED_VISIBLE_HOURS after booked_at. Available,
+     * reserved and unavailable houses are not affected by this rule.
+     */
+    private function tenantVisibilitySql(string $alias = 'h'): string
+    {
+        $hours = defined('TENANT_BOOKED_VISIBLE_HOURS') ? (int) TENANT_BOOKED_VISIBLE_HOURS : 6;
+
+        return "({$alias}.status != 'booked' OR {$alias}.booked_at IS NULL OR {$alias}.booked_at > (NOW() - INTERVAL {$hours} HOUR))";
+    }
+
+    /**
+     * ORDER BY fragment: available houses first, everything that
+     * can't be booked right now (reserved / booked / unavailable) last.
+     */
+    private function availabilityOrderSql(string $alias = 'h'): string
+    {
+        return "({$alias}.status <> 'available') ASC";
+    }
+
+    /**
      * GET ALL HOUSES
      *
-     * Excludes houses whose 12-hour post-acceptance visibility
-     * window has elapsed (status = 'booked' AND booked_at is more
-     * than 12 hours ago). Nothing is deleted — this is purely a
-     * listing-query filter, per the agreed booked_at + render-time
-     * check approach. Houses that are 'available', 'rented', or
-     * 'booked' within the last 12 hours are still returned.
+     * Tenant/guest-facing list. Available houses first; accepted
+     * (booked) houses disappear TENANT_BOOKED_VISIBLE_HOURS after
+     * acceptance. Nothing is deleted here — purely a query filter.
      */
     public function getAllHouses(): array
     {
@@ -691,13 +710,9 @@ class House
             JOIN users u
                 ON h.landlord_id = u.id
 
-            WHERE (
-                h.status != 'booked'
-                OR h.booked_at IS NULL
-                OR h.booked_at > (NOW() - INTERVAL 12 HOUR)
-            )
+            WHERE " . $this->tenantVisibilitySql('h') . "
 
-            ORDER BY h.id DESC
+            ORDER BY " . $this->availabilityOrderSql('h') . ", h.id DESC
         ";
 
         $stmt = $this->conn->prepare($query);
@@ -709,6 +724,8 @@ class House
 
     /**
      * GET HOUSES BY LANDLORD
+     *
+     * Available houses first, unavailable ones at the bottom.
      */
     public function getHousesByLandlord(
         int $landlordId
@@ -730,7 +747,7 @@ class House
 
             WHERE h.landlord_id = :landlord_id
 
-            ORDER BY h.id DESC
+            ORDER BY " . $this->availabilityOrderSql('h') . ", h.id DESC
         ";
 
         $stmt = $this->conn->prepare($query);
@@ -812,15 +829,23 @@ class House
 
     /**
      * How many houses this landlord currently has — used to enforce
-     * the free-tier listing cap. Houses are hard-deleted (not soft
-     * -deleted), so a plain COUNT(*) is correct: deleted ones are
-     * genuinely gone.
+     * the free-tier listing cap. An ACCEPTED (booked) house that has
+     * passed LANDLORD_BOOKED_VISIBLE_HOURS no longer counts: it is
+     * hidden from the landlord and only kept in the database for
+     * history.
      */
     public function countListingsByLandlord(int $landlordId): int
     {
+        $hours = defined('LANDLORD_BOOKED_VISIBLE_HOURS') ? (int) LANDLORD_BOOKED_VISIBLE_HOURS : 24;
+
         $stmt = $this->conn->prepare("
             SELECT COUNT(*) FROM {$this->table}
             WHERE landlord_id = :landlord_id
+            AND NOT (
+                status = 'booked'
+                AND booked_at IS NOT NULL
+                AND booked_at < (NOW() - INTERVAL {$hours} HOUR)
+            )
         ");
         $stmt->execute([':landlord_id' => $landlordId]);
         return (int) $stmt->fetchColumn();
@@ -876,12 +901,12 @@ class House
             $bedrooms = isset($data['bedrooms'])
                 && $data['bedrooms'] !== ''
                 ? (int) $data['bedrooms']
-                : 1;
+                : 0;
 
             $bathrooms = isset($data['bathrooms'])
                 && $data['bathrooms'] !== ''
                 ? (int) $data['bathrooms']
-                : 1;
+                : 0;
 
             $houseType = trim(
                 $data['house_type'] ?? ''
@@ -934,18 +959,6 @@ class House
             if ($location === '') {
                 throw new InvalidArgumentException(
                     'Property location is required.'
-                );
-            }
-
-            if ($bedrooms < 1) {
-                throw new InvalidArgumentException(
-                    'Bedrooms must be at least 1.'
-                );
-            }
-
-            if ($bathrooms < 1) {
-                throw new InvalidArgumentException(
-                    'Bathrooms must be at least 1.'
                 );
             }
 
@@ -1483,9 +1496,7 @@ class House
     /**
      * SEARCH HOUSES
      *
-     * Same 12-hour lifecycle exclusion as getAllHouses() — search
-     * must keep working (per spec) and must stay consistent with
-     * the main listing.
+     * Same visibility + ordering rules as getAllHouses().
      */
     public function searchHouses(
         string $keyword
@@ -1518,13 +1529,9 @@ class House
                 OR h.location LIKE :location
                 OR h.description LIKE :description
             )
-            AND (
-                h.status != 'booked'
-                OR h.booked_at IS NULL
-                OR h.booked_at > (NOW() - INTERVAL 12 HOUR)
-            )
+            AND " . $this->tenantVisibilitySql('h') . "
 
-            ORDER BY h.id DESC
+            ORDER BY " . $this->availabilityOrderSql('h') . ", h.id DESC
         ";
 
         $stmt = $this->conn->prepare($query);
@@ -1552,9 +1559,7 @@ class House
                 MIN(price) AS min_price,
                 MAX(price) AS max_price
             FROM houses
-            WHERE status != 'booked'
-            OR booked_at IS NULL
-            OR booked_at > (NOW() - INTERVAL 12 HOUR)
+            WHERE " . $this->tenantVisibilitySql('houses') . "
         ");
 
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -1689,7 +1694,7 @@ class House
     private function runFilterQuery(array $filters, int $limit, int $offset): array
     {
         $where = [
-            "(h.status != 'booked' OR h.booked_at IS NULL OR h.booked_at > (NOW() - INTERVAL 12 HOUR))",
+            $this->tenantVisibilitySql('h'),
             "h.is_hidden = 0"
         ];
         $params = [];
@@ -1775,7 +1780,7 @@ class House
         }
 
         $whereSql = implode(' AND ', $where);
-        $sortSql = $this->resolveSort($filters['sort'] ?? 'newest');
+        $sortSql = $this->availabilityOrderSql('h') . ', ' . $this->resolveSort($filters['sort'] ?? 'newest');
 
         $countStmt = $this->conn->prepare("SELECT COUNT(*) FROM houses h WHERE {$whereSql}");
         $countStmt->execute($params);

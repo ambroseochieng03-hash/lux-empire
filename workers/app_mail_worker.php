@@ -42,7 +42,8 @@ $consumerNames = [
     'email.emergency_acknowledged' => 'app_email_emergency_acknowledged',
     'email.payment_confirmed' => 'app_email_payment_confirmed',
     'email.landlord_pro_activated'  => 'app_email_landlord_pro_activated',
-    'email.wallet_negative' => 'app_email_wallet_negative'
+    'email.wallet_negative' => 'app_email_wallet_negative',
+    'email.refund_completed' => 'app_email_refund_completed'
 ];
 
 $queues = [];
@@ -149,7 +150,7 @@ function buildEmail(string $subject, array $job): ?array
                 'body' => EmailTemplate::render(
                     'Booking Update',
                     'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
-                    'Your booking request for "' . htmlspecialchars($job['house_title'] ?? 'the property') . '" was not accepted this time.',
+                    'Your booking request for "' . htmlspecialchars($job['house_title'] ?? 'the property') . '" was not accepted this time. LUX EMPIRE is organizing for a refund of your payment if you had already paid, and you can browse for other homes to book.',
                     'Browse more homes',
                     BASE_URL . '/browse'
                 ),
@@ -269,6 +270,20 @@ function buildEmail(string $subject, array $job): ?array
                     BASE_URL . '/driver/wallet'
                 ),
             ];    
+
+        case 'email.refund_completed':
+            return [
+                'subject' => 'Your refund has been sent',
+                'body' => EmailTemplate::render(
+                    'Refund Completed',
+                    'Hi ' . htmlspecialchars($job['name'] ?? '') . ',<br><br>' .
+                    'Your KES ' . htmlspecialchars($job['amount'] ?? '') . ' refund has been sent to your M-Pesa number.' .
+                    (!empty($job['mpesa_transaction_id']) ? ' Reference: <strong>' . htmlspecialchars($job['mpesa_transaction_id']) . '</strong>.' : '') .
+                    '<br><br>If you don\'t see it within a few minutes, please contact support with this reference.',
+                    'View my bookings',
+                    BASE_URL . '/tenant/my-bookings'
+                ),
+            ];
 
         default:
             return null;

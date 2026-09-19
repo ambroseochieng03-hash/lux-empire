@@ -15,7 +15,7 @@ require_once '../../includes/sidebar.php';
 
 $payment = new Payment();
 $needingReview = $payment->listNeedingReview();
-$refundsPending = $payment->listRefundsPending();
+$refundQueue = $payment->listRefundsForAdmin();
 $recent = $payment->listRecent(50);
 
 $csrfToken = Csrf::token();
@@ -23,6 +23,7 @@ $csrfToken = Csrf::token();
 
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/admin.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/admin-cards.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/form-validation.css">
 
 <script>
     window.LUX_ADMIN = {
@@ -85,33 +86,37 @@ $csrfToken = Csrf::token();
 
     </div>
 
-    <h2 style="color:white; margin:40px 0 15px;">Refunds Pending (<?php echo count($refundsPending); ?>)</h2>
+    <h2 style="color:white; margin:40px 0 15px;">Refunds Needing Attention (<?php echo count($refundQueue); ?>)</h2>
 
     <div class="lux-card-grid" id="luxRefundGrid">
 
-        <?php if (empty($refundsPending)): ?>
-            <p style="color:var(--gray);">No refunds owed right now.</p>
+        <?php if (empty($refundQueue)): ?>
+            <p style="color:var(--gray);">No open refunds.</p>
         <?php endif; ?>
 
-        <?php foreach ($refundsPending as $p): ?>
-            <div class="lux-entity-card" data-payment-card="<?php echo (int) $p['id']; ?>">
+        <?php foreach ($refundQueue as $r): ?>
+            <div class="lux-entity-card" data-refund-card="<?php echo (int) $r['id']; ?>">
                 <div class="lux-entity-card-header">
                     <div>
-                        <div class="lux-entity-name">Refund owed — KES <?php echo number_format((float) $p['amount']); ?></div>
-                        <div class="lux-entity-meta">Payment #<?php echo (int) $p['id']; ?></div>
+                        <div class="lux-entity-name">KES <?php echo number_format((float) $r['amount']); ?> — <?php echo htmlspecialchars($r['reason']); ?></div>
+                        <div class="lux-entity-meta"><?php echo htmlspecialchars($r['refund_reference']); ?></div>
                     </div>
-                    <span class="lux-badge lux-badge-suspended">Refund Owed</span>
+                    <span class="lux-badge <?php echo $r['status'] === 'failed' ? 'lux-badge-suspended' : 'lux-badge-pending'; ?>">
+                        <?php echo ucfirst($r['status']); ?>
+                    </span>
                 </div>
 
                 <div class="lux-entity-meta">
-                    <?php echo htmlspecialchars($p['full_name']); ?> (<?php echo htmlspecialchars($p['email']); ?>)<br>
-                    Phone: <?php echo htmlspecialchars($p['phone']); ?><br>
-                    M-Pesa receipt: <?php echo htmlspecialchars($p['mpesa_receipt'] ?? 'N/A'); ?><br>
-                    <?php echo date('d M Y H:i', strtotime($p['created_at'])); ?>
+                    <?php echo htmlspecialchars($r['full_name']); ?> (<?php echo htmlspecialchars($r['email']); ?>)<br>
+                    Phone: <?php echo htmlspecialchars($r['phone']); ?> · Attempts: <?php echo (int) $r['attempts']; ?><br>
+                    <?php if (!empty($r['last_error'])): ?>
+                        Error: <?php echo htmlspecialchars($r['last_error']); ?><br>
+                    <?php endif; ?>
+                    <?php echo date('d M Y H:i', strtotime($r['created_at'])); ?>
                 </div>
 
                 <div class="lux-entity-actions">
-                    <button class="lux-btn lux-btn-success" data-action="mark_refunded" data-payment-id="<?php echo (int) $p['id']; ?>">Mark Refunded</button>
+                    <button class="lux-btn lux-btn-success" data-action="complete_refund" data-refund-id="<?php echo (int) $r['id']; ?>">Mark Refunded</button>
                 </div>
             </div>
         <?php endforeach; ?>
@@ -153,6 +158,11 @@ $csrfToken = Csrf::token();
     <div class="lux-modal-box">
         <h3 class="lux-confirm-title">Are you sure?</h3>
         <p class="lux-confirm-message"></p>
+        <div class="lux-confirm-ref-wrap" hidden>
+            <input type="text" class="lux-confirm-ref-input" data-validate="mpesa_ref"
+                   placeholder="M-Pesa reference (10 characters)" maxlength="10" autocomplete="off" spellcheck="false"
+                   style="width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:white; padding:10px 12px; border-radius:8px; margin-bottom:10px; text-transform:uppercase;">
+        </div>
         <div class="lux-confirm-reason-wrap" hidden>
             <textarea class="lux-confirm-reason-input" placeholder="Notes (required for reject)"></textarea>
         </div>
@@ -163,6 +173,7 @@ $csrfToken = Csrf::token();
     </div>
 </div>
 
+<script src="<?php echo BASE_URL; ?>/assets/js/form-validation.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/admin/payments.js"></script>
 
 <?php require_once '../../includes/footer.php'; ?>

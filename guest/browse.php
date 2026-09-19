@@ -17,6 +17,7 @@
 
 require_once __DIR__ . '/../includes/init.php';
 require_once __DIR__ . '/../classes/House.php';
+require_once __DIR__ . '/../classes/ListingState.php';
 require_once __DIR__ . '/../config/session.php';
 require_once __DIR__ . '/../config/csrf.php';
 
@@ -54,6 +55,7 @@ require_once __DIR__ . '/../includes/navbar.php';
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/tenant-register-modal.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/house-filters.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/verification-badges.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/listing-state.css">
 
 <div class="guest-browse-page">
 
@@ -119,16 +121,18 @@ require_once __DIR__ . '/../includes/navbar.php';
                                 }
                             }
 
-                            $isHouseBooked = in_array($house['status'], ['booked', 'unavailable'], true);
+                            $isHouseBooked = ($house['status'] !== 'available');
                         ?>
 
                         <div class="lux-card tenant-card lux-explore-card<?php echo $isHouseBooked ? ' lux-explore-card-unavailable' : ''; ?>"
-                             data-house-id="<?php echo $houseId; ?>">
+                             data-house-id="<?php echo $houseId; ?>"
+                             data-house-status="<?php echo htmlspecialchars($house['status']); ?>"
+                             data-house-label="<?php echo htmlspecialchars(ListingState::label($house['status'])); ?>">
 
-                            <div class="tenant-image lux-explore-media">
+                            <div class="tenant-image lux-explore-media<?php echo $isHouseBooked ? ' lux-unavailable-media' : ''; ?>">
 
                                 <?php if ($isHouseBooked): ?>
-                                    <div class="lux-explore-unavailable-badge">No Longer Available</div>
+                                    <div class="lux-explore-unavailable-badge"><?php echo htmlspecialchars(ListingState::label($house['status'])); ?></div>
                                 <?php endif; ?>
 
                                 <?php if ($videoUrl !== null): ?>
@@ -226,7 +230,7 @@ require_once __DIR__ . '/../includes/navbar.php';
                                     <?php if ($isHouseBooked): ?>
 
                                         <button type="button" class="lux-explore-btn-book lux-explore-btn-unavailable" disabled>
-                                            Unavailable
+                                            <?php echo htmlspecialchars(ListingState::label($house['status'])); ?>
                                         </button>
 
                                     <?php else: ?>
@@ -267,40 +271,121 @@ require_once __DIR__ . '/../includes/navbar.php';
 
         <section id="guestTruckSection" class="guest-browse-section" hidden>
 
+            <style>
+                .request-card { padding:35px; border-radius:28px; }
+                .request-input {
+                    width:100%;
+                    padding:16px;
+                    border:none;
+                    border-radius:16px;
+                    background:rgba(255,255,255,0.05);
+                    color:white;
+                    outline:none;
+                    font-size:1rem;
+                }
+                .request-input::placeholder { color:#999; }
+                .trip-type-btn.is-active {
+                    background: linear-gradient(135deg, gold, #8f6b00) !important;
+                    color: black !important;
+                }
+                @media (max-width: 768px) {
+                    .request-card { padding:22px; border-radius:24px; }
+                    .request-input { font-size:16px; }
+                }
+            </style>
+
             <div class="guest-browse-truck-grid">
 
-                <div class="lux-card guest-browse-truck-card">
+                <div class="lux-card request-card">
 
-                    <h2 class="guest-browse-truck-heading">Request Truck</h2>
+                    <h2 style="color:white; margin-bottom:25px; font-size:1.8rem;">
+                        Request Truck
+                    </h2>
 
                     <form id="guestTruckForm">
 
-                        <div class="guest-browse-field">
-                            <label>Pickup Location</label>
-                            <div class="guest-browse-field-row">
-                                <input type="text" id="pickupLocationInput" placeholder="Enter pickup location" required class="request-input">
-                                <button type="button" id="useMyLocationBtn" class="lux-btn" style="white-space:nowrap;padding:0 18px;">
+                        <input type="hidden" name="items_description" id="itemsDescriptionInput" value="">
+
+                        <!-- TRIP TYPE TOGGLE -->
+                        <div style="margin-bottom:26px;">
+                            <label style="display:block; margin-bottom:10px; color:var(--gold); font-weight:600;">
+                                When do you need this move?
+                            </label>
+
+                            <div style="display:flex; gap:12px;">
+                                <button type="button" id="tripTypeInstantBtn" class="lux-btn trip-type-btn is-active" data-trip-type="instant" style="flex:1; padding:14px;">
+                                    <i class="fa-solid fa-bolt"></i> Move Now
+                                </button>
+                                <button type="button" id="tripTypeScheduledBtn" class="lux-btn trip-type-btn" data-trip-type="scheduled" style="flex:1; padding:14px;">
+                                    <i class="fa-solid fa-calendar-days"></i> Schedule for Later
+                                </button>
+                            </div>
+
+                            <input type="hidden" name="trip_type" id="tripTypeInput" value="instant">
+                        </div>
+
+                        <!-- SCHEDULED DATE/TIME -->
+                        <div style="margin-bottom:22px;" id="scheduledAtField" hidden>
+                            <label style="display:block; margin-bottom:10px; color:var(--gold); font-weight:600;">
+                                Move Date &amp; Time
+                            </label>
+
+                            <input type="datetime-local" name="scheduled_at" id="scheduledAtInput" class="request-input">
+
+                            <div style="color:var(--gray); font-size:0.85rem; margin-top:8px;">
+                                Must be at least <?php echo TRUCK_MIN_SCHEDULE_LEAD_MINUTES; ?> minutes from now, so drivers have a fair chance to accept.
+                            </div>
+                        </div>
+
+                        <!-- PICKUP -->
+                        <div style="margin-bottom:22px;">
+                            <label style="display:block; margin-bottom:10px; color:var(--gold); font-weight:600;">
+                                Pickup Location
+                            </label>
+
+                            <div style="display:flex; gap:10px;">
+                                <input type="text" name="pickup_location" id="pickupLocationInput"
+                                       placeholder="Enter pickup location" required class="request-input">
+
+                                <button type="button" id="useMyLocationBtn" class="lux-btn" style="white-space:nowrap; padding:0 18px;">
                                     <i class="fa-solid fa-location-crosshairs"></i>
                                 </button>
                             </div>
                         </div>
 
-                        <div class="guest-browse-field">
-                            <label>Destination</label>
-                            <input type="text" id="destinationInput" placeholder="Enter destination" required class="request-input">
+                        <!-- DESTINATION -->
+                        <div style="margin-bottom:22px;">
+                            <label style="display:block; margin-bottom:10px; color:var(--gold); font-weight:600;">
+                                Destination
+                            </label>
+
+                            <input type="text" name="destination" id="destinationInput"
+                                   placeholder="Enter destination" required class="request-input">
                         </div>
 
-                        <div class="guest-browse-field">
-                            <label>Estimated Price (KES)</label>
-                            <input type="number" id="guestTruckPrice" placeholder="Estimated transport cost" required class="request-input">
+                        <!-- ITEMS -->
+                        <div style="margin-bottom:22px;">
+                            <button type="button" id="openItemsModalBtn" class="lux-btn" style="width:100%; padding:14px; background:rgba(255,255,255,0.06); color:white;">
+                                <i class="fa-solid fa-list-check"></i> List Your Items <span id="itemsCountBadge" style="color:var(--gold);"></span>
+                            </button>
                         </div>
 
-                        <input type="hidden" id="pickupLatInput">
-                        <input type="hidden" id="pickupLngInput">
-                        <input type="hidden" id="destinationLatInput">
-                        <input type="hidden" id="destinationLngInput">
+                        <!-- LIVE PRICE PREVIEW (informational only; the real price is computed server-side) -->
+                        <div style="margin-bottom:30px; padding:18px; border-radius:16px; background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.25);" id="pricePreviewBox">
+                            <div style="color:var(--gray); font-size:0.85rem; margin-bottom:6px;">Estimated Price</div>
+                            <div style="color:var(--gold); font-size:1.4rem; font-weight:bold;" id="pricePreviewAmount">
+                                Enter pickup &amp; destination to see a price
+                            </div>
+                            <div style="color:var(--gray); font-size:0.8rem; margin-top:4px;" id="pricePreviewMeta"></div>
+                        </div>
 
-                        <button type="submit" class="lux-btn guest-browse-truck-submit">
+                        <input type="hidden" name="pickup_lat" id="pickupLatInput">
+                        <input type="hidden" name="pickup_lng" id="pickupLngInput">
+                        <input type="hidden" name="destination_lat" id="destinationLatInput">
+                        <input type="hidden" name="destination_lng" id="destinationLngInput">
+
+                        <button type="submit" class="lux-btn" id="requestTruckSubmitBtn"
+                                style="width:100%; padding:18px; border:none; border-radius:18px; cursor:pointer; font-size:1rem;">
                             <i class="fa-solid fa-truck-fast"></i> Request Luxury Truck
                         </button>
 
@@ -322,6 +407,33 @@ require_once __DIR__ . '/../includes/navbar.php';
             </div>
 
         </section>
+
+        <!-- ITEMS MODAL (same as the tenant dashboard's) -->
+        <div id="itemsModal" style="display:none; position:fixed; inset:0; z-index:2000; align-items:center; justify-content:center; padding:20px;">
+            <div id="itemsModalOverlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px);"></div>
+
+            <div style="position:relative; max-width:480px; width:100%; max-height:80vh; overflow-y:auto; background:rgba(15,15,20,0.97); border:1px solid rgba(212,175,55,0.3); border-radius:22px; padding:28px;">
+
+                <h2 style="color:gold; font-family:'Cinzel', serif; font-size:1.3rem; margin-bottom:8px;">
+                    What are you moving?
+                </h2>
+                <p style="color:var(--gray); font-size:0.9rem; margin-bottom:20px;">
+                    List the items so your driver can prepare — optional, but helps them bring the right vehicle and manpower.
+                </p>
+
+                <div id="itemsRowsContainer" style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;"></div>
+
+                <button type="button" id="addItemRowBtn" class="lux-btn" style="width:100%; background:rgba(255,255,255,0.06); color:white; padding:12px; margin-bottom:20px;">
+                    <i class="fa-solid fa-plus"></i> Add Another Item
+                </button>
+
+                <div style="display:flex; gap:12px;">
+                    <button type="button" id="saveItemsBtn" class="lux-btn" style="flex:1; padding:14px;">Save</button>
+                    <button type="button" id="closeItemsModalBtn" style="flex:1; padding:14px; background:rgba(255,255,255,0.06); color:white; border:1px solid rgba(255,255,255,0.15); border-radius:14px; cursor:pointer;">Cancel</button>
+                </div>
+
+            </div>
+        </div>
 
     </main>
 
@@ -356,6 +468,8 @@ require_once __DIR__ . '/../includes/navbar.php';
 
 <script>
     window.LUX_BOOKING_CONFIG = {
+        bookingFee: <?php echo (int) BOOKING_FEE_AMOUNT; ?>,
+        reservationHours: <?php echo (int) RESERVATION_RESPONSE_HOURS; ?>,
         baseUrl: "<?php echo BASE_URL; ?>",
         csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"
     };
@@ -393,5 +507,9 @@ require_once __DIR__ . '/../includes/navbar.php';
     src="https://maps.googleapis.com/maps/api/js?key=<?php echo GOOGLE_MAPS_API_KEY; ?>&libraries=places&callback=initRequestTruckMap">
 </script>
 <script src="<?php echo BASE_URL; ?>/assets/js/request-truck-location.js"></script>
+<script>
+    window.LUX_TRUCK_FORM_CONFIG = { baseUrl: "<?php echo BASE_URL; ?>" };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/truck-request-form.js"></script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

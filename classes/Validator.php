@@ -191,6 +191,14 @@ final class Validator
     {
         $value = trim($value);
 
+        // A house can genuinely have zero bedrooms (bedsitter/studio)
+        // or zero bathrooms (shared/external bathroom) — a landlord
+        // leaving the field empty is treated the same as typing 0,
+        // not rejected.
+        if ($value === '') {
+            return true;
+        }
+
         if (!preg_match('/^\d{1,2}$/', $value)) {
             return false;
         }
@@ -267,6 +275,33 @@ final class Validator
         }
 
         return false;
+    }
+
+    /**
+     * Strict check for an M-Pesa reference typed by an ADMIN when
+     * marking a refund as completed. Bare code only. Normalised to
+     * uppercase first, then requires: exactly 10 characters (A-Z, 0-9),
+     * starts with a letter, at least one digit, at least two letters,
+     * and at least 5 different characters (rejects IIIIIIIIII,
+     * I111111111, AB12AB12AB).
+     */
+    public static function isValidMpesaReference(string $code): bool
+    {
+        $code = strtoupper(trim($code));
+
+        if (!preg_match('/^[A-Z][A-Z0-9]{9}$/', $code)) {
+            return false;
+        }
+
+        if (!preg_match('/\d/', $code)) {
+            return false;
+        }
+
+        if (preg_match_all('/[A-Z]/', $code) < 2) {
+            return false;
+        }
+
+        return count(array_unique(str_split($code))) >= 5;
     }
 
     /**

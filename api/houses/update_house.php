@@ -171,11 +171,11 @@ try {
     );
 
     $bedrooms = (int) (
-        $_POST['bedrooms'] ?? 1
+        $_POST['bedrooms'] ?? 0
     );
 
     $bathrooms = (int) (
-        $_POST['bathrooms'] ?? 1
+        $_POST['bathrooms'] ?? 0
     );
 
     $houseType = trim(
@@ -273,18 +273,6 @@ try {
     if (!Validator::isValidDescription($description)) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Description is too long.']);
-        exit;
-    }
-
-    if ($bedrooms < 1 || $bathrooms < 1) {
-
-        http_response_code(400);
-
-        echo json_encode([
-            'success' => false,
-            'message' => 'Bedrooms and bathrooms must be at least 1.'
-        ]);
-
         exit;
     }
 

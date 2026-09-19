@@ -25,7 +25,7 @@ $houses = array_values(array_filter($houses, static function ($house) use ($now)
         return true;
     }
     $bookedAt = strtotime($house['booked_at']);
-    return $bookedAt !== false && ($now - $bookedAt) <= 24 * 3600;
+    return $bookedAt !== false && ($now - $bookedAt) <= LANDLORD_BOOKED_VISIBLE_HOURS * 3600;
 }));
 
 require_once '../../includes/header.php';
@@ -314,10 +314,12 @@ $csrfToken = Csrf::token();
                          id="houseCard-<?php echo (int) $house['id']; ?>">
 
                         <!-- MEDIA -->
-                        <div class="house-image<?php echo $isBookedLocked ? ' lux-media-blurred' : ''; ?>">
+                        <div class="house-image<?php echo ($isBookedLocked || $isMarkedUnavailable) ? ' lux-media-blurred' : ''; ?>">
 
                             <?php if ($isBookedLocked): ?>
                                 <div class="lux-booked-overlay">Booked</div>
+                            <?php elseif ($isMarkedUnavailable): ?>
+                                <div class="lux-booked-overlay">Unavailable</div>
                             <?php endif; ?>
 
                             <?php if ($videoUrl !== null): ?>

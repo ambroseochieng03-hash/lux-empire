@@ -144,8 +144,8 @@ if (!Validator::isValidPrice($price)) {
 }
 
 $price = (float) $price;
-$bedrooms = $bedrooms !== '' ? (int) $bedrooms : 1;
-$bathrooms = $bathrooms !== '' ? (int) $bathrooms : 1;
+$bedrooms = $bedrooms !== '' ? (int) $bedrooms : 0;
+$bathrooms = $bathrooms !== '' ? (int) $bathrooms : 0;
 
 if ($rating < 1 || $rating > 5) {
     $rating = 5;

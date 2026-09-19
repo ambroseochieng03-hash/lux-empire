@@ -6,6 +6,7 @@ require_once '../../includes/auth_check.php';
 requireRoleAccess('landlord');
 
 require_once '../../classes/House.php';
+require_once '../../classes/Payment.php';
 require_once '../../classes/Booking.php';
 require_once '../../classes/Notification.php';
 require_once '../../config/app.php';
@@ -164,17 +165,18 @@ if ($action === 'reject') {
 
     if ($result['payment_status'] === 'paid' && $result['payment_id']) {
 
-        $refundFlag = (new Database())->connect()->prepare("
-            UPDATE payments SET metadata = JSON_SET(COALESCE(metadata, '{}'), '$.refund_required', true)
-            WHERE id = :id
-        ");
-        $refundFlag->execute([':id' => $result['payment_id']]);
+        $paymentModel = new Payment();
+        $paymentModel->createAutoRefundForPayment(
+            (int) $result['payment_id'],
+            'booking_rejected',
+            ['booking_id' => $result['booking_id'], 'house_id' => $result['house_id']]
+        );
 
         $notification->create(
             $result['tenant_id'],
             'booking_rejected_refund',
-            'Booking Declined — Refund Pending',
-            'Your booking request for "' . $houseTitle . '" was declined by the landlord. Your KES 150 booking fee will be refunded shortly.',
+            'Booking Declined — Refund Processing',
+            'Your booking request for "' . $houseTitle . '" was declined by the landlord. Your KES ' . number_format((float) BOOKING_FEE_AMOUNT) . ' booking fee is being refunded automatically to your M-Pesa — you\'ll get a confirmation once it completes.',
             BASE_URL . '/tenant/my-bookings'
         );
 

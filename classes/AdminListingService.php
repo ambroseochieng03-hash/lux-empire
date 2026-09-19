@@ -25,6 +25,19 @@ final class AdminListingService
     }
 
     /**
+     * Accepted (booked) listings drop off the admin pages
+     * LANDLORD_BOOKED_VISIBLE_HOURS after acceptance — the same moment
+     * scripts/cleanup_expired_listings.php deletes their media from disk.
+     * The houses row itself stays in the database.
+     */
+    private function visibleSql(string $alias): string
+    {
+        $hours = (int) LANDLORD_BOOKED_VISIBLE_HOURS;
+
+        return "NOT ({$alias}.status = 'booked' AND {$alias}.booked_at IS NOT NULL AND {$alias}.booked_at < (NOW() - INTERVAL {$hours} HOUR))";
+    }
+
+    /**
      * Returns ['listings' => [...], 'total' => int]. $limit capped
      * at 100 server-side.
      */
@@ -33,7 +46,9 @@ final class AdminListingService
         $limit = max(1, min(100, $limit));
         $offset = max(0, $offset);
 
-        $total = (int) $this->conn->query("SELECT COUNT(*) FROM houses")->fetchColumn();
+        $visible = $this->visibleSql('h');
+
+        $total = (int) $this->conn->query("SELECT COUNT(*) FROM houses h WHERE {$visible}")->fetchColumn();
 
         $stmt = $this->conn->prepare("
             SELECT
@@ -43,6 +58,7 @@ final class AdminListingService
                 u.id AS landlord_id, u.full_name AS landlord_name, u.email AS landlord_email
             FROM houses h
             JOIN users u ON h.landlord_id = u.id
+            WHERE {$visible}
             ORDER BY h.created_at DESC
             LIMIT :limit OFFSET :offset
         ");
@@ -56,14 +72,18 @@ final class AdminListingService
             'total' => $total,
         ];
     }
+
     public function getListingsForLandlord(int $landlordId): array
     {
+        $visible = $this->visibleSql('h');
+
         $stmt = $this->conn->prepare("
-            SELECT id, title, location, price, status AS booking_status, house_type,
-                   is_hidden, is_flagged, flag_reason, verified_at, created_at
-            FROM houses
-            WHERE landlord_id = :landlord_id
-            ORDER BY created_at DESC
+            SELECT h.id, h.title, h.location, h.price, h.status AS booking_status, h.house_type,
+                   h.is_hidden, h.is_flagged, h.flag_reason, h.verified_at, h.created_at
+            FROM houses h
+            WHERE h.landlord_id = :landlord_id
+            AND {$visible}
+            ORDER BY h.created_at DESC
         ");
         $stmt->execute([':landlord_id' => $landlordId]);
 

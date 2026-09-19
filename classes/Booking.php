@@ -186,9 +186,13 @@ class Booking {
                 SET status = 'booked', booked_at = NOW()
                 WHERE id = :house_id
                 AND status = 'reserved'
+                AND reserved_by_booking_id = :booking_id
             ");
 
-            $houseUpdate->execute([':house_id' => $houseId]);
+            $houseUpdate->execute([
+                ':house_id' => $houseId,
+                ':booking_id' => $bookingId
+            ]);
 
             if ($houseUpdate->rowCount() === 0) {
                 $this->conn->rollBack();

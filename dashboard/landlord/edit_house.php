@@ -607,7 +607,7 @@ require_once '../../includes/sidebar.php';
                     </button>
 
                     <a
-                        href="manage_houses.php"
+                        <a href="<?php echo BASE_URL; ?>/manage-houses"
                         class="secondary-btn"
                     >
                         ← Back
@@ -805,7 +805,7 @@ editHouseForm.addEventListener(
 
             const response =
                 await fetch(
-                    '../../api/houses/update_house.php',
+                    '<?php echo BASE_URL; ?>/api/houses/update_house.php',
                     {
                         method: 'POST',
                         body: formData,
@@ -877,7 +877,7 @@ editHouseForm.addEventListener(
             }
 
             window.location.href =
-                'manage_houses.php?success='
+                '<?php echo BASE_URL; ?>/manage-houses?success='
                 + encodeURIComponent(
                     result.message
                 );
@@ -925,7 +925,7 @@ editHouseForm.addEventListener(
                 formData.append('house_id', houseId);
                 formData.append('csrf_token', csrfToken);
 
-                var response = await fetch('../../api/houses/delete_house_media.php', {
+                var response = await fetch('<?php echo BASE_URL; ?>/api/houses/delete_house_media.php', {
                     method: 'POST',
                     body: formData,
                     credentials: 'same-origin'

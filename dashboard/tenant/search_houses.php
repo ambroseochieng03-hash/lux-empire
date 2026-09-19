@@ -5,6 +5,7 @@ require_once '../../includes/auth_check.php';
 requireRoleAccess('tenant');
 
 require_once '../../classes/House.php';
+require_once '../../classes/ListingState.php';
 require_once '../../classes/Booking.php';
 require_once '../../config/csrf.php';
 
@@ -67,6 +68,7 @@ require_once '../../includes/sidebar.php';
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bookings.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/house-filters.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/verification-badges.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/listing-state.css">
 
 <style>
 .lux-explore-parking-row{
@@ -179,7 +181,7 @@ require_once '../../includes/sidebar.php';
                         }
 
                         $isOwnHouse = ((int) $house['landlord_id'] === $tenantId);
-                        $isHouseBooked = in_array($house['status'], ['booked', 'unavailable'], true);
+                        $isHouseBooked = ($house['status'] !== 'available');
                         $isHouseReserved = ($house['status'] === 'reserved');   // NEW
                         $tenantStatus = $tenantBookingStatusByHouse[$houseId] ?? null;
                         $tenantHasPending = ($tenantStatus === 'pending');
@@ -191,12 +193,12 @@ require_once '../../includes/sidebar.php';
                          data-house-status="<?php echo htmlspecialchars($house['status']); ?>">
 
                         <!-- MEDIA -->
-                        <div class="tenant-image lux-explore-media">
+                        <div class="tenant-image lux-explore-media<?php echo $isHouseBooked ? ' lux-unavailable-media' : ''; ?>">
 
                             <?php if ($isHouseBooked): ?>
 
                                 <div class="lux-explore-unavailable-badge">
-                                    No Longer Available
+                                    <?php echo htmlspecialchars(ListingState::label($house['status'])); ?>
                                 </div>
 
                             <?php endif; ?>
@@ -378,12 +380,6 @@ require_once '../../includes/sidebar.php';
 
                                     <!-- Landlord viewing their own listing: no booking action -->
 
-                                <?php elseif ($isHouseBooked): ?>
-
-                                    <button type="button" class="lux-explore-btn-book lux-explore-btn-unavailable" disabled>
-                                        Unavailable
-                                    </button>
-
                                 <?php elseif ($tenantHasPending): ?>
 
                                     <button type="button" class="lux-explore-btn-book lux-explore-btn-pending" disabled>
@@ -396,10 +392,10 @@ require_once '../../includes/sidebar.php';
                                         Booked by You
                                     </button>
 
-                                <?php elseif ($isHouseReserved): ?>
+                                <?php elseif ($isHouseBooked): ?>
 
-                                    <button type="button" class="lux-explore-btn-book lux-explore-btn-pending" disabled>
-                                        Booked
+                                    <button type="button" class="lux-explore-btn-book lux-explore-btn-unavailable" disabled>
+                                        <?php echo htmlspecialchars(ListingState::label($house['status'])); ?>
                                     </button>
 
                                 <?php else: ?>
@@ -482,6 +478,8 @@ require_once '../../includes/sidebar.php';
 
 <script>
     window.LUX_BOOKING_CONFIG = {
+        bookingFee: <?php echo (int) BOOKING_FEE_AMOUNT; ?>,
+        reservationHours: <?php echo (int) RESERVATION_RESPONSE_HOURS; ?>,
         baseUrl: "<?php echo BASE_URL; ?>",
         csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"
     };

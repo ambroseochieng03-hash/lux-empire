@@ -21,6 +21,7 @@ require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/RedisConnection.php';
 require_once __DIR__ . '/House.php';
 require_once __DIR__ . '/EmailJobPublisher.php';
+require_once __DIR__ . '/RefundJobPublisher.php';
 
 require_once __DIR__ . '/Notification.php';
 require_once __DIR__ . '/ReceiptExtractor.php';
@@ -63,7 +64,6 @@ final class Payment
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($response === false || $httpCode !== 200) {
             throw new RuntimeException('Failed to obtain Daraja access token (HTTP ' . $httpCode . ').');
@@ -135,6 +135,27 @@ final class Payment
             throw new InvalidArgumentException('Payment amount must be positive.');
         }
 
+        // A booking fee may only be charged while the house is still
+        // 'available'. Reserved (someone already paid), booked and
+        // unavailable houses are refused BEFORE any STK push is sent,
+        // so nobody is charged just to be refunded a minute later.
+        if ($purpose === 'booking_fee') {
+
+            $houseId = (int) ($metadata['house_id'] ?? 0);
+
+            $houseCheck = $this->conn->prepare("SELECT status FROM houses WHERE id = :id LIMIT 1");
+            $houseCheck->execute([':id' => $houseId]);
+            $houseStatus = $houseCheck->fetchColumn();
+
+            if ($houseStatus !== 'available') {
+                $message = $houseStatus === 'reserved'
+                    ? 'Another tenant has just reserved this property. It will reopen if the landlord declines their request.'
+                    : 'This property is no longer available.';
+
+                return ['success' => false, 'message' => $message];
+            }
+        }
+
         try {
             $accessToken = $this->getAccessToken();
         } catch (Throwable $e) {
@@ -176,7 +197,6 @@ final class Payment
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         $data = json_decode((string) $response, true);
 
@@ -387,22 +407,30 @@ final class Payment
 
                 if (!$house || $house['status'] !== 'available') {
 
-                    $this->conn->prepare("
-                        UPDATE payments
-                        SET metadata = JSON_SET(COALESCE(metadata, '{}'), '$.refund_required', true)
-                        WHERE id = :id
-                    ")->execute([':id' => $payment['id']]);
+                    $refund = $this->createRefundRecord(
+                        (int) $payment['id'],
+                        'house_unavailable',
+                        ['house_id' => $houseId]
+                    );
+
+                    if ($refund !== null) {
+                        $actions[] = [
+                            'type' => 'refund_publish',
+                            'refund_id' => $refund['refund_id'],
+                            'refund_reference' => $refund['refund_reference'],
+                        ];
+                    }
 
                     $actions[] = [
                         'type' => 'notification',
                         'user_id' => (int) $payment['user_id'],
                         'notif_type' => 'payment_refund_pending',
                         'title' => 'This property was just taken',
-                        'message' => 'Someone secured this property moments before your payment completed. Your KES ' . number_format((float) $payment['amount']) . ' booking fee will be refunded — our team has been notified and will process it shortly.',
+                        'message' => 'Someone secured this property moments before your payment completed. Your KES ' . number_format((float) $payment['amount']) . ' booking fee is being refunded automatically to your M-Pesa — you\'ll get a confirmation once it completes.',
                         'link' => BASE_URL . '/tenant/my-bookings',
                     ];
 
-                    error_log('LUX EMPIRE: booking_fee payment #' . $payment['id'] . ' needs manual refund — house ' . $houseId . ' no longer available.');
+                    error_log('LUX EMPIRE: booking_fee payment #' . $payment['id'] . ' auto-refund queued — house ' . $houseId . ' no longer available.');
 
                     break;
                 }
@@ -514,12 +542,664 @@ final class Payment
                     );
                 } elseif ($action['type'] === 'email') {
                     EmailJobPublisher::publish($action['subject_key'], $action['payload']);
+                } elseif ($action['type'] === 'refund_publish') {
+                    $this->publishRefundJob($action['refund_id'], $action['refund_reference']);
                 }
 
             } catch (Throwable $e) {
                 error_log('LUX EMPIRE Payment: post-commit action failed — ' . $e->getMessage());
             }
         }
+    }
+
+    /**
+     * ============================================================
+     * AUTO-REFUNDS
+     *
+     * Two-phase, mirroring the notification/email post-commit
+     * pattern above: createRefundRecord() only ever writes the DB
+     * row — safe to call from inside an already-open transaction
+     * (e.g. from applyEntitlement() above) — and publishRefundJob()
+     * talks to NATS, which must NEVER happen before the caller's
+     * transaction has committed, or a rollback would leave a
+     * phantom queued refund for a row that no longer exists.
+     *
+     * refunds.payment_id has a UNIQUE constraint — that's the real,
+     * database-enforced guard against ever refunding the same
+     * payment twice. A caught duplicate-key error here just means
+     * "a refund already exists for this payment", not a failure.
+     * ============================================================
+     */
+    public function createRefundRecord(int $paymentId, string $reason, array $metadataExtra = []): ?array
+    {
+        $payment = $this->getPaymentById($paymentId);
+
+        if ($payment === null || $payment['status'] !== 'completed') {
+            error_log('LUX EMPIRE Refund: refund requested for payment #' . $paymentId . ' but it is not in completed status.');
+            return null;
+        }
+
+        $refundReference = 'RFND-' . $paymentId . '-' . bin2hex(random_bytes(8));
+
+        try {
+            $stmt = $this->conn->prepare("
+                INSERT INTO refunds
+                    (refund_reference, payment_id, user_id, amount, phone, reason, status, metadata)
+                VALUES
+                    (:ref, :payment_id, :user_id, :amount, :phone, :reason, 'pending', :metadata)
+            ");
+
+            $stmt->execute([
+                ':ref' => $refundReference,
+                ':payment_id' => $paymentId,
+                ':user_id' => $payment['user_id'],
+                ':amount' => $payment['amount'],
+                ':phone' => $payment['phone'],
+                ':reason' => $reason,
+                ':metadata' => json_encode($metadataExtra),
+            ]);
+        } catch (PDOException $e) {
+            if ((string) $e->getCode() === '23000') {
+                error_log('LUX EMPIRE Refund: duplicate refund attempt blocked for payment #' . $paymentId);
+                return null;
+            }
+            throw $e;
+        }
+
+        return [
+            'refund_id' => (int) $this->conn->lastInsertId(),
+            'refund_reference' => $refundReference,
+        ];
+    }
+
+    /**
+     * Call this ONLY after the caller's transaction has committed.
+     */
+    public function publishRefundJob(int $refundId, string $refundReference): void
+    {
+        try {
+            RefundJobPublisher::publish([
+                'refund_id' => $refundId,
+                'refund_reference' => $refundReference,
+            ]);
+
+            $this->conn->prepare("UPDATE refunds SET nats_published_at = NOW() WHERE id = :id")
+                ->execute([':id' => $refundId]);
+
+        } catch (Throwable $e) {
+            // Not fatal — nats_published_at stays NULL, and the
+            // reconciliation sweep (part 2) republishes anything still
+            // unpublished after a short delay. The refund itself is
+            // never lost, only delayed.
+            error_log('LUX EMPIRE Refund: NATS publish failed for refund #' . $refundId . ' — ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Convenience wrapper for call sites OUTSIDE any existing Payment
+     * transaction (e.g. api/houses/update_booking_status.php, where
+     * the booking rejection has already committed independently) —
+     * does both steps back-to-back since there's no outer transaction
+     * to wait on here.
+     */
+    public function createAutoRefundForPayment(int $paymentId, string $reason, array $metadataExtra = []): ?string
+    {
+        $refund = $this->createRefundRecord($paymentId, $reason, $metadataExtra);
+
+        if ($refund === null) {
+            return null;
+        }
+
+        $this->publishRefundJob($refund['refund_id'], $refund['refund_reference']);
+
+        return $refund['refund_reference'];
+    }
+
+    /**
+     * ============================================================
+     * B2C — ACTUALLY SENDING THE MONEY
+     *
+     * The single UPDATE at the top ("claim") is the ONLY place a
+     * refund is allowed to move pending -> processing. That's the
+     * one choke point guaranteeing Safaricom is ever asked to send
+     * money for a given refund row AT MOST ONCE — no matter how many
+     * times this method gets called (worker retry, redelivered NATS
+     * message, two worker processes running at once, a cron sweep
+     * poking it). Everything below this point assumes that claim
+     * already succeeded for THIS call.
+     * ============================================================
+     */
+    public function sendB2cPayment(int $refundId): string
+    {
+        $claim = $this->conn->prepare("
+            UPDATE refunds
+            SET status = 'processing', attempts = attempts + 1
+            WHERE id = :id AND status = 'pending'
+        ");
+        $claim->execute([':id' => $refundId]);
+
+        if ($claim->rowCount() === 0) {
+            return 'skipped-already-claimed-or-resolved';
+        }
+
+        $refund = $this->getRefundById($refundId);
+
+        if ($refund === null) {
+            error_log('LUX EMPIRE Refund: claimed refund #' . $refundId . ' vanished — should be impossible.');
+            return 'error-vanished';
+        }
+
+        $normalizedPhone = self::normalizePhone($refund['phone']);
+
+        if ($normalizedPhone === null) {
+            // Not a Daraja failure — a bad stored phone. Never let
+            // this become a silent, endlessly-retried no-op: escalate
+            // to a human immediately instead.
+            $this->failRefundPermanently($refundId, 'Stored phone number is not a valid Safaricom number: ' . $refund['phone']);
+            return 'failed-invalid-phone';
+        }
+
+        try {
+            $accessToken = $this->getAccessToken();
+            $securityCredential = $this->getB2cSecurityCredential();
+        } catch (Throwable $e) {
+            // Nothing was sent to Safaricom at all yet — 100% safe to
+            // treat as a definite, retryable failure.
+            error_log('LUX EMPIRE Refund: credential/token setup failed for refund #' . $refundId . ' — ' . $e->getMessage());
+            return $this->handleDefiniteSendFailure($refundId, 'Setup failed: ' . $e->getMessage());
+        }
+
+        $originatorConversationId = 'REFUND-' . $refundId . '-' . bin2hex(random_bytes(4));
+
+        $this->conn->prepare("
+            UPDATE refunds SET mpesa_originator_conversation_id = :ocid WHERE id = :id
+        ")->execute([':ocid' => $originatorConversationId, ':id' => $refundId]);
+
+        $payload = [
+            'OriginatorConversationID' => $originatorConversationId,
+            'InitiatorName' => DARAJA_INITIATOR_NAME,
+            'SecurityCredential' => $securityCredential,
+            'CommandID' => 'BusinessPayment',
+            'Amount' => (int) round((float) $refund['amount']),
+            'PartyA' => DARAJA_B2C_SHORTCODE,
+            'PartyB' => $normalizedPhone,
+            'Remarks' => 'LUX EMPIRE refund #' . $refundId,
+            'QueueTimeOutURL' => DARAJA_B2C_TIMEOUT_URL,
+            'ResultURL' => DARAJA_B2C_RESULT_URL,
+            'Occasion' => 'Refund',
+        ];
+
+        $ch = curl_init(DARAJA_BASE_URL . '/mpesa/b2c/v3/paymentrequest');
+
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $accessToken,
+                'Content-Type: application/json',
+            ],
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_CONNECTTIMEOUT => 10,
+        ]);
+
+        $response = curl_exec($ch);
+        $curlErrno = curl_errno($ch);
+        $curlError = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        /*
+         * A curl-level failure (timeout, DNS blip, connection reset)
+         * means we genuinely do NOT know whether Safaricom received
+         * this request. Treating that as "safe to retry" is exactly
+         * the bug that refunds a tenant twice. Leave the row at
+         * 'processing' — untouched — and let the reconciliation
+         * sweep, which actively asks Safaricom via
+         * TransactionStatusQuery, be the only thing that ever moves
+         * it out of 'processing' from here.
+         */
+        if ($curlErrno !== 0) {
+            error_log('LUX EMPIRE Refund: network error sending refund #' . $refundId . ' (ocid ' . $originatorConversationId . ') — curl errno ' . $curlErrno . ': ' . $curlError . '. Left in processing for reconciliation.');
+            return 'ambiguous-left-processing';
+        }
+
+        $data = json_decode((string) $response, true);
+
+        /*
+         * HTTP 200 + ResponseCode "0" means Safaricom ACCEPTED the
+         * request into its queue — NOT that money has moved yet. The
+         * row stays 'processing'; only the result callback (or the
+         * reconciliation sweep) may ever mark it 'completed'.
+         */
+        if ($httpCode === 200 && isset($data['ResponseCode']) && (string) $data['ResponseCode'] === '0') {
+            $this->conn->prepare("
+                UPDATE refunds SET mpesa_conversation_id = :cid WHERE id = :id
+            ")->execute([':cid' => $data['ConversationID'] ?? null, ':id' => $refundId]);
+
+            error_log('LUX EMPIRE Refund: refund #' . $refundId . ' accepted by Safaricom, awaiting result callback. ConversationID=' . ($data['ConversationID'] ?? 'null'));
+            return 'accepted-awaiting-callback';
+        }
+
+        /*
+         * A clean response that REJECTS the request (bad initiator,
+         * invalid phone, insufficient utility balance, etc.) means
+         * Safaricom is telling us, synchronously, that nothing was
+         * queued — no money moved, no ambiguity. The ONLY case safe
+         * to treat as a definite failure eligible for retry.
+         */
+        $errorMessage = $data['errorMessage'] ?? $data['ResponseDescription'] ?? ('HTTP ' . $httpCode . ': ' . (string) $response);
+        error_log('LUX EMPIRE Refund: refund #' . $refundId . ' rejected synchronously by Safaricom — ' . $errorMessage);
+
+        return $this->handleDefiniteSendFailure($refundId, $errorMessage);
+    }
+
+    private function getB2cSecurityCredential(): string
+    {
+        if (DARAJA_SECURITY_CREDENTIAL_PRECOMPUTED !== '') {
+            return DARAJA_SECURITY_CREDENTIAL_PRECOMPUTED;
+        }
+
+        if (!is_file(DARAJA_B2C_CERT_PATH)) {
+            throw new RuntimeException('Daraja B2C certificate not found at ' . DARAJA_B2C_CERT_PATH);
+        }
+
+        $certificateContent = file_get_contents(DARAJA_B2C_CERT_PATH);
+
+        $x509 = openssl_x509_read($certificateContent);
+
+        if ($x509 === false) {
+            throw new RuntimeException('Could not parse the file at DARAJA_B2C_CERT_PATH as a valid X.509 certificate (check it is actually the certificate and not an HTML error/login page). openssl error: ' . openssl_error_string());
+        }
+
+        $publicKey = openssl_pkey_get_public($x509);
+
+        if ($publicKey === false) {
+            throw new RuntimeException('Could not extract a public key from the Daraja certificate: ' . openssl_error_string());
+        }
+
+        $encrypted = '';
+
+        if (!openssl_public_encrypt(DARAJA_INITIATOR_PASSWORD, $encrypted, $publicKey, OPENSSL_PKCS1_PADDING)) {
+            throw new RuntimeException('Failed to encrypt Daraja security credential: ' . openssl_error_string());
+        }
+
+        return base64_encode($encrypted);
+    }
+
+    /**
+     * Called ONLY when we KNOW, synchronously, that nothing was sent
+     * (pre-send setup failure, or Safaricom's own clean rejection).
+     * Safe to hand the row back to 'pending' for another attempt —
+     * never call this for a network-level failure, where we don't
+     * actually know what happened.
+     */
+    private function handleDefiniteSendFailure(int $refundId, string $errorMessage): string
+    {
+        $refund = $this->getRefundById($refundId);
+        $attempts = (int) ($refund['attempts'] ?? REFUND_MAX_ATTEMPTS);
+
+        if ($attempts >= REFUND_MAX_ATTEMPTS) {
+            $this->failRefundPermanently($refundId, $errorMessage);
+            return 'failed-max-attempts';
+        }
+
+        $reverted = $this->conn->prepare("
+            UPDATE refunds SET status = 'pending', last_error = :err, needs_admin_review = 0
+            WHERE id = :id AND status = 'processing'
+        ");
+        $reverted->execute([':err' => $errorMessage, ':id' => $refundId]);
+
+        if ($reverted->rowCount() > 0 && $refund !== null) {
+            // Goes back through NATS rather than retrying inline, so
+            // attempts are naturally spaced by the worker's poll
+            // cadence instead of hammering Daraja in a tight loop.
+            RefundJobPublisher::publish([
+                'refund_id' => $refundId,
+                'refund_reference' => $refund['refund_reference'],
+            ]);
+        }
+
+        return 'requeued-for-retry';
+    }
+
+    private function failRefundPermanently(int $refundId, string $reason): void
+    {
+        $this->conn->prepare("
+            UPDATE refunds SET status = 'failed', last_error = :err, needs_admin_review = 1
+            WHERE id = :id AND status IN ('processing', 'pending')
+        ")->execute([':err' => $reason, ':id' => $refundId]);
+
+        $refund = $this->getRefundById($refundId);
+
+        if ($refund !== null) {
+            try {
+                (new Notification())->create(
+                    (int) $refund['user_id'],
+                    'refund_needs_review',
+                    'Refund Delayed',
+                    'We\'re processing your KES ' . number_format((float) $refund['amount']) . ' refund and it needs a quick manual check — our team has been notified and will complete it shortly.',
+                    null
+                );
+            } catch (Throwable $e) {
+                error_log('LUX EMPIRE Refund: notification failed for refund #' . $refundId . ' — ' . $e->getMessage());
+            }
+        }
+
+        error_log('LUX EMPIRE Refund: refund #' . $refundId . ' permanently failed after max attempts — ' . $reason . ' — needs admin review.');
+    }
+
+    /**
+     * ============================================================
+     * B2C RESULT / TIMEOUT CALLBACKS
+     * ============================================================
+     */
+    public function handleB2cResultCallback(array $callback): void
+    {
+        $result = $callback['Result'] ?? null;
+
+        if ($result === null || (!isset($result['OriginatorConversationID']) && !isset($result['ConversationID']))) {
+            error_log('LUX EMPIRE B2C result callback: malformed payload: ' . json_encode($callback));
+            return;
+        }
+
+        $resultCode = (int) ($result['ResultCode'] ?? 1);
+
+        $refund = null;
+
+        if (!empty($result['OriginatorConversationID'])) {
+            $refund = $this->getRefundByOriginatorConversationId((string) $result['OriginatorConversationID']);
+        }
+
+        if ($refund === null && !empty($result['ConversationID'])) {
+            $refund = $this->getRefundByConversationId((string) $result['ConversationID']);
+        }
+
+        if ($refund === null) {
+            error_log('LUX EMPIRE B2C result callback: no refund found for OriginatorConversationID '
+                . ($result['OriginatorConversationID'] ?? 'null') . ' / ConversationID ' . ($result['ConversationID'] ?? 'null'));
+            return;
+        }
+
+        if ($resultCode === 0) {
+            $items = $result['ResultParameters']['ResultParameter'] ?? [];
+            $values = [];
+            foreach ($items as $item) {
+                if (isset($item['Key'])) {
+                    $values[$item['Key']] = $item['Value'] ?? null;
+                }
+            }
+
+            $mpesaTransactionId = $values['TransactionReceipt'] ?? ($result['TransactionID'] ?? null);
+
+            $stmt = $this->conn->prepare("
+                UPDATE refunds
+                SET status = 'completed', mpesa_transaction_id = :txn, completed_at = NOW(), needs_admin_review = 0
+                WHERE id = :id AND status = 'processing'
+            ");
+            $stmt->execute([':txn' => $mpesaTransactionId, ':id' => $refund['id']]);
+
+            if ($stmt->rowCount() === 0) {
+                // Already resolved by an earlier callback delivery or
+                // by the reconciliation sweep — nothing more to do.
+                return;
+            }
+
+            $this->dispatchRefundCompletedActions($refund, $mpesaTransactionId);
+            return;
+        }
+
+        // A genuine failure RESULT from Safaricom (e.g. recipient
+        // account restricted) — this is the definitive async answer
+        // to the exact request we sent, so it's safe to treat as
+        // known-not-sent.
+        $resultDesc = $result['ResultDesc'] ?? ('ResultCode ' . $resultCode);
+        error_log('LUX EMPIRE B2C result callback: refund #' . $refund['id'] . ' failed — ResultCode ' . $resultCode . ': ' . $resultDesc);
+
+        if ($refund['status'] !== 'processing') {
+            // Already resolved elsewhere (admin, reconciliation) — ignore a late failure result.
+            return;
+        }
+
+        // These fail identically on every retry, so retrying only burns
+        // attempts. Send straight to admin review instead.
+        $nonRetryableCodes = [2001, 2040];
+
+        if (in_array($resultCode, $nonRetryableCodes, true)) {
+            $this->failRefundPermanently((int) $refund['id'], 'ResultCode ' . $resultCode . ': ' . $resultDesc);
+            return;
+        }
+
+        $this->handleDefiniteSendFailure((int) $refund['id'], $resultDesc);
+    }
+
+    public function handleB2cTimeoutCallback(array $callback): void
+    {
+        $result = $callback['Result'] ?? $callback;
+        $originatorConversationId = $result['OriginatorConversationID'] ?? null;
+
+        if ($originatorConversationId === null) {
+            error_log('LUX EMPIRE B2C timeout callback: malformed payload: ' . json_encode($callback));
+            return;
+        }
+
+        $refund = $this->getRefundByOriginatorConversationId($originatorConversationId);
+
+        if ($refund === null) {
+            error_log('LUX EMPIRE B2C timeout callback: no refund found for OriginatorConversationID ' . $originatorConversationId);
+            return;
+        }
+
+        error_log('LUX EMPIRE B2C timeout callback: refund #' . $refund['id'] . ' timed out on Safaricom\'s side — querying transaction status for a definitive answer before touching it.');
+
+        $this->reconcileStuckRefund((int) $refund['id']);
+    }
+
+    /**
+     * ============================================================
+     * RECONCILIATION — asks Safaricom directly rather than guessing.
+     *
+     * TransactionStatusQuery is ITSELF asynchronous (its own
+     * ResultURL/QueueTimeOutURL) — this call only confirms Safaricom
+     * accepted the QUESTION. The actual answer arrives later at
+     * handleStatusQueryResultCallback(). This method always flags
+     * the row for admin visibility too, so a human can see it
+     * regardless of whether the automatic parsing below resolves it.
+     * ============================================================
+     */
+    public function reconcileStuckRefund(int $refundId): void
+    {
+        $refund = $this->getRefundById($refundId);
+
+        if ($refund === null || $refund['status'] !== 'processing') {
+            return;
+        }
+
+        $this->conn->prepare("UPDATE refunds SET needs_admin_review = 1 WHERE id = :id AND status = 'processing'")
+            ->execute([':id' => $refundId]);
+
+        if (empty($refund['mpesa_originator_conversation_id'])) {
+            $this->failRefundPermanently($refundId, 'Stuck in processing with no OriginatorConversationID — cannot query status.');
+            return;
+        }
+
+        try {
+            $accessToken = $this->getAccessToken();
+            $securityCredential = $this->getB2cSecurityCredential();
+        } catch (Throwable $e) {
+            error_log('LUX EMPIRE Refund: reconcile credential setup failed for refund #' . $refundId . ' — ' . $e->getMessage());
+            return;
+        }
+
+        $payload = [
+            'Initiator' => DARAJA_INITIATOR_NAME,
+            'SecurityCredential' => $securityCredential,
+            'CommandID' => 'TransactionStatusQuery',
+            'OriginatorConversationID' => $refund['mpesa_originator_conversation_id'],
+            'PartyA' => DARAJA_B2C_SHORTCODE,
+            'IdentifierType' => '4',
+            'ResultURL' => DARAJA_STATUS_QUERY_RESULT_URL,
+            'QueueTimeOutURL' => DARAJA_STATUS_QUERY_TIMEOUT_URL,
+            'Remarks' => 'Reconcile refund #' . $refundId,
+            'Occasion' => 'Refund reconciliation',
+        ];
+
+        $ch = curl_init(DARAJA_BASE_URL . '/mpesa/transactionstatus/v1/query');
+
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $accessToken,
+                'Content-Type: application/json',
+            ],
+            CURLOPT_TIMEOUT => 20,
+        ]);
+
+        $response = curl_exec($ch);
+
+        $this->conn->prepare("UPDATE refunds SET last_reconcile_attempt_at = NOW() WHERE id = :id")
+            ->execute([':id' => $refundId]);
+
+        error_log('LUX EMPIRE Refund: reconciliation query sent for refund #' . $refundId . ' — ' . (string) $response);
+    }
+
+    /**
+     * NOTE: Safaricom's exact ResultParameter key names for
+     * TransactionStatusQuery are not fully standardized across
+     * accounts/versions in public docs. Log the raw payload the
+     * first several times you trigger this in sandbox and adjust
+     * the keys checked below ('TransactionStatus', 'ReceiptNo',
+     * 'OriginatorConversationID') if your actual response differs.
+     * Until verified, needs_admin_review already gives you a manual
+     * backstop regardless of whether this parses correctly.
+     */
+    public function handleStatusQueryResultCallback(array $callback): void
+    {
+        $result = $callback['Result'] ?? null;
+
+        if ($result === null) {
+            error_log('LUX EMPIRE status query callback: malformed payload: ' . json_encode($callback));
+            return;
+        }
+
+        $resultCode = (int) ($result['ResultCode'] ?? 1);
+
+        $items = $result['ResultParameters']['ResultParameter'] ?? [];
+        $values = [];
+        foreach ($items as $item) {
+            if (isset($item['Key'])) {
+                $values[$item['Key']] = $item['Value'] ?? null;
+            }
+        }
+
+        $queriedOcid = $values['OriginatorConversationID'] ?? ($result['OriginatorConversationID'] ?? null);
+
+        if ($queriedOcid === null) {
+            error_log('LUX EMPIRE status query callback: no OriginatorConversationID found: ' . json_encode($callback));
+            return;
+        }
+
+        $refund = $this->getRefundByOriginatorConversationId($queriedOcid);
+
+        if ($refund === null || $refund['status'] !== 'processing') {
+            return;
+        }
+
+        $transactionStatus = strtolower((string) ($values['TransactionStatus'] ?? ''));
+
+        if ($resultCode === 0 && str_contains($transactionStatus, 'complet')) {
+            $mpesaTransactionId = $values['ReceiptNo'] ?? $values['TransactionID'] ?? null;
+
+            $stmt = $this->conn->prepare("
+                UPDATE refunds SET status = 'completed', mpesa_transaction_id = :txn, completed_at = NOW(), needs_admin_review = 0
+                WHERE id = :id AND status = 'processing'
+            ");
+            $stmt->execute([':txn' => $mpesaTransactionId, ':id' => $refund['id']]);
+
+            if ($stmt->rowCount() > 0) {
+                $this->dispatchRefundCompletedActions($refund, $mpesaTransactionId);
+            }
+            return;
+        }
+
+        if ($resultCode === 0 && (str_contains($transactionStatus, 'fail') || str_contains($transactionStatus, 'not found') || str_contains($transactionStatus, 'reject'))) {
+            error_log('LUX EMPIRE status query callback: refund #' . $refund['id'] . ' confirmed NOT completed by Safaricom — ' . $transactionStatus);
+            $this->handleDefiniteSendFailure((int) $refund['id'], 'Confirmed not completed: ' . $transactionStatus);
+            return;
+        }
+
+        // Still inconclusive — leave it exactly as is; needs_admin_review
+        // is already set, and the next sweep pass will ask again.
+        error_log('LUX EMPIRE status query callback: refund #' . $refund['id'] . ' status still inconclusive — ' . json_encode($values));
+    }
+
+    private function dispatchRefundCompletedActions(array $refund, ?string $mpesaTransactionId): void
+    {
+        try {
+            (new Notification())->create(
+                (int) $refund['user_id'],
+                'refund_completed',
+                'Refund Completed',
+                'Your KES ' . number_format((float) $refund['amount']) . ' refund has been sent to your M-Pesa' . ($mpesaTransactionId ? ' (ref: ' . $mpesaTransactionId . ')' : '') . '.',
+                BASE_URL . '/tenant/my-bookings'
+            );
+        } catch (Throwable $e) {
+            error_log('LUX EMPIRE Refund: notification failed for refund #' . $refund['id'] . ' — ' . $e->getMessage());
+        }
+
+        try {
+            $userStmt = $this->conn->prepare("SELECT full_name, email FROM users WHERE id = :id");
+            $userStmt->execute([':id' => $refund['user_id']]);
+            $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($user) {
+                EmailJobPublisher::publish('email.refund_completed', [
+                    'email' => $user['email'],
+                    'name' => $user['full_name'],
+                    'amount' => number_format((float) $refund['amount']),
+                    'mpesa_transaction_id' => $mpesaTransactionId ?? '',
+                ]);
+            }
+        } catch (Throwable $e) {
+            error_log('LUX EMPIRE Refund: email publish failed for refund #' . $refund['id'] . ' — ' . $e->getMessage());
+        }
+
+        error_log('LUX EMPIRE Refund: refund #' . $refund['id'] . ' completed. Receipt=' . ($mpesaTransactionId ?? 'unknown'));
+    }
+
+    private function getRefundById(int $id): ?array
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM refunds WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    private function getRefundByOriginatorConversationId(string $ocid): ?array
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM refunds WHERE mpesa_originator_conversation_id = :ocid LIMIT 1");
+        $stmt->execute([':ocid' => $ocid]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    private function getRefundByConversationId(string $cid): ?array
+    {
+        $stmt = $this->conn->prepare("SELECT * FROM refunds WHERE mpesa_conversation_id = :cid LIMIT 1");
+        $stmt->execute([':cid' => $cid]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
+    }
+
+    public function listRefundsNeedingReview(): array
+    {
+        return $this->conn->query("
+            SELECT r.*, u.full_name, u.email, u.phone AS user_phone
+            FROM refunds r JOIN users u ON r.user_id = u.id
+            WHERE r.needs_admin_review = 1
+            ORDER BY r.created_at ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -622,7 +1302,6 @@ final class Payment
         ]);
 
         $response = curl_exec($ch);
-        curl_close($ch);
 
         $data = json_decode((string) $response, true);
 
@@ -1064,6 +1743,56 @@ final class Payment
             WHERE p.needs_admin_review = 1 AND p.status = 'pending'
             ORDER BY p.created_at ASC
         ")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function listRefundsForAdmin(): array
+    {
+        return $this->conn->query("
+            SELECT r.*, u.full_name, u.email, u.phone AS user_phone
+            FROM refunds r JOIN users u ON r.user_id = u.id
+            WHERE r.status <> 'completed'
+            ORDER BY r.needs_admin_review DESC, r.created_at ASC
+        ")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Admin confirms the money reached the tenant (sent manually, or
+     * verified in the M-Pesa portal). Safe against double-sending: the
+     * worker only claims 'pending' rows and Safaricom's callback only
+     * updates 'processing' rows, so a 'completed' row is never touched again.
+     */
+    public function adminMarkRefundCompleted(int $refundId, int $adminId, string $mpesaRef, string $notes): array
+    {
+        if ($mpesaRef === '') {
+            return ['success' => false, 'message' => 'M-Pesa reference is required.'];
+        }
+
+        $dup = $this->conn->prepare("SELECT id FROM refunds WHERE mpesa_transaction_id = :txn AND id <> :id LIMIT 1");
+        $dup->execute([':txn' => $mpesaRef, ':id' => $refundId]);
+
+        if ($dup->fetchColumn()) {
+            return ['success' => false, 'message' => 'That M-Pesa reference is already recorded on another refund.'];
+        }
+
+        $stmt = $this->conn->prepare("
+            UPDATE refunds
+            SET status = 'completed', mpesa_transaction_id = :txn, completed_at = NOW(),
+                needs_admin_review = 0, admin_notes = :notes, resolved_by_admin_id = :admin
+            WHERE id = :id AND status IN ('pending','processing','failed')
+        ");
+        $stmt->execute([':txn' => $mpesaRef, ':notes' => $notes, ':admin' => $adminId, ':id' => $refundId]);
+
+        if ($stmt->rowCount() === 0) {
+            return ['success' => false, 'message' => 'Refund not found or already completed.'];
+        }
+
+        $refund = $this->getRefundById($refundId);
+
+        if ($refund !== null) {
+            $this->dispatchRefundCompletedActions($refund, $mpesaRef);
+        }
+
+        return ['success' => true, 'message' => 'Refund marked completed and the tenant was notified.'];
     }
 
     public function listRefundsPending(): array

@@ -25,6 +25,7 @@ require_once '../../includes/sidebar.php';
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/property-media.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bookings.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/verification-badges.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/listing-state.css">
 
 <div class="landlord-layout">
 
