@@ -13,7 +13,7 @@ require_once __DIR__ . '/Notification.php';
  * Admin oversight of bookings.
  *
  * A booking with money attached is NEVER hard-deleted:
- *   - live + paid (pending/approved) -> cancelAndRefund()
+ *   - pending + paid                 -> cancelAndRefund()   (approved bookings are never refunded)
  *   - finished (rejected/cancelled)  -> archiveBooking()  (hidden from this list, kept)
  *   - unpaid junk                    -> deleteUnpaidBooking()
  * Every action records a reason.
@@ -83,13 +83,12 @@ final class AdminBookingService
     }
 
     /**
-     * Admin resolves a live booking (dispute, fraud, stuck request):
-     * cancels it, frees the house, and refunds the fee in full.
+     * Admin resolves a PENDING booking (stuck request, unresponsive landlord,
+     * suspicious tenant): cancels it, frees the house and refunds the fee in full.
      *
-     * A PENDING booking puts the house back to 'available'. An APPROVED one
-     * puts it to 'unavailable' instead — its photos may already be gone from
-     * disk, so it must not reappear as a bookable listing; the landlord can
-     * reopen it once it's ready.
+     * Only PENDING bookings qualify. Once the landlord has approved, both people
+     * hold each other's contact details and have talked in chat, so the fee has
+     * been earned and is never refunded from here.
      */
     public function cancelAndRefund(int $bookingId, int $adminId, string $reason): array
     {
@@ -111,14 +110,20 @@ final class AdminBookingService
                 return ['success' => false, 'message' => 'Booking not found.', 'code' => 404];
             }
 
-            if (!in_array($booking['status'], ['pending', 'approved'], true)) {
+            if ($booking['status'] !== 'pending') {
                 $this->conn->rollBack();
-                return ['success' => false, 'message' => 'Only a live booking (pending or approved) can be cancelled and refunded.', 'code' => 409];
+                return [
+                    'success' => false,
+                    'message' => $booking['status'] === 'approved'
+                        ? 'This booking was approved, so the booking fee has been earned and cannot be refunded from here.'
+                        : 'Only a pending booking can be cancelled and refunded.',
+                    'code' => 409,
+                ];
             }
 
             $update = $this->conn->prepare("
                 UPDATE bookings SET status = 'cancelled'
-                WHERE id = :id AND status IN ('pending', 'approved')
+                WHERE id = :id AND status = 'pending'
             ");
             $update->execute([':id' => $bookingId]);
 
@@ -128,7 +133,7 @@ final class AdminBookingService
             }
 
             if (!empty($booking['house_id'])) {
-                $houseStatus = $booking['status'] === 'pending' ? 'available' : 'unavailable';
+                $houseStatus = 'available';
 
                 $this->conn->prepare("
                     UPDATE houses

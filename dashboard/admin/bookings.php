@@ -88,7 +88,7 @@ $csrfToken = Csrf::token();
 
                 <?php
                     $isPaid = ($booking['payment_status'] ?? 'unpaid') === 'paid';
-                    $isLive = in_array($booking['status'], ['pending', 'approved'], true);
+                    $bookingStatus = $booking['status'];
                     $refundStatus = $booking['refund_status'] ?? null;
                 ?>
 
@@ -107,22 +107,26 @@ $csrfToken = Csrf::token();
 
                 <div class="lux-entity-actions">
 
-                    <?php if ($isLive && $isPaid): ?>
+                    <?php if ($bookingStatus === 'pending' && $isPaid): ?>
                         <button class="lux-btn lux-btn-danger" data-action="cancel-refund" data-booking-id="<?php echo (int) $booking['id']; ?>">
                             Cancel &amp; Refund
                         </button>
                     <?php endif; ?>
 
-                    <?php if (!$isLive): ?>
+                    <?php if (in_array($bookingStatus, ['rejected', 'cancelled'], true)): ?>
                         <button class="lux-btn lux-btn-ghost" data-action="archive" data-booking-id="<?php echo (int) $booking['id']; ?>">
                             Archive
                         </button>
                     <?php endif; ?>
 
-                    <?php if (!$isPaid): ?>
+                    <?php if (!$isPaid && $bookingStatus !== 'approved'): ?>
                         <button class="lux-btn lux-btn-outline-danger" data-action="delete" data-booking-id="<?php echo (int) $booking['id']; ?>">
                             Delete
                         </button>
+                    <?php endif; ?>
+
+                    <?php if ($bookingStatus === 'approved'): ?>
+                        <span class="lux-entity-meta">Approved — the booking fee has been earned, so there is no refund action.</span>
                     <?php endif; ?>
 
                 </div>
