@@ -24,6 +24,7 @@ requireRoleAccess('tenant');
 
 require_once '../../classes/Booking.php';
 require_once '../../classes/House.php';
+require_once '../../classes/ListingState.php';
 require_once '../../config/db.php';
 require_once '../../config/csrf.php';
 
@@ -99,6 +100,7 @@ require_once '../../includes/sidebar.php';
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bookings.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/my-bookings.css">
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/verification-badges.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/listing-state.css">
 
 <div class="mb-page">
 
@@ -329,16 +331,64 @@ require_once '../../includes/sidebar.php';
                                     <?php echo ucfirst($status); ?>
                                 </div>
 
+                                <?php
+                                    $isPaid = ($booking['payment_status'] ?? 'unpaid') === 'paid';
+                                    $isLive = $isPaid && in_array($status, ['pending', 'approved'], true);
+                                    $showContact = $isLive && in_array($status, ListingState::contactRevealStatuses(), true);
+                                    $refundStatus = $booking['refund_status'] ?? null;
+
+                                    $refundLabel = match (true) {
+                                        $refundStatus === 'completed' => 'Your booking fee has been refunded to your M-Pesa.',
+                                        $refundStatus === 'failed' => 'Your refund is delayed — our team is completing it manually.',
+                                        default => 'Your booking fee is being refunded to your M-Pesa.',
+                                    };
+                                ?>
+
+                                <?php if ($showContact): ?>
+
+                                    <div class="lux-landlord-contact">
+                                        <span class="lux-landlord-contact-label">Your landlord</span>
+                                        <?php echo htmlspecialchars($booking['landlord_name'] ?? ''); ?>
+                                        <?php if (!empty($booking['landlord_phone'])): ?>
+                                            <br><i class="fa-solid fa-phone"></i>
+                                            <a href="tel:<?php echo htmlspecialchars($booking['landlord_phone']); ?>"><?php echo htmlspecialchars($booking['landlord_phone']); ?></a>
+                                        <?php endif; ?>
+                                        <?php if (!empty($booking['landlord_email'])): ?>
+                                            <br><i class="fa-solid fa-envelope"></i>
+                                            <a href="mailto:<?php echo htmlspecialchars($booking['landlord_email']); ?>"><?php echo htmlspecialchars($booking['landlord_email']); ?></a>
+                                        <?php endif; ?>
+                                    </div>
+
+                                <?php endif; ?>
+
+                                <?php if ($isPaid && in_array($status, ['rejected', 'cancelled'], true)): ?>
+
+                                    <div class="lux-landlord-contact">
+                                        <span class="lux-landlord-contact-label">Refund</span>
+                                        <?php echo htmlspecialchars($refundLabel); ?>
+                                    </div>
+
+                                <?php endif; ?>
+
                                 <!-- ACTIONS -->
                                 <div class="tenant-actions mb-actions">
 
-                                    <!--
-                                        CANCEL — only while pending. Class "booking-ajax-form" is
-                                        what assets/js/bookings.js listens for (AJAX submit, no
-                                        reload — see bindTenantBookingAjaxForms()).
-                                    -->
+                                    <?php if ($isLive): ?>
+
+                                        <button type="button"
+                                                class="lux-btn chat-starter-btn mb-message-driver-btn"
+                                                data-other-user-id="<?php echo (int) $booking['landlord_id']; ?>"
+                                                data-other-role="landlord"
+                                                <?php if (!empty($booking['house_id'])): ?>data-house-id="<?php echo (int) $booking['house_id']; ?>"<?php endif; ?>
+                                                data-other-name="<?php echo htmlspecialchars($booking['landlord_name'] ?? 'Landlord'); ?>">
+                                            <i class="fa-solid fa-comment-dots"></i> Message Landlord
+                                        </button>
+
+                                    <?php endif; ?>
+
                                     <?php if ($status === 'pending'): ?>
 
+                                        <!-- A LIVE request can only be CANCELLED (frees the house, refunds the fee). -->
                                         <form class="booking-ajax-form"
                                               action="<?php echo BASE_URL; ?>/api/bookings/cancel_booking.php"
                                               method="POST">
@@ -351,26 +401,22 @@ require_once '../../includes/sidebar.php';
 
                                         </form>
 
+                                    <?php else: ?>
+
+                                        <!-- A FINISHED booking (approved / rejected / cancelled) can only be REMOVED from this list. -->
+                                        <form class="booking-ajax-form"
+                                              action="<?php echo BASE_URL; ?>/api/bookings/delete_booking.php"
+                                              method="POST">
+
+                                            <input type="hidden" name="booking_id" value="<?php echo (int) $booking['id']; ?>">
+
+                                            <button type="submit" class="mb-btn-delete">
+                                                Delete
+                                            </button>
+
+                                        </form>
+
                                     <?php endif; ?>
-
-                                    <!--
-                                        DELETE — data-confirm is read by bookings.js, which shows
-                                        a confirm() dialog before submitting (replaces the old
-                                        onsubmit="return confirm(...)" attribute, which would not
-                                        reliably block a separately-attached submit listener).
-                                    -->
-                                    <form class="booking-ajax-form"
-                                          action="<?php echo BASE_URL; ?>/api/bookings/delete_booking.php"
-                                          method="POST"
-                                          data-confirm="Delete this booking permanently?">
-
-                                        <input type="hidden" name="booking_id" value="<?php echo (int) $booking['id']; ?>">
-
-                                        <button type="submit" class="mb-btn-delete">
-                                            Delete
-                                        </button>
-
-                                    </form>
 
                                 </div>
 

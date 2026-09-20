@@ -212,4 +212,19 @@ final class BruteForce
             ),
         ];
     }
+
+    public static function attemptCount(string $email, string $ip): int
+    {
+        $keys = self::buildKeys($email, $ip);
+        $highest = 0;
+
+        foreach ($keys as $key) {
+            $count = RateLimiter::attempts($key);
+            if ($count > $highest) {
+                $highest = $count;
+            }
+        }
+
+        return $highest;
+    }
 }

@@ -12,6 +12,7 @@ require_once '../../config/csrf.php';
 require_once '../../classes/Payment.php';
 require_once '../../classes/House.php';
 require_once '../../config/security/DoSProtection.php';
+require_once '../../config/security/RateLimiter.php';
 
 Session::start();
 
@@ -25,6 +26,25 @@ $user = Session::user();
 $userId = (int) $user['id'];
 $role = $user['role'] ?? '';
 DoSProtection::check($userId);
+
+/*
+ * Every submission here lands in the admin's review queue, so it is limited hard:
+ * 6 submissions per hour per user, then blocked for an hour.
+ */
+$rateKey = 'paybill_submit:' . $userId;
+
+if (RateLimiter::isBlocked($rateKey)) {
+    http_response_code(429);
+    echo json_encode(['success' => false, 'message' => 'Too many submissions. Please wait a while before sending another code.']);
+    exit;
+}
+
+if (RateLimiter::hit($rateKey, 3600) > 6) {
+    RateLimiter::block($rateKey, 3600);
+    http_response_code(429);
+    echo json_encode(['success' => false, 'message' => 'Too many submissions. Please wait a while before sending another code.']);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -80,9 +100,15 @@ switch ($purpose) {
         }
         $houseModel = new House();
         $house = $houseModel->getHouseById($houseId);
-        if (!$house || $house['status'] !== 'available') {
+        if (!$house || !empty($house['is_hidden']) || $house['status'] !== 'available') {
             http_response_code(409);
             echo json_encode(['success' => false, 'message' => 'This property is no longer available to book.']);
+            exit;
+        }
+
+        if ((int) $house['landlord_id'] === $userId) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'You cannot book your own property.']);
             exit;
         }
         $amount = (float) BOOKING_FEE_AMOUNT;

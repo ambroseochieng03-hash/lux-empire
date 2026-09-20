@@ -51,9 +51,10 @@
             if (currentBtn.dataset.houseId) startForm.append('house_id', currentBtn.dataset.houseId);
             if (currentBtn.dataset.truckRequestId) startForm.append('truck_request_id', currentBtn.dataset.truckRequestId);
         } else {
-            // Driver initiating with a known tenant.
+           // Driver OR landlord initiating with a known tenant.
             startForm.append('tenant_id', currentBtn.dataset.tenantId);
             if (currentBtn.dataset.truckRequestId) startForm.append('truck_request_id', currentBtn.dataset.truckRequestId);
+            if (parseInt(currentBtn.dataset.houseId, 10) > 0) startForm.append('house_id', currentBtn.dataset.houseId);
         }
 
         fetch(`${cfg.baseUrl}/api/chat/start_conversation.php`, { method: 'POST', body: startForm })
@@ -84,10 +85,11 @@
 
                         input.style.display = 'none';
                         sendBtn.style.display = 'none';
-                        feedback.textContent = 'Message sent — find the full conversation under Chats.';
+                        feedback.textContent = 'Message sent — find the full conversation under Chats.'
+                            + (msgResult.notice ? ' ' + msgResult.notice : '');
                         feedback.style.display = 'block';
 
-                        setTimeout(closeModal, 1800);
+                        setTimeout(closeModal, msgResult.notice ? 7000 : 1800);
                     });
             })
             .catch(() => {

@@ -4,6 +4,8 @@ declare(strict_types=1);
 require_once '../../includes/init.php';
 require_once '../../config/session.php';
 require_once '../../classes/Chat.php';
+require_once '../../classes/ChatGuard.php';
+require_once '../../classes/Notification.php';
 require_once '../../config/security/DoSProtection.php';
 
 Session::start();
@@ -16,30 +18,60 @@ if (!Session::isAuthenticated()) {
 }
 
 $user = Session::user();
-DoSProtection::check((int) $user['id']);
+$userId = (int) $user['id'];
+DoSProtection::check($userId, 'polling');
 
 $conversationId = (int) ($_GET['conversation_id'] ?? 0);
 $afterId = (int) ($_GET['after_id'] ?? 0);
+$since = trim((string) ($_GET['since'] ?? ''));
 
 $chat = new Chat();
 
-if (!$chat->userBelongsToConversation($conversationId, (int) $user['id'])) {
+if (!$chat->userBelongsToConversation($conversationId, $userId)) {
     http_response_code(403);
     echo json_encode(['error' => 'Not part of this conversation.']);
     exit;
 }
 
-$chat->touchLastSeen((int) $user['id']);
-$chat->maybeTriggerAi($conversationId);
-$chat->markRead($conversationId, (int) $user['id']);
-
 $conversation = $chat->getConversationById($conversationId);
-$withUserId = ((int) $conversation['tenant_id'] === (int) $user['id'])
+
+// Captured BEFORE reading, so an edit that lands mid-request is picked up next poll.
+$serverTime = $chat->getServerTime();
+
+$closed = !ChatGuard::isOpen($conversation);
+
+if (!$closed) {
+    $chat->maybeTriggerAi($conversationId);
+}
+
+$chat->markRead($conversationId, $userId);
+
+$messages = $chat->getMessages($conversationId, $afterId, 50, $userId);
+
+$changes = [];
+
+if ($afterId > 0 && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $since)) {
+    $changes = $chat->getMessageChanges($conversationId, $afterId, $since, $userId);
+}
+
+// Opening the conversation clears its "new message" notification (and the bell).
+if (!empty($messages)) {
+    try {
+        (new Notification())->markConversationRead($userId, $conversationId);
+    } catch (Throwable $e) {
+        // Not fatal.
+    }
+}
+
+$withUserId = ((int) $conversation['tenant_id'] === $userId)
     ? (int) $conversation['other_user_id']
     : (int) $conversation['tenant_id'];
 
 echo json_encode([
-    'messages' => $chat->getMessages($conversationId, $afterId),
-    'typing' => $chat->isOtherTyping($conversationId, (int) $user['id']),
-    'presence' => $chat->getUserPresence($withUserId)
+    'messages' => $messages,
+    'changes' => $changes,
+    'server_time' => $serverTime,
+    'typing' => $chat->isOtherTyping($conversationId, $userId),
+    'presence' => $chat->getUserPresence($withUserId),
+    'closed' => $closed
 ]);

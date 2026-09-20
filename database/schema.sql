@@ -732,3 +732,40 @@ ALTER TABLE refunds
     ADD CONSTRAINT fk_refunds_resolved_by FOREIGN KEY (resolved_by_admin_id) REFERENCES users(id) ON DELETE SET NULL;
 
 ALTER TABLE refunds ADD INDEX idx_needs_review (needs_admin_review);
+
+ALTER TABLE bookings ADD COLUMN hidden_by_tenant_at TIMESTAMP NULL DEFAULT NULL;
+ALTER TABLE refunds MODIFY COLUMN reason ENUM('booking_rejected','house_unavailable','admin_manual','tenant_cancelled','reservation_expired') NOT NULL;
+
+ALTER TABLE messages
+    ADD COLUMN edited_at TIMESTAMP NULL DEFAULT NULL,
+    ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL,
+    ADD COLUMN deleted_by INT NULL;
+
+ALTER TABLE conversations
+    ADD COLUMN tenant_cleared_upto_id INT NOT NULL DEFAULT 0,
+    ADD COLUMN other_cleared_upto_id INT NOT NULL DEFAULT 0;
+
+CREATE TABLE message_user_hides (
+    message_id INT NOT NULL,
+    user_id INT NOT NULL,
+    hidden_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (message_id, user_id),
+    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE message_audit (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    message_id INT NULL,
+    conversation_id INT NOT NULL,
+    actor_id INT NOT NULL,
+    action ENUM('edit','delete_everyone','delete_me','clear_conversation_me') NOT NULL,
+    old_text TEXT NULL,
+    new_text TEXT NULL,
+    ip_address VARCHAR(45) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_audit_message (message_id),
+    INDEX idx_audit_conversation (conversation_id, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE bookings ADD COLUMN hidden_by_admin_at TIMESTAMP NULL DEFAULT NULL;

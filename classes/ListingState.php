@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * LUX EMPIRE
  * Single source of truth for what a house's status means to a tenant or
- * guest. Pages and APIs ask this class instead of repeating status checks.
+ * guest, and for which bookings unlock the landlord's contact details.
  *
  *   available    -> can be booked
  *   reserved     -> a tenant has PAID and is waiting for the landlord.
@@ -32,5 +32,16 @@ final class ListingState
             'rented' => 'Rented',
             default => 'Unavailable',
         };
+    }
+
+    /**
+     * Statuses of a PAID booking that unlock the landlord's phone/email.
+     * See REVEAL_CONTACT_BEFORE_ACCEPTANCE in config/app.php.
+     */
+    public static function contactRevealStatuses(): array
+    {
+        return (defined('REVEAL_CONTACT_BEFORE_ACCEPTANCE') && REVEAL_CONTACT_BEFORE_ACCEPTANCE)
+            ? ['pending', 'approved']
+            : ['approved'];
     }
 }

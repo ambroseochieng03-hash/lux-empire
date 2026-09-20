@@ -85,6 +85,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             <a href="<?php echo BASE_URL; ?>/add-property"><i class="fa-solid fa-house"></i> Add Property</a>
             <a href="<?php echo BASE_URL; ?>/manage-houses"><i class="fa-solid fa-building"></i> Manage Estates</a>
             <a href="<?php echo BASE_URL; ?>/booking-requests"><i class="fa-solid fa-calendar-check"></i> Booking Requests</a>
+            <a href="<?php echo BASE_URL; ?>/dashboard/landlord/booking_history.php"><i class="fa-solid fa-clock-rotate-left"></i> Booking History</a>
             <!-- inside the landlord block -->
             <a href="<?php echo BASE_URL; ?>/landlord/messages">
                 <i class="fa-solid fa-comments"></i> Chats
@@ -184,6 +185,56 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
     .lux-emergency-trigger-btn i {
         color: white;
+    }
+
+    /* Unread counters on Chats / Notifications: a numbered, pulsing badge,
+       and the whole row glows gold while anything is unread. */
+    .sidebar-nav a:has(.sidebar-badge) {
+        display: flex;
+        align-items: center;
+    }
+
+    .sidebar-badge {
+        margin-left: auto;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 7px;
+        border-radius: 999px;
+        background: #ff3b3b;
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 700;
+        align-items: center;
+        justify-content: center;
+        animation: luxBadgePulse 1.8s ease-out infinite;
+    }
+
+    .sidebar-nav a.has-unread {
+        background: rgba(212, 175, 55, 0.10);
+        box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.35), 0 0 18px rgba(212, 175, 55, 0.25);
+        animation: luxRowGlow 2.4s ease-in-out infinite;
+    }
+
+    .sidebar-nav a.has-unread i {
+        color: #fff;
+    }
+
+    @keyframes luxBadgePulse {
+        0%   { box-shadow: 0 0 0 0 rgba(255, 59, 59, 0.65); }
+        70%  { box-shadow: 0 0 0 9px rgba(255, 59, 59, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 59, 59, 0); }
+    }
+
+    @keyframes luxRowGlow {
+        0%, 100% { box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.35), 0 0 10px rgba(212, 175, 55, 0.15); }
+        50%      { box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.65), 0 0 22px rgba(212, 175, 55, 0.40); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .sidebar-badge,
+        .sidebar-nav a.has-unread {
+            animation: none;
+        }
     }
 </style>
 
@@ -329,6 +380,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 })();
 </script>
 
+<?php if (defined('SHOW_HELP_TOUR') && SHOW_HELP_TOUR): ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/product-tour.css">
 <script>
     window.LUX_TOUR_USER = {
@@ -339,3 +391,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 </script>
 <script src="<?php echo BASE_URL; ?>/assets/js/product-tour.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/dashboard-tour.js"></script>
+<?php endif; ?>
+
+<?php if (in_array($userRole, ['tenant', 'landlord', 'driver'], true)): ?>
+<script>
+    window.LUX_SIDEBAR_COUNTERS = { baseUrl: "<?php echo BASE_URL; ?>" };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/sidebar-counters.js"></script>
+<?php endif; ?>

@@ -83,6 +83,8 @@ $tenantBooking = $bookingModel->getTenantBookingForHouse($tenantId, $houseId);
 $tenantStatus = $tenantBooking['status'] ?? null;
 $tenantHasPending = ($tenantStatus === 'pending');
 $tenantHasApproved = ($tenantStatus === 'approved');
+$hasContactAccess = $bookingModel->hasContactAccessForHouse($tenantId, $houseId);
+$revealsOnPayment = in_array('pending', ListingState::contactRevealStatuses(), true);
 
 if (
     $house['status'] === 'booked'
@@ -282,7 +284,9 @@ require_once '../../includes/sidebar.php';
 
             </div>
 
-            <!-- LANDLORD INFO -->
+            <!-- LANDLORD INFO — contact details unlock according to ListingState::contactRevealStatuses() -->
+            <?php if ($hasContactAccess): ?>
+
             <div class="landlord-box">
 
                 <h3 class="vh-landlord-title">
@@ -298,7 +302,6 @@ require_once '../../includes/sidebar.php';
 
                 <div class="vh-contact-row">
 
-                    <!-- CALL BUTTON -->
                     <?php if (!empty($house['landlord_phone'])): ?>
                         <a href="tel:<?php echo htmlspecialchars($house['landlord_phone']); ?>"
                            class="vh-call-btn">
@@ -306,7 +309,6 @@ require_once '../../includes/sidebar.php';
                         </a>
                     <?php endif; ?>
 
-                    <!-- EMAIL BUTTON -->
                     <?php if (!empty($house['landlord_email'])): ?>
                         <a href="mailto:<?php echo htmlspecialchars($house['landlord_email']); ?>"
                            class="vh-email-btn">
@@ -317,6 +319,34 @@ require_once '../../includes/sidebar.php';
                 </div>
 
             </div>
+
+            <?php else: ?>
+
+            <div class="landlord-box lux-contact-locked">
+
+                <h3 class="vh-landlord-title">
+                    <i class="fa-solid fa-lock"></i> Landlord Contact
+                </h3>
+
+                <p class="vh-desc">
+                    <?php if ($revealsOnPayment): ?>
+                        The landlord's phone and email are shared once you've paid the booking fee for this property.
+                    <?php else: ?>
+                        Pay the booking fee to secure this property and message the landlord in the app.
+                        Their phone and email are shared once they accept your booking.
+                    <?php endif; ?>
+                    If the landlord declines, your fee is refunded automatically.
+                </p>
+
+                <?php if ($isLandlordVerified): ?>
+                    <p class="vh-landlord-name">
+                        <span class="lux-verified-badge" title="Verified"><i class="fa-solid fa-circle-check"></i></span> Verified landlord
+                    </p>
+                <?php endif; ?>
+
+            </div>
+
+            <?php endif; ?>
 
             <!-- ACTIONS -->
             <div class="actions">

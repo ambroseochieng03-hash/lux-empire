@@ -86,16 +86,45 @@ $csrfToken = Csrf::token();
                     <span class="lux-badge <?php echo $statusBadgeClass; ?>"><?php echo ucfirst($booking['status']); ?></span>
                 </div>
 
+                <?php
+                    $isPaid = ($booking['payment_status'] ?? 'unpaid') === 'paid';
+                    $isLive = in_array($booking['status'], ['pending', 'approved'], true);
+                    $refundStatus = $booking['refund_status'] ?? null;
+                ?>
+
                 <div class="lux-entity-meta">
                     Tenant: <?php echo htmlspecialchars($booking['tenant_name']); ?> (<?php echo htmlspecialchars($booking['tenant_email']); ?>)<br>
                     Landlord: <?php echo htmlspecialchars($booking['landlord_name']); ?><br>
-                    <?php echo date('d M Y H:i', strtotime($booking['booking_date'])); ?>
+                    <?php echo date('d M Y H:i', strtotime($booking['booking_date'])); ?><br>
+                    Payment:
+                    <?php if ($isPaid): ?>
+                        KES <?php echo number_format((float) ($booking['paid_amount'] ?? 0)); ?> paid
+                        <?php if ($refundStatus): ?> · Refund: <strong><?php echo htmlspecialchars(ucfirst($refundStatus)); ?></strong><?php endif; ?>
+                    <?php else: ?>
+                        Unpaid
+                    <?php endif; ?>
                 </div>
 
                 <div class="lux-entity-actions">
-                    <button class="lux-btn lux-btn-outline-danger" data-action="delete" data-booking-id="<?php echo (int) $booking['id']; ?>">
-                        Delete
-                    </button>
+
+                    <?php if ($isLive && $isPaid): ?>
+                        <button class="lux-btn lux-btn-danger" data-action="cancel-refund" data-booking-id="<?php echo (int) $booking['id']; ?>">
+                            Cancel &amp; Refund
+                        </button>
+                    <?php endif; ?>
+
+                    <?php if (!$isLive): ?>
+                        <button class="lux-btn lux-btn-ghost" data-action="archive" data-booking-id="<?php echo (int) $booking['id']; ?>">
+                            Archive
+                        </button>
+                    <?php endif; ?>
+
+                    <?php if (!$isPaid): ?>
+                        <button class="lux-btn lux-btn-outline-danger" data-action="delete" data-booking-id="<?php echo (int) $booking['id']; ?>">
+                            Delete
+                        </button>
+                    <?php endif; ?>
+
                 </div>
 
             </div>

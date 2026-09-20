@@ -17,7 +17,7 @@ if (!Session::isAuthenticated()) {
 require_once '../../config/db.php';
 
 $user = Session::user();
-DoSProtection::check((int) $user['id']);
+DoSProtection::check((int) $user['id'], 'polling');
 
 $tripId = (int) ($_GET['trip_id'] ?? 0);
 

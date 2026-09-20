@@ -65,6 +65,10 @@ require_once '../includes/navbar.php';
                            placeholder="Your secure empire key">
                 </div>
 
+                <div class="auth-field" id="loginCaptchaField" hidden>
+                    <div id="loginCaptchaWidget"></div>
+                </div>
+
                 <button type="submit" class="lux-btn auth-submit-btn" id="loginSubmitBtn">
                     <i class="fa-solid fa-right-to-bracket"></i> Enter Now
                 </button>
@@ -121,12 +125,28 @@ require_once '../includes/navbar.php';
     window.LUX_OFFLINE_MODAL_CONFIG = { baseUrl: "<?php echo BASE_URL; ?>" };
 </script>
 <script src="<?php echo BASE_URL; ?>/assets/js/offline-required-modal.js"></script>
+<script src="https://challenges.cloudflare.com/turnstile/api.js" async defer></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/registration-otp-step.js"></script>
 <script>
 (function () {
 
     const baseUrl = "<?php echo BASE_URL; ?>";
     let csrfToken = "<?php echo htmlspecialchars($csrfToken); ?>";
+
+    let loginCaptchaWidgetId = null;
+    let loginCaptchaToken = null;
+
+    function ensureCaptchaRendered() {
+        if (loginCaptchaWidgetId !== null) return;
+        if (!window.turnstile) {
+            setTimeout(ensureCaptchaRendered, 200);
+            return;
+        }
+        loginCaptchaWidgetId = turnstile.render('#loginCaptchaWidget', {
+            sitekey: "<?php echo htmlspecialchars(TURNSTILE_SITE_KEY, ENT_QUOTES); ?>",
+            callback: function (token) { loginCaptchaToken = token; }
+        });
+    }
 
     const form = document.getElementById('loginForm');
     const fieldsWrapper = document.getElementById('loginFields');
@@ -170,12 +190,22 @@ require_once '../includes/navbar.php';
         const formData = new URLSearchParams(new FormData(form));
         formData.set('csrf_token', csrfToken);
 
+        if (loginCaptchaToken) {
+            formData.set('captcha_token', loginCaptchaToken);
+        }
+
         try {
 
             const response = await fetch(form.action, { method: 'POST', body: formData });
             const data = await response.json();
 
             if (!data.success) {
+
+                if (data.requires_captcha) {
+                    document.getElementById('loginCaptchaField').hidden = false;
+                    ensureCaptchaRendered();
+                }
+
                 showTopError(data.message || 'Login failed.');
                 submitBtn.disabled = false;
                 return;

@@ -80,6 +80,40 @@ try {
     $db = new Database();
     $pdo = $db->connect();
 
+    /*
+     * A house with a paid booking in flight must never be deleted — the
+     * tenant's fee and booking would be left pointing at nothing. The UI
+     * hides the button, but the server has to enforce it too.
+     */
+    $stateStmt = $pdo->prepare("
+        SELECT
+            h.status,
+            (
+                SELECT COUNT(*) FROM bookings b
+                WHERE b.house_id = h.id AND b.status IN ('pending', 'approved')
+            ) AS live_bookings
+        FROM houses h
+        WHERE h.id = ?
+        LIMIT 1
+    ");
+    $stateStmt->execute([$houseId]);
+    $state = $stateStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$state) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'Property not found.']);
+        exit;
+    }
+
+    if (in_array($state['status'], ['reserved', 'booked'], true) || (int) $state['live_bookings'] > 0) {
+        http_response_code(409);
+        echo json_encode([
+            'success' => false,
+            'message' => 'This property has a booking in progress. Accept or decline the request first, then you can delete it.'
+        ]);
+        exit;
+    }
+
     $mediaStmt = $pdo->prepare("SELECT image_path FROM house_images WHERE house_id = ?");
     $mediaStmt->execute([$houseId]);
     $mediaRows = $mediaStmt->fetchAll(PDO::FETCH_ASSOC);
@@ -92,7 +126,21 @@ try {
      * rows explicitly first. Flagging this assumption; worth
      * confirming against database/schema.sql.
      */
-    $deleted = $houseModel->deleteHouse($houseId);
+    try {
+        $deleted = $houseModel->deleteHouse($houseId);
+    } catch (PDOException $e) {
+        // A foreign key stops the delete when the house still has booking history.
+        if ((string) $e->getCode() === '23000') {
+            http_response_code(409);
+            echo json_encode([
+                'success' => false,
+                'message' => 'This property has booking history and cannot be deleted. Mark it as unavailable instead.'
+            ]);
+            exit;
+        }
+
+        throw $e;
+    }
 
     if (!$deleted) {
         http_response_code(500);

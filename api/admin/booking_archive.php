@@ -17,14 +17,14 @@ if (!$bookingId) {
 }
 
 if ($reason === '') {
-    adminJsonError('A reason is required to delete a booking.');
+    adminJsonError('A reason is required to archive a booking.');
 }
 
 $service = new AdminBookingService();
-$result = $service->deleteUnpaidBooking($bookingId, $currentAdminId, $reason);
+$result = $service->archiveBooking($bookingId, $currentAdminId, $reason);
 
 if (!$result['success']) {
     adminJsonError($result['message'], $result['code'] ?? 400);
 }
 
-adminJsonResponse(['status' => 'deleted']);
+adminJsonResponse(['status' => 'archived']);

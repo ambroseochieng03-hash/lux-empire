@@ -4,7 +4,8 @@
     const markAllBtn = document.getElementById('notifMarkAllBtn');
 
     function timeAgo(dateStr) {
-        const diff = (Date.now() - new Date(dateStr.replace(' ', 'T') + 'Z')) / 1000;
+        // The database stores Nairobi time (UTC+3, no daylight saving), not UTC.
+        const diff = Math.max(0, (Date.now() - new Date(dateStr.replace(' ', 'T') + '+03:00')) / 1000);
         if (diff < 60) return 'just now';
         if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
         if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';

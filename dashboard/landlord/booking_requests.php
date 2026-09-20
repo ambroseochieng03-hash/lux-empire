@@ -45,6 +45,11 @@ require_once '../../includes/sidebar.php';
 
         </div>
 
+        <div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap;">
+            <a class="lux-btn" href="<?php echo BASE_URL; ?>/booking-requests">Pending Requests</a>
+            <a class="lux-btn" style="background:rgba(255,255,255,0.06); color:#fff;" href="<?php echo BASE_URL; ?>/dashboard/landlord/booking_history.php">History</a>
+        </div>
+
         <!-- BOOKINGS GRID -->
         <div class="bookings-grid" id="landlordBookingsGrid">
 
@@ -197,17 +202,16 @@ require_once '../../includes/sidebar.php';
                                 KES <?php echo number_format($booking['price']); ?>
                             </p>
 
-                            <!-- TENANT INFO -->
+                            <!-- TENANT INFO — phone and email are only shared once you approve the request -->
                             <div class="booking-tenant-box">
-
 
                                 <?php echo htmlspecialchars($booking['tenant_name']); ?>
 
                                 <br>
-                                <?php echo htmlspecialchars($booking['tenant_phone']); ?>
-
-                                <br>
-                                <?php echo htmlspecialchars($booking['tenant_email']); ?>
+                                <small style="color:var(--gray);">
+                                    Phone and email are shared once you approve this request.
+                                    Use "Message Tenant" to talk in the meantime.
+                                </small>
 
                             </div>
 
@@ -217,6 +221,27 @@ require_once '../../includes/sidebar.php';
                             <div class="booking-status status-<?php echo htmlspecialchars($status); ?>">
                                 Status:
                                 <?php echo ucfirst($status); ?>
+                            </div>
+
+                            <?php
+                                $responseDeadline = strtotime((string) $booking['booking_date']) + RESERVATION_RESPONSE_HOURS * 3600;
+                                $secondsLeft = $responseDeadline - time();
+                            ?>
+
+                            <?php if ($status === 'pending' && $secondsLeft > 0): ?>
+                                <div style="color:var(--gray); font-size:0.85rem; margin:10px 0;">
+                                    Respond within <?php echo max(1, (int) ceil($secondsLeft / 3600)); ?>h — unanswered requests are declined automatically and the tenant is refunded.
+                                </div>
+                            <?php endif; ?>
+
+                            <div style="margin:12px 0;">
+                                <button type="button"
+                                        class="lux-btn chat-starter-btn"
+                                        data-tenant-id="<?php echo (int) $booking['tenant_id']; ?>"
+                                        <?php if (!empty($booking['house_id'])): ?>data-house-id="<?php echo (int) $booking['house_id']; ?>"<?php endif; ?>
+                                        data-other-name="<?php echo htmlspecialchars($booking['tenant_name']); ?>">
+                                    <i class="fa-solid fa-comment-dots"></i> Message Tenant
+                                </button>
                             </div>
 
                             <!-- ACTIONS (this query only ever returns pending, but keep the guard) -->
@@ -301,5 +326,7 @@ require_once '../../includes/sidebar.php';
 
 <script src="<?php echo BASE_URL; ?>/assets/js/property-media.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/bookings.js"></script>
+
+<?php require_once '../../includes/chat_starter_modal.php'; ?>
 
 <?php require_once '../../includes/footer.php'; ?>

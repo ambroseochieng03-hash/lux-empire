@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/ListingState.php';
 
 class Booking {
 
@@ -30,6 +31,11 @@ class Booking {
      *   and turned into the same friendly message.
      */
     public function createBooking($tenant_id, $house_id, $landlord_id) {
+
+        // Bookings are only ever created by Payment::applyEntitlement() AFTER the
+        // booking fee has been paid. This legacy path created UNPAID requests, so
+        // it is switched off for good. (The code below is kept only for reference.)
+        return 'Booking requires payment. Please use the Book Now button and pay the booking fee.';
 
         try {
 
@@ -359,37 +365,276 @@ class Booking {
     }
 
     /**
+     * Which of these houses has THIS tenant paid for and still holds a live
+     * booking on (pending or approved)? Decides who may see the landlord's
+     * contact details. A rejected / cancelled / expired booking is refunded,
+     * so it no longer counts. Returns [house_id => true].
+     */
+    public function getPaidHouseIdsForTenant(int $tenantId, array $houseIds): array
+    {
+        $houseIds = array_values(array_unique(array_filter(array_map('intval', $houseIds))));
+
+        if (empty($houseIds)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($houseIds), '?'));
+
+        $stmt = $this->conn->prepare("
+            SELECT DISTINCT house_id
+            FROM " . $this->table . "
+            WHERE tenant_id = ?
+            AND payment_status = 'paid'
+            AND status IN ('pending', 'approved')
+            AND house_id IN ({$placeholders})
+        ");
+
+        $stmt->execute(array_merge([$tenantId], $houseIds));
+
+        $map = [];
+
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $houseId) {
+            $map[(int) $houseId] = true;
+        }
+
+        return $map;
+    }
+
+    public function hasPaidBookingForHouse(int $tenantId, int $houseId): bool
+    {
+        return isset($this->getPaidHouseIdsForTenant($tenantId, [$houseId])[$houseId]);
+    }
+
+    /**
+     * Which of these houses may THIS tenant see the landlord's phone/email for?
+     * Depends on ListingState::contactRevealStatuses() (default: only after the
+     * landlord has accepted). Returns [house_id => true].
+     */
+    public function getContactHouseIdsForTenant(int $tenantId, array $houseIds): array
+    {
+        $houseIds = array_values(array_unique(array_filter(array_map('intval', $houseIds))));
+
+        if (empty($houseIds)) {
+            return [];
+        }
+
+        $statuses = ListingState::contactRevealStatuses();
+
+        $statusMarks = implode(',', array_fill(0, count($statuses), '?'));
+        $houseMarks = implode(',', array_fill(0, count($houseIds), '?'));
+
+        $stmt = $this->conn->prepare("
+            SELECT DISTINCT house_id
+            FROM " . $this->table . "
+            WHERE tenant_id = ?
+            AND payment_status = 'paid'
+            AND status IN ({$statusMarks})
+            AND house_id IN ({$houseMarks})
+        ");
+
+        $stmt->execute(array_merge([$tenantId], $statuses, $houseIds));
+
+        $map = [];
+
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $houseId) {
+            $map[(int) $houseId] = true;
+        }
+
+        return $map;
+    }
+
+    public function hasContactAccessForHouse(int $tenantId, int $houseId): bool
+    {
+        return isset($this->getContactHouseIdsForTenant($tenantId, [$houseId])[$houseId]);
+    }
+
+    /**
+     * Chat gate: does this tenant hold a PAID, still-live (pending or approved)
+     * booking with this landlord? Used in both directions — tenant -> landlord
+     * and landlord -> tenant. When the booking ends (rejected / cancelled /
+     * expired) the fee is refunded and this becomes false again.
+     */
+    public function hasLiveBookingWithLandlord(int $tenantId, int $landlordId): bool
+    {
+        $stmt = $this->conn->prepare("
+            SELECT 1
+            FROM " . $this->table . "
+            WHERE tenant_id = :tenant_id
+            AND landlord_id = :landlord_id
+            AND payment_status = 'paid'
+            AND status IN ('pending', 'approved')
+            LIMIT 1
+        ");
+
+    $stmt->execute([':tenant_id' => $tenantId, ':landlord_id' => $landlordId]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * Has this landlord's contact reveal been unlocked for this tenant?
+     * (A paid booking whose status is in ListingState::contactRevealStatuses().)
+     * While false, phone numbers and emails are masked in their chat.
+     */
+    public function hasContactRevealBetween(int $tenantId, int $landlordId): bool
+    {
+        $statuses = ListingState::contactRevealStatuses();
+        $marks = implode(',', array_fill(0, count($statuses), '?'));
+
+        $stmt = $this->conn->prepare("
+            SELECT 1
+            FROM " . $this->table . "
+            WHERE tenant_id = ?
+            AND landlord_id = ?
+            AND payment_status = 'paid'
+            AND status IN ({$marks})
+            LIMIT 1
+        ");
+
+        $stmt->execute(array_merge([$tenantId, $landlordId], $statuses));
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /**
+     * TENANT SELF-CANCELLATION (only while the landlord has not decided)
+     *
+     * Same locking pattern as acceptBooking()/rejectBooking(): the booking
+     * row is locked FOR UPDATE first, so if the landlord accepts at the same
+     * instant only ONE of the two wins. On success the house goes back to
+     * 'available' (only if THIS booking was holding the reservation).
+     * Refund + notifications are the caller's job, AFTER this commits.
+     */
+    public function cancelPendingBooking(int $bookingId, int $tenantId): array
+    {
+        try {
+
+            $this->conn->beginTransaction();
+
+            $stmt = $this->conn->prepare("
+                SELECT id, house_id, tenant_id, landlord_id, status, payment_status, payment_id, house_title_snapshot
+                FROM " . $this->table . "
+                WHERE id = :id
+                FOR UPDATE
+            ");
+
+            $stmt->execute([':id' => $bookingId]);
+            $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$booking || (int) $booking['tenant_id'] !== $tenantId) {
+                $this->conn->rollBack();
+                return ['success' => false, 'message' => 'Booking not found or unauthorized.'];
+            }
+
+            if ($booking['status'] !== 'pending') {
+                $this->conn->rollBack();
+                return ['success' => false, 'message' => 'The landlord has already responded to this request, so it can no longer be cancelled.'];
+            }
+
+            $update = $this->conn->prepare("
+                UPDATE " . $this->table . "
+                SET status = 'cancelled'
+                WHERE id = :id AND status = 'pending'
+            ");
+            $update->execute([':id' => $bookingId]);
+
+            if ($update->rowCount() === 0) {
+                $this->conn->rollBack();
+                return ['success' => false, 'message' => 'This request has already been handled.'];
+            }
+
+            if (!empty($booking['house_id'])) {
+                $this->conn->prepare("
+                    UPDATE houses
+                    SET status = 'available', reserved_by_booking_id = NULL
+                    WHERE id = :house_id AND reserved_by_booking_id = :booking_id
+                ")->execute([
+                    ':house_id' => $booking['house_id'],
+                    ':booking_id' => $bookingId
+                ]);
+            }
+
+            $this->conn->commit();
+
+            return [
+                'success' => true,
+                'booking_id' => $bookingId,
+                'house_id' => $booking['house_id'] !== null ? (int) $booking['house_id'] : null,
+                'landlord_id' => (int) $booking['landlord_id'],
+                'title' => (string) ($booking['house_title_snapshot'] ?? ''),
+                'payment_status' => $booking['payment_status'] ?? 'unpaid',
+                'payment_id' => $booking['payment_id'] ?? null,
+            ];
+
+        } catch (Throwable $e) {
+
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
+
+            error_log('LUX EMPIRE booking self-cancel failed: ' . $e->getMessage());
+
+            return ['success' => false, 'message' => 'Unable to cancel this request. Please try again.'];
+        }
+    }
+
+    /**
+     * TENANT "DELETE" = remove from MY list only (soft delete). The row
+     * stays for landlord history, admin oversight and payment/refund
+     * disputes. The caller must already have verified ownership and that
+     * the booking is not pending.
+     */
+    public function hideBookingForTenant(int $bookingId, int $tenantId): bool
+    {
+        $stmt = $this->conn->prepare("
+            UPDATE " . $this->table . "
+            SET hidden_by_tenant_at = COALESCE(hidden_by_tenant_at, NOW())
+            WHERE id = :id AND tenant_id = :tenant_id AND status <> 'pending'
+        ");
+
+        return $stmt->execute([':id' => $bookingId, ':tenant_id' => $tenantId]);
+    }
+
+    /**
      * GET BOOKINGS BY TENANT
      */
     public function getBookingsByTenant($tenant_id) {
 
-    $query = "SELECT 
-            b.*,
-            h.title,
-            h.location,
-            h.price,
-            h.rating,
-            h.bedrooms,
-            h.bathrooms,
-                (
-                    SELECT hi.image_path 
-                    FROM house_images hi 
-                    WHERE hi.house_id = h.id 
-                    LIMIT 1
-                ) AS image
-              FROM bookings b
-              LEFT JOIN houses h ON b.house_id = h.id
-              WHERE b.tenant_id = :tenant_id
-              ORDER BY b.booking_date DESC";
+        $query = "SELECT
+                    b.*,
+                    COALESCE(h.title, b.house_title_snapshot) AS title,
+                    h.location,
+                    h.price,
+                    h.rating,
+                    h.bedrooms,
+                    h.bathrooms,
+                    h.verified_at,
+                    u.full_name AS landlord_name,
+                    u.phone AS landlord_phone,
+                    u.email AS landlord_email,
+                    r.status AS refund_status,
+                    (
+                        SELECT hi.image_path
+                        FROM house_images hi
+                        WHERE hi.house_id = h.id
+                        LIMIT 1
+                    ) AS image
+                  FROM bookings b
+                  LEFT JOIN houses h ON b.house_id = h.id
+                  LEFT JOIN users u ON b.landlord_id = u.id
+                  LEFT JOIN refunds r ON r.payment_id = b.payment_id
+                  WHERE b.tenant_id = :tenant_id
+                  AND b.hidden_by_tenant_at IS NULL
+                  ORDER BY b.booking_date DESC";
 
-    $stmt = $this->conn->prepare($query);
+        $stmt = $this->conn->prepare($query);
 
-    $stmt->bindParam(':tenant_id', $tenant_id);
+        $stmt->bindParam(':tenant_id', $tenant_id);
 
-    $stmt->execute();
+        $stmt->execute();
 
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
     /**
      * BOOKING STATS FOR LANDLORD DASHBOARD
@@ -451,13 +696,11 @@ class Booking {
     }
 
     /**
-     * FULL BOOKING HISTORY FOR LANDLORD (paginated, 90-day default)
+     * BOOKING HISTORY FOR LANDLORD (paginated)
      *
-     * Not wired to any page yet — this is here so a future
-     * "Booking History" page can be built directly on it, using the
-     * pattern already used for /dashboard/admin/*: pass $days = null
-     * for all-time; nothing is ever permanently hidden, the 90-day
-     * default just keeps the common case fast. Returns
+     * Requests that have been ANSWERED: approved, declined, cancelled by the
+     * tenant, or expired. Live requests belong in the pending queue and unpaid
+     * rows never count. Pass $days = null for all-time. Returns
      * ['bookings' => [...], 'total' => int].
      */
     public function getBookingHistoryForLandlord(int $landlordId, int $limit = 20, int $offset = 0, ?int $days = 90): array
@@ -465,7 +708,7 @@ class Booking {
         $limit = max(1, min(100, $limit));
         $offset = max(0, $offset);
 
-        $where = "b.landlord_id = :landlord_id";
+        $where = "b.landlord_id = :landlord_id AND b.payment_status = 'paid' AND b.status <> 'pending'";
         $params = [':landlord_id' => $landlordId];
 
         if ($days !== null) {
@@ -486,16 +729,11 @@ class Booking {
                     h.is_hidden,
                     h.is_flagged,
 
-                    (
-                        SELECT hi.image_path
-                        FROM house_images hi
-                        WHERE hi.house_id = h.id
-                        LIMIT 1
-                    ) AS image,
-
                     u.full_name AS tenant_name,
                     u.phone AS tenant_phone,
-                    u.email AS tenant_email
+                    u.email AS tenant_email,
+
+                    r.reason AS refund_reason
 
                 FROM " . $this->table . " b
 
@@ -504,6 +742,9 @@ class Booking {
 
                 JOIN users u
                 ON b.tenant_id = u.id
+
+                LEFT JOIN refunds r
+                ON r.payment_id = b.payment_id
 
                 WHERE {$where}
 
@@ -566,6 +807,7 @@ class Booking {
 
                 WHERE b.landlord_id = :landlord_id
                 AND b.status = 'pending'
+                AND b.payment_status = 'paid'
 
                 ORDER BY b.id DESC";
 
@@ -661,7 +903,7 @@ class Booking {
      */
     public function getTenantBookings($tenant_id) {
 
-        $query = "SELECT 
+        $query = "SELECT
                     b.*,
                     h.title,
                     h.location,
@@ -670,6 +912,7 @@ class Booking {
                 FROM bookings b
                 JOIN houses h ON b.house_id = h.id
                 WHERE b.tenant_id = :tenant_id
+                AND b.hidden_by_tenant_at IS NULL
                 ORDER BY b.booking_date DESC";
 
         $stmt = $this->conn->prepare($query);

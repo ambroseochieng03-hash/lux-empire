@@ -84,4 +84,9 @@ final class RateLimiter
         $redis->del(self::COUNT_PREFIX . $key);
         $redis->del(self::BLOCK_PREFIX . $key);
     }
+
+    public static function attempts(string $key): int
+    {
+        return RedisThrottle::getCount(self::COUNT_PREFIX . $key);
+    }
 }

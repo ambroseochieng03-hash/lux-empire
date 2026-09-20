@@ -17,14 +17,14 @@ if (!$bookingId) {
 }
 
 if ($reason === '') {
-    adminJsonError('A reason is required to delete a booking.');
+    adminJsonError('A reason is required to cancel and refund a booking.');
 }
 
 $service = new AdminBookingService();
-$result = $service->deleteUnpaidBooking($bookingId, $currentAdminId, $reason);
+$result = $service->cancelAndRefund($bookingId, $currentAdminId, $reason);
 
 if (!$result['success']) {
     adminJsonError($result['message'], $result['code'] ?? 400);
 }
 
-adminJsonResponse(['status' => 'deleted']);
+adminJsonResponse(['status' => 'cancelled', 'refund_queued' => $result['refund_queued']]);

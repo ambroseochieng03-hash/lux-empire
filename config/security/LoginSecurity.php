@@ -82,22 +82,11 @@ final class LoginSecurity
         string $email,
         string $ip
     ): bool {
-        /*
-         * CAPTCHA cannot be required when no provider is configured.
-         */
         if (!Captcha::isConfigured()) {
             return false;
         }
 
-        /*
-         * The current BruteForce class intentionally exposes
-         * blocking and failure recording, but not the current
-         * counter. CAPTCHA therefore remains an explicit policy
-         * hook until an attempt-count accessor is introduced.
-         *
-         * For now, configuration alone does not force CAPTCHA.
-         */
-        return false;
+        return BruteForce::attemptCount($email, $ip) >= self::CAPTCHA_THRESHOLD;
     }
 
     /**

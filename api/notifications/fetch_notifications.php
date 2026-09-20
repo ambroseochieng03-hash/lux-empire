@@ -16,7 +16,7 @@ if (!Session::isAuthenticated()) {
 }
 
 $user = Session::user();
-DoSProtection::check((int) $user['id']);
+DoSProtection::check((int) $user['id'], 'polling');
 $notification = new Notification();
 
 echo json_encode([

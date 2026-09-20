@@ -83,6 +83,14 @@ only manages this form's own UI state.
 
     function maybeFetchPricePreview() {
 
+        // Guests aren't logged in, and the price endpoint is login-only because
+        // every call costs money on Google's side. Tell them instead of failing quietly.
+        if (window.LUX_IS_GUEST) {
+            priceAmountEl.textContent = 'Exact price shown after you sign up';
+            priceMetaEl.textContent = 'Free to sign up — takes about a minute.';
+            return;
+        }
+
         clearTimeout(previewDebounceTimer);
 
         previewDebounceTimer = setTimeout(async () => {

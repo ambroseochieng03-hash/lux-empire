@@ -8,10 +8,33 @@ class Notification
 {
     private PDO $conn;
 
+    /*
+     * The unread counter is only a short-lived cache. Every write in this class
+     * simply deletes it, and it also expires by itself after a few seconds. That
+     * way it can NEVER drift, even if something inserts notifications directly
+     * into the table without going through this class.
+     */
+    private const UNREAD_CACHE_SECONDS = 15;
+
     public function __construct()
     {
         $database = new Database();
         $this->conn = $database->connect();
+    }
+
+    private function unreadKey(int $userId): string
+    {
+        return "notif:unread2:{$userId}";
+    }
+
+    private function forgetUnreadCache(int $userId): void
+    {
+        try {
+            require_once __DIR__ . '/../config/RedisConnection.php';
+            RedisConnection::get()->del($this->unreadKey($userId));
+        } catch (Throwable $e) {
+            // Not fatal — the cache expires by itself within seconds.
+        }
     }
 
     public function create(int $userId, string $type, string $title, string $message, ?string $link = null): int
@@ -31,18 +54,56 @@ class Notification
 
         $id = (int) $this->conn->lastInsertId();
 
-        // Keep the unread-count cache in step with the real count
-        // instead of letting every poll hit COUNT(*) on notifications.
-        try {
-            require_once __DIR__ . '/../config/RedisConnection.php';
-            RedisConnection::get()->incr("notif:unread:{$userId}");
-        } catch (Throwable $e) {
-            // If this fails, getUnreadCount() below falls back to a
-            // real COUNT(*) whenever the cache key is missing/stale —
-            // never blocks notification creation.
-        }
+        $this->forgetUnreadCache($userId);
 
         return $id;
+    }
+
+    /**
+     * One notification per conversation while it is unread: further messages
+     * update that notification (newest preview, moved to the top) instead of
+     * creating a new one for every single message.
+     */
+    public function notifyNewMessage(int $userId, int $conversationId, string $fromName, string $preview, string $link): void
+    {
+        $preview = mb_strlen($preview) > 90 ? mb_substr($preview, 0, 90) . '…' : $preview;
+        $title = 'New message from ' . $fromName;
+
+        $existing = $this->conn->prepare("
+            SELECT id FROM notifications
+            WHERE user_id = :user_id AND type = 'new_message' AND is_read = 0 AND link = :link
+            LIMIT 1
+        ");
+        $existing->execute([':user_id' => $userId, ':link' => $link]);
+        $existingId = $existing->fetchColumn();
+
+        if ($existingId !== false) {
+            $this->conn->prepare("
+                UPDATE notifications SET title = :title, message = :message, created_at = NOW()
+                WHERE id = :id
+            ")->execute([':title' => $title, ':message' => $preview, ':id' => (int) $existingId]);
+
+            return;
+        }
+
+        $this->create($userId, 'new_message', $title, $preview, $link);
+    }
+
+    /**
+     * The person opened the conversation — its "new message" notification is
+     * read. Links always end in ?c=<conversation id>.
+     */
+    public function markConversationRead(int $userId, int $conversationId): void
+    {
+        $stmt = $this->conn->prepare("
+            UPDATE notifications SET is_read = 1
+            WHERE user_id = :user_id AND type = 'new_message' AND is_read = 0 AND link LIKE :pattern
+        ");
+        $stmt->execute([':user_id' => $userId, ':pattern' => '%?c=' . $conversationId]);
+
+        if ($stmt->rowCount() > 0) {
+            $this->forgetUnreadCache($userId);
+        }
     }
 
     public function getForUser(int $userId, int $limit = 30): array
@@ -62,19 +123,19 @@ class Notification
 
     public function getUnreadCount(int $userId): int
     {
-        require_once __DIR__ . '/../config/RedisConnection.php';
-
-        $cacheKey = "notif:unread:{$userId}";
+        $cacheKey = $this->unreadKey($userId);
+        $redis = null;
 
         try {
+            require_once __DIR__ . '/../config/RedisConnection.php';
             $redis = RedisConnection::get();
             $cached = $redis->get($cacheKey);
 
             if ($cached !== false) {
-                return (int) $cached;
+                return max(0, (int) $cached);
             }
         } catch (Throwable $e) {
-            // Redis unreachable — fall through to the real count below.
+            $redis = null; // Redis unreachable — count straight from the database.
         }
 
         $stmt = $this->conn->prepare("
@@ -84,14 +145,12 @@ class Notification
         $stmt->execute([':user_id' => $userId]);
         $count = (int) $stmt->fetchColumn();
 
-        // Warm the cache so the next poll doesn't hit the DB again.
-        // No TTL — this counter is kept exactly in sync by
-        // create()/markRead()/markAllRead()/delete() below, so it
-        // never needs to expire on its own.
-        try {
-            RedisConnection::get()->set($cacheKey, $count);
-        } catch (Throwable $e) {
-            // Not fatal — just means the next call recomputes too.
+        if ($redis !== null) {
+            try {
+                $redis->setex($cacheKey, self::UNREAD_CACHE_SECONDS, (string) $count);
+            } catch (Throwable $e) {
+                // Not fatal.
+            }
         }
 
         return $count;
@@ -99,9 +158,6 @@ class Notification
 
     public function markRead(int $id, int $userId): bool
     {
-        // The added "AND is_read = 0" means rowCount() reliably tells
-        // us whether this call actually flipped an unread notification
-        // to read — that's how we know whether to decrement the cache.
         $stmt = $this->conn->prepare("
             UPDATE notifications SET is_read = 1
             WHERE id = :id AND user_id = :user_id AND is_read = 0
@@ -109,19 +165,7 @@ class Notification
         $stmt->execute([':id' => $id, ':user_id' => $userId]);
 
         if ($stmt->rowCount() > 0) {
-            try {
-                require_once __DIR__ . '/../config/RedisConnection.php';
-                $redis = RedisConnection::get();
-                $newValue = $redis->decr("notif:unread:{$userId}");
-                if ($newValue < 0) {
-                    // Cache had drifted negative somehow — clamp it
-                    // back to a sane floor rather than let it compound.
-                    $redis->set("notif:unread:{$userId}", 0);
-                }
-            } catch (Throwable $e) {
-                // Not fatal — getUnreadCount() recovers from the DB
-                // the next time the cache key is missing.
-            }
+            $this->forgetUnreadCache($userId);
         }
 
         return true;
@@ -135,50 +179,25 @@ class Notification
         ");
         $result = $stmt->execute([':user_id' => $userId]);
 
-        try {
-            require_once __DIR__ . '/../config/RedisConnection.php';
-            RedisConnection::get()->set("notif:unread:{$userId}", 0);
-        } catch (Throwable $e) {
-            // Not fatal — getUnreadCount() recovers from the DB the
-            // next time the cache key is missing.
-        }
+        $this->forgetUnreadCache($userId);
 
         return $result;
     }
 
     public function delete(int $id, int $userId): bool
     {
-        // Need to know whether this notification was unread BEFORE
-        // deleting it, so the cached counter can be decremented
-        // correctly — once it's deleted there's no way to check.
-        $check = $this->conn->prepare("
-            SELECT is_read FROM notifications
-            WHERE id = :id AND user_id = :user_id
-            LIMIT 1
-        ");
-        $check->execute([':id' => $id, ':user_id' => $userId]);
-        $row = $check->fetch(PDO::FETCH_ASSOC);
-        $wasUnread = ($row !== false) && ((int) $row['is_read'] === 0);
-
         $stmt = $this->conn->prepare("
             DELETE FROM notifications
             WHERE id = :id AND user_id = :user_id
         ");
         $stmt->execute([':id' => $id, ':user_id' => $userId]);
 
-        if ($stmt->rowCount() > 0 && $wasUnread) {
-            try {
-                require_once __DIR__ . '/../config/RedisConnection.php';
-                $redis = RedisConnection::get();
-                $newValue = $redis->decr("notif:unread:{$userId}");
-                if ($newValue < 0) {
-                    $redis->set("notif:unread:{$userId}", 0);
-                }
-            } catch (Throwable $e) {
-                // Not fatal — recovers on next cache miss.
-            }
+        $deleted = $stmt->rowCount() > 0;
+
+        if ($deleted) {
+            $this->forgetUnreadCache($userId);
         }
 
-        return $stmt->rowCount() > 0;
+        return $deleted;
     }
 }

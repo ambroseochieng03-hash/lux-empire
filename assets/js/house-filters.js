@@ -281,7 +281,16 @@ Works on any page that includes:
             }
 
             if (window.LuxOfflineDB && Array.isArray(data.houses)) {
-                window.LuxOfflineDB.upsertHouses(data.houses);
+                // The offline cache lives in the browser and isn't per-account, so
+                // never store landlord contact details in it.
+                window.LuxOfflineDB.upsertHouses(data.houses.map((h) => {
+                    const copy = Object.assign({}, h);
+                    delete copy.landlord_phone;
+                    delete copy.landlord_email;
+                    delete copy.contact_visible;
+                    delete copy.chat_visible;
+                    return copy;
+                }));
             }
 
             if (reset) {
@@ -421,7 +430,8 @@ Works on any page that includes:
         let viewDetailsHtml;
         let ratingHtml = '';
         let chatHtml = '';
-        let parkingHtml = '';
+        let contactHtml = '';
+        let perksHtml = '';
 
         if (variant === 'tenant') {
 
@@ -432,11 +442,31 @@ Works on any page that includes:
                 ratingHtml = `<div class="lux-explore-rating">${'★ '.repeat(rating)}${'☆ '.repeat(5 - rating)}</div>`;
             }
 
-            if (parseInt(house.has_parking, 10) === 1) {
-                parkingHtml = '<div class="lux-explore-parking-row"><span class="lux-parking-badge"><i class="fa-solid fa-square-parking"></i> Parking Available</span></div>';
+            // Landlord contact: the API only sends it when this tenant's booking unlocks it.
+            if (house.contact_visible) {
+                const phoneHtml = house.landlord_phone
+                    ? `<br><i class="fa-solid fa-phone"></i> <a href="tel:${escapeAttr(house.landlord_phone)}">${escapeHtml(house.landlord_phone)}</a>`
+                    : '';
+                const emailHtml = house.landlord_email
+                    ? `<br><i class="fa-solid fa-envelope"></i> <a href="mailto:${escapeAttr(house.landlord_email)}">${escapeHtml(house.landlord_email)}</a>`
+                    : '';
+
+                contactHtml = `
+                    <div class="lux-landlord-contact">
+                        <span class="lux-landlord-contact-label">Your landlord</span>
+                        ${escapeHtml(house.landlord_name || '')}
+                        ${phoneHtml}
+                        ${emailHtml}
+                    </div>
+                `;
             }
 
-            if (!isOwnHouse) {
+            if (parseInt(house.has_parking, 10) === 1) {
+                perksHtml = '<div class="lux-explore-perks-row"><span class="lux-parking-badge"><i class="fa-solid fa-square-parking"></i> Parking Available</span></div>';
+            }
+
+            // Chat: only for tenants with a paid, live booking with this landlord.
+            if (house.chat_visible && !isOwnHouse) {
                 chatHtml = `
                     <button type="button"
                             class="lux-btn chat-starter-btn lux-explore-btn-chat"
@@ -467,7 +497,8 @@ Works on any page that includes:
                     <span>${escapeHtml(house.location)}</span>
                     <span>${house.bedrooms} Beds · ${house.bathrooms} Baths</span>
                 </div>
-                ${parkingHtml}
+                ${contactHtml}
+                ${perksHtml}
                 <div class="tenant-actions lux-explore-actions">
                     ${viewDetailsHtml}
                     ${actionHtml}

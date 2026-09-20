@@ -59,6 +59,14 @@ foreach ($bookingModel->getBookingsByTenant($tenantId) as $tenantBooking) {
     }
 }
 
+$pageHouseIds = array_map(static fn ($h) => (int) $h['id'], $houses);
+
+// Paid + live booking (pending or approved): may use in-app chat with that landlord.
+$paidHouseMap = $bookingModel->getPaidHouseIdsForTenant($tenantId, $pageHouseIds);
+
+// May see the landlord's phone/email (see ListingState::contactRevealStatuses()).
+$contactHouseMap = $bookingModel->getContactHouseIdsForTenant($tenantId, $pageHouseIds);
+
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
@@ -319,22 +327,49 @@ require_once '../../includes/sidebar.php';
                                     <?php echo htmlspecialchars($house['location']); ?>
                                 </span>
 
-                                    <br>
-
-                                <span style="color:var(--gray);">
-                                    <div class="booking-lanlord-details">
-                                        <?php echo htmlspecialchars($house['landlord_name']); ?>
-                                        <?php if ($verifiedLandlordMap[(int) $house['landlord_id']] ?? false): ?>
-                                            <span class="lux-verified-badge" title="Verified"><i class="fa-solid fa-circle-check"></i></span>
-                                        <?php endif; ?>
-                                        <br>
-                                        <?php echo htmlspecialchars($house['landlord_phone'] ?? 'N/A'); ?>
-                                        <br>
-                                        <?php echo htmlspecialchars($house['landlord_email'] ?? 'N/A'); ?>
-                                    </div>
-                                </span>
-
                             </div>
+
+                            <?php
+                                $landlordIsVerified = (bool) ($verifiedLandlordMap[(int) $house['landlord_id']] ?? false);
+                                $hasContactAccess = isset($contactHouseMap[$houseId]);
+                            ?>
+
+                            <?php if ($hasContactAccess): ?>
+
+                                <div class="lux-landlord-contact">
+                                    <span class="lux-landlord-contact-label">Your landlord</span>
+                                    <?php echo htmlspecialchars($house['landlord_name']); ?>
+                                    <?php if ($landlordIsVerified): ?>
+                                        <span class="lux-verified-badge" title="Verified"><i class="fa-solid fa-circle-check"></i></span>
+                                    <?php endif; ?>
+                                    <?php if (!empty($house['landlord_phone'])): ?>
+                                        <br><i class="fa-solid fa-phone"></i>
+                                        <a href="tel:<?php echo htmlspecialchars($house['landlord_phone']); ?>"><?php echo htmlspecialchars($house['landlord_phone']); ?></a>
+                                    <?php endif; ?>
+                                    <?php if (!empty($house['landlord_email'])): ?>
+                                        <br><i class="fa-solid fa-envelope"></i>
+                                        <a href="mailto:<?php echo htmlspecialchars($house['landlord_email']); ?>"><?php echo htmlspecialchars($house['landlord_email']); ?></a>
+                                    <?php endif; ?>
+                                </div>
+
+                            <?php endif; ?>
+
+                            <?php if (!empty($house['has_parking']) || (!$hasContactAccess && $landlordIsVerified)): ?>
+
+                                <div class="lux-explore-perks-row">
+                                    <?php if (!empty($house['has_parking'])): ?>
+                                        <span class="lux-parking-badge">
+                                            <i class="fa-solid fa-square-parking"></i> Parking Available
+                                        </span>
+                                    <?php endif; ?>
+                                    <?php if (!$hasContactAccess && $landlordIsVerified): ?>
+                                        <span class="lux-perk-chip">
+                                            <i class="fa-solid fa-circle-check" style="color:var(--gold);"></i> Verified landlord
+                                        </span>
+                                    <?php endif; ?>
+                                </div>
+
+                            <?php endif; ?>
 
                             <!-- META -->
                             <?php
@@ -357,14 +392,6 @@ require_once '../../includes/sidebar.php';
                                 </span>
                                 <?php endif; ?>
 
-                            </div>
-                            <?php endif; ?>
-
-                            <?php if (!empty($house['has_parking'])): ?>
-                            <div class="lux-explore-parking-row">
-                                <span class="lux-parking-badge">
-                                    <i class="fa-solid fa-square-parking"></i> Parking Available
-                                </span>
                             </div>
                             <?php endif; ?>
 
@@ -408,14 +435,18 @@ require_once '../../includes/sidebar.php';
 
                                 <?php endif; ?>
 
-                                <button type="button"
-                                        class="lux-btn chat-starter-btn lux-explore-btn-chat"
-                                        data-other-user-id="<?php echo (int) $house['landlord_id']; ?>"
-                                        data-other-role="landlord"
-                                        data-house-id="<?php echo $houseId; ?>"
-                                        data-other-name="<?php echo htmlspecialchars($house['landlord_name']); ?>">
-                                    <i class="fa-solid fa-comment-dots"></i> Message Landlord
-                                </button>
+                                <?php if (isset($paidHouseMap[$houseId]) && !$isOwnHouse): ?>
+
+                                    <button type="button"
+                                            class="lux-btn chat-starter-btn lux-explore-btn-chat"
+                                            data-other-user-id="<?php echo (int) $house['landlord_id']; ?>"
+                                            data-other-role="landlord"
+                                            data-house-id="<?php echo $houseId; ?>"
+                                            data-other-name="<?php echo htmlspecialchars($house['landlord_name']); ?>">
+                                        <i class="fa-solid fa-comment-dots"></i> Message Landlord
+                                    </button>
+
+                                <?php endif; ?>
 
                             </div>
 

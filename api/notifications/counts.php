@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once '../../includes/init.php';
 require_once '../../config/session.php';
+require_once '../../classes/Notification.php';
 require_once '../../classes/Chat.php';
 require_once '../../config/security/DoSProtection.php';
 
@@ -16,8 +17,12 @@ if (!Session::isAuthenticated()) {
 }
 
 $user = Session::user();
-DoSProtection::check((int) $user['id'], 'polling');
+$userId = (int) $user['id'];
 
-$chat = new Chat();
+// Polled by every open dashboard page — its own budget, separate from real actions.
+DoSProtection::check($userId, 'polling');
 
-echo json_encode(['conversations' => $chat->getConversationsForUser((int) $user['id'])]);
+echo json_encode([
+    'notifications' => (new Notification())->getUnreadCount($userId),
+    'chats' => (new Chat())->getUnreadTotalForUser($userId),
+]);

@@ -61,6 +61,8 @@ $csrfToken = Csrf::token();
     window.LUX_CHAT_CONFIG = {
         baseUrl: "<?php echo BASE_URL; ?>",
         currentUserId: <?php echo (int) $currentUserId; ?>,
+        editWindowMinutes: <?php echo (int) CHAT_EDIT_WINDOW_MINUTES; ?>,
+        deleteEveryoneWindowMinutes: <?php echo (int) CHAT_DELETE_EVERYONE_WINDOW_MINUTES; ?>,
         autoOpenWithUserId: <?php echo isset($autoOpenWithUserId) ? (int) $autoOpenWithUserId : 'null'; ?>,
         autoOpenHouseId: <?php echo isset($autoOpenHouseId) && $autoOpenHouseId ? (int) $autoOpenHouseId : 'null'; ?>,
         autoOpenRole: <?php echo isset($autoOpenRole) ? "'" . htmlspecialchars($autoOpenRole) . "'" : 'null'; ?>

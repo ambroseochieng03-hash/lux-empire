@@ -194,6 +194,27 @@ final class AdminUserService
             throw new RuntimeException('Admin accounts cannot be deleted.');
         }
 
+        // Money records must survive: refunds, disputes and accounting all depend on them.
+        $paymentCount = $this->conn->prepare("SELECT COUNT(*) FROM payments WHERE user_id = :id");
+        $paymentCount->execute([':id' => $userId]);
+
+        if ((int) $paymentCount->fetchColumn() > 0) {
+            throw new RuntimeException(
+                'This user has payment records that must be kept for accounting and refunds. Suspend the account instead of deleting it.'
+            );
+        }
+
+        if ($target['role'] === 'driver') {
+            $walletCount = $this->conn->prepare("SELECT COUNT(*) FROM wallet_transactions WHERE driver_id = :id");
+            $walletCount->execute([':id' => $userId]);
+
+            if ((int) $walletCount->fetchColumn() > 0) {
+                throw new RuntimeException(
+                    'This driver has commission wallet records that must be kept. Suspend the account instead of deleting it.'
+                );
+            }
+        }
+
         if ($target['role'] === 'landlord') {
             $listingCount = $this->conn->prepare("SELECT COUNT(*) FROM houses WHERE landlord_id = :id");
             $listingCount->execute([':id' => $userId]);
@@ -314,12 +335,21 @@ final class AdminUserService
         if ($user['role'] === 'driver') {
             $driver = $this->getDriverProfile($userId);
 
-            if (!$driver || empty($driver['license_number'])) {
+            if (!$driver) {
                 return null;
             }
 
-            $value = Crypto::decrypt($driver['license_number']);
-            $label = $driver['identity_type'] === 'license' ? 'Driving License' : 'National ID';
+            $isLicense = $driver['identity_type'] === 'license';
+            $encryptedValue = $isLicense
+                ? ($driver['license_number'] ?? null)
+                : ($driver['national_id_encrypted'] ?? null);
+
+            if (empty($encryptedValue)) {
+                return null;
+            }
+
+            $value = Crypto::decrypt($encryptedValue);
+            $label = $isLicense ? 'Driving License' : 'National ID';
 
             Audit::log("Admin #{$adminId} viewed decrypted {$label} for driver #{$userId}", $adminId);
 

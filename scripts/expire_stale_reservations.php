@@ -68,8 +68,8 @@ foreach ($stale as $row) {
         if (($result['payment_status'] ?? '') === 'paid' && !empty($result['payment_id'])) {
             $paymentModel->createAutoRefundForPayment(
                 (int) $result['payment_id'],
-                'booking_rejected',
-                ['booking_id' => $bookingId, 'house_id' => $result['house_id'], 'auto_declined' => true]
+                'reservation_expired',
+                ['booking_id' => $bookingId, 'house_id' => $result['house_id']]
             );
         }
 

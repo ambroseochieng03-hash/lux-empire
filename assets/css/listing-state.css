@@ -56,3 +56,56 @@
 .lux-confirm-modal .lux-booking-modal-cancel:hover {
     background: rgba(255, 255, 255, 0.12);
 }
+
+/* Perks row (parking badge etc.) — sits under the location, well clear of the buttons */
+.lux-explore-perks-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 12px 0 8px;
+}
+
+.lux-perk-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ddd;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Landlord contact — only rendered for listings the tenant has paid for */
+.lux-landlord-contact {
+    margin: 12px 0 4px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(212, 175, 55, 0.07);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    color: #ddd;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    word-break: break-word;
+}
+
+.lux-landlord-contact a {
+    color: var(--gold);
+    text-decoration: none;
+}
+
+.lux-landlord-contact-label {
+    display: block;
+    color: var(--gray);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 4px;
+}
+
+.lux-contact-locked {
+    opacity: 0.95;
+}

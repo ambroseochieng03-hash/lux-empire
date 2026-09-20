@@ -579,6 +579,12 @@ final class Payment
             return null;
         }
 
+        // Waived / free payments (amount 0) never moved any money — there is
+        // nothing to refund, and a KES 0 B2C request would only fail.
+        if ((float) $payment['amount'] <= 0) {
+            return null;
+        }
+
         $refundReference = 'RFND-' . $paymentId . '-' . bin2hex(random_bytes(8));
 
         try {
@@ -1345,6 +1351,11 @@ final class Payment
 
         $resultCode = (int) $queryResult['ResultCode'];
 
+        // 4999 = Safaricom is still processing the request — not a failure. Leave it pending.
+        if ($resultCode === 4999) {
+            return;
+        }
+
         try {
             $this->conn->beginTransaction();
 
@@ -1522,10 +1533,28 @@ final class Payment
         $stmt->execute([':receipt' => $receipt]);
         $c2b = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($c2b === null) {
+        if (!$c2b) {
             return [
                 'success' => false,
                 'message' => "We haven't received that transaction yet. It can take a minute — try again shortly, or contact support if it doesn't appear.",
+            ];
+        }
+
+        // The receipt must have paid AT LEAST the fixed price of what is being
+        // claimed. Without this, a KES 1 paybill payment could be claimed as a
+        // booking fee or a Pro plan.
+        $requiredAmount = match ($purpose) {
+            'booking_fee' => (float) BOOKING_FEE_AMOUNT,
+            'landlord_pro' => (float) PRICE_LANDLORD_PRO_MONTHLY,
+            default => 0.0,
+        };
+
+        if ((float) $c2b['amount'] < $requiredAmount) {
+            error_log('LUX EMPIRE Payment: C2B receipt ' . $receipt . ' paid KES ' . $c2b['amount'] . ' but ' . $purpose . ' costs KES ' . $requiredAmount . ' — refused.');
+
+            return [
+                'success' => false,
+                'message' => 'That payment was less than the required KES ' . number_format($requiredAmount) . ', so it cannot be used here. Please contact support.',
             ];
         }
 

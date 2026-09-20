@@ -189,6 +189,8 @@ final class AdminListingService
         $update = $this->conn->prepare("UPDATE houses SET is_hidden = :hidden WHERE id = :id");
         $update->execute([':hidden' => $newValue, ':id' => $houseId]);
 
+        $this->forgetHouseCaches($houseId);
+
         $action = $newValue === 1 ? 'hid' : 'restored';
         Audit::log("Admin #{$adminId} {$action} listing #{$houseId}", $adminId);
 
@@ -261,6 +263,17 @@ final class AdminListingService
             );
         }
         
+        // A listing that was ever booked has booking and payment history that must be
+        // kept (refunds, disputes, accounting). Those listings are hidden, never deleted.
+        $historyCheck = $this->conn->prepare("SELECT COUNT(*) FROM bookings WHERE house_id = :house_id");
+        $historyCheck->execute([':house_id' => $houseId]);
+
+        if ((int) $historyCheck->fetchColumn() > 0) {
+            throw new RuntimeException(
+                'This listing has booking history, which must be kept for refunds and disputes. Hide it instead of deleting it.'
+            );
+        }
+
         $stmt = $this->conn->prepare("SELECT image_path FROM house_images WHERE house_id = :id");
         $stmt->execute([':id' => $houseId]);
         $paths = $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -271,6 +284,8 @@ final class AdminListingService
         if ($delete->rowCount() === 0) {
             return false;
         }
+
+        $this->forgetHouseCaches($houseId);
 
         $uploadDir = UPLOAD_PATH_HOUSES;
 
@@ -285,6 +300,23 @@ final class AdminListingService
         Audit::log("Admin #{$adminId} permanently deleted listing #{$houseId} ({$reason})", $adminId);
 
         return true;
+    }
+
+    /**
+     * Hiding or deleting a listing must take effect immediately — not after the
+     * 60-second house cache or the 5-minute filter-options cache run out.
+     */
+    private function forgetHouseCaches(int $houseId): void
+    {
+        try {
+            require_once __DIR__ . '/../config/RedisConnection.php';
+
+            $redis = RedisConnection::get();
+            $redis->del("cache:house:{$houseId}");
+            $redis->del('cache:filter_meta');
+        } catch (Throwable $e) {
+            // Not fatal — the caches expire on their own within minutes.
+        }
     }
 
     private function recordActionReason(int $adminId, string $actionType, string $targetTable, int $targetId, string $reason): void

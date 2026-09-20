@@ -6,6 +6,9 @@ require_once '../../includes/auth_check.php';
 requireRoleAccess('tenant');
 
 require_once '../../classes/Booking.php';
+require_once '../../classes/Payment.php';
+require_once '../../classes/House.php';
+require_once '../../classes/Notification.php';
 require_once '../../config/app.php';
 require_once '../../config/csrf.php';
 require_once '../../config/security/DoSProtection.php';
@@ -13,9 +16,6 @@ require_once '../../config/security/RateLimiter.php';
 
 header('Content-Type: application/json');
 
-/**
- * General application-level abuse protection (existing, IP-based).
- */
 DoSProtection::check();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -24,20 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-/**
- * This endpoint previously had NO CSRF check at all — closing that
- * gap here, using the same convention as every other booking AJAX
- * endpoint (Csrf::requireValid($_POST['csrf_token'] ?? null)).
- */
 Csrf::requireValid($_POST['csrf_token'] ?? null);
 
 $tenantId = (int) Session::user()['id'];
 
-/**
- * Booking-specific throttle, scoped per tenant. Same shape/reasoning
- * as the book_house.php throttle: generous for normal use, tight
- * enough to stop automated flooding of this one endpoint.
- */
 $rateKey = 'cancel_booking:' . $tenantId;
 
 if (RateLimiter::isBlocked($rateKey)) {
@@ -66,50 +56,100 @@ if (!$booking_id) {
 $bookingModel = new Booking();
 
 /*
-|--------------------------------------------------------------------------
-| VERIFY BOOKING — never trust the booking_id alone; it must belong
-| to the authenticated tenant (derived from the session, never from
-| client input).
-|--------------------------------------------------------------------------
-*/
+ * Ownership, "still pending" and the house release all happen inside ONE
+ * locked transaction in cancelPendingBooking(), so a tenant cancel and a
+ * landlord accept at the same moment can never both succeed.
+ */
+$result = $bookingModel->cancelPendingBooking($booking_id, $tenantId);
 
-$booking = $bookingModel->getBookingById($booking_id);
-
-if (!$booking || (int) $booking['tenant_id'] !== $tenantId) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'message' => 'Unauthorized booking.']);
-    exit;
-}
-
-/*
-|--------------------------------------------------------------------------
-| ONLY A PENDING BOOKING CAN BE CANCELLED
-|--------------------------------------------------------------------------
-*/
-
-if ($booking['status'] !== 'pending') {
+if (!$result['success']) {
     http_response_code(409);
-    echo json_encode(['success' => false, 'message' => 'Only pending bookings can be cancelled.']);
+    echo json_encode(['success' => false, 'message' => $result['message']]);
     exit;
+}
+
+$houseTitle = trim((string) ($result['title'] ?? ''));
+
+if ($houseTitle === '' && !empty($result['house_id'])) {
+    $house = (new House())->getHouseById((int) $result['house_id']);
+    $houseTitle = (string) ($house['title'] ?? '');
+}
+
+if ($houseTitle === '') {
+    $houseTitle = 'the property';
 }
 
 /*
-|--------------------------------------------------------------------------
-| CANCEL BOOKING
-|--------------------------------------------------------------------------
-*/
+ * Refund the fee in full. The tenant received nothing and the landlord
+ * never acted. createAutoRefundForPayment() is safe to call twice: the
+ * UNIQUE payment_id on `refunds` means a payment can never be refunded
+ * twice, and it returns null for free/waived payments (nothing to refund).
+ * If it throws, scripts/reconcile_pending_payments.php creates the missing
+ * refund on its next run.
+ */
+$refundQueued = false;
+$refundAmount = (float) BOOKING_FEE_AMOUNT;
 
-$cancelled = $bookingModel->tenantUpdateStatus($booking_id, 'cancelled');
+if (($result['payment_status'] ?? '') === 'paid' && !empty($result['payment_id'])) {
 
-if ($cancelled) {
-    echo json_encode([
-        'success' => true,
-        'message' => 'Booking cancelled successfully.',
-        'booking_id' => $booking_id
-    ]);
-    exit;
+    try {
+        $paymentModel = new Payment();
+
+        $paidRow = $paymentModel->getPaymentStatus((int) $result['payment_id'], $tenantId);
+
+        if ($paidRow) {
+            $refundAmount = (float) $paidRow['amount'];
+        }
+
+        $refundRef = $paymentModel->createAutoRefundForPayment(
+            (int) $result['payment_id'],
+            'tenant_cancelled',
+            ['booking_id' => $booking_id, 'house_id' => $result['house_id']]
+        );
+
+        $refundQueued = ($refundRef !== null);
+
+    } catch (Throwable $e) {
+        error_log('LUX EMPIRE cancel_booking: refund creation failed for booking #' . $booking_id . ' — ' . $e->getMessage());
+    }
 }
 
-http_response_code(500);
-echo json_encode(['success' => false, 'message' => 'Failed to cancel booking.']);
+try {
+
+    $notification = new Notification();
+
+    $tenantMessage = 'You cancelled your booking request for "' . $houseTitle . '".'
+        . ($refundQueued
+            ? ' Your KES ' . number_format($refundAmount) . ' booking fee is being refunded automatically to your M-Pesa — you\'ll get a confirmation once it completes.'
+            : '');
+
+    $notification->create(
+        $tenantId,
+        'booking_cancelled',
+        'Booking Cancelled',
+        $tenantMessage,
+        BASE_URL . '/tenant/my-bookings'
+    );
+
+    if (!empty($result['landlord_id'])) {
+        $notification->create(
+            (int) $result['landlord_id'],
+            'booking_cancelled_by_tenant',
+            'Booking Request Cancelled',
+            'A tenant cancelled their booking request for "' . $houseTitle . '". The property is available again.',
+            BASE_URL . '/booking-requests'
+        );
+    }
+
+} catch (Throwable $e) {
+    error_log('LUX EMPIRE cancel_booking: notification failed for booking #' . $booking_id . ' — ' . $e->getMessage());
+}
+
+echo json_encode([
+    'success' => true,
+    'message' => $refundQueued
+        ? 'Booking cancelled. Your booking fee is being refunded to your M-Pesa.'
+        : 'Booking cancelled.',
+    'booking_id' => $booking_id
+]);
 exit;

@@ -75,7 +75,19 @@ if ($action === 'mark_unavailable') {
         exit;
     }
 
-    $pdo->prepare("UPDATE houses SET status = 'unavailable' WHERE id = :id")->execute([':id' => $houseId]);
+    // Atomic: only flips if the house is STILL 'available' at this instant. A tenant's
+    // payment that landed a moment ago (house now 'reserved') is never overwritten.
+    $flip = $pdo->prepare("UPDATE houses SET status = 'unavailable' WHERE id = :id AND status = 'available'");
+    $flip->execute([':id' => $houseId]);
+
+    if ($flip->rowCount() === 0) {
+        http_response_code(409);
+        echo json_encode([
+            'success' => false,
+            'message' => 'A tenant has just booked this property, so it can no longer be marked as booked elsewhere. Please review the booking request.',
+        ]);
+        exit;
+    }
 
     echo json_encode(['success' => true, 'message' => 'Marked as booked elsewhere — hidden from tenants.', 'status' => 'unavailable']);
     exit;
@@ -87,6 +99,13 @@ if ($house['status'] !== 'unavailable') {
     exit;
 }
 
-$pdo->prepare("UPDATE houses SET status = 'available' WHERE id = :id")->execute([':id' => $houseId]);
+$reopen = $pdo->prepare("UPDATE houses SET status = 'available' WHERE id = :id AND status = 'unavailable'");
+$reopen->execute([':id' => $houseId]);
+
+if ($reopen->rowCount() === 0) {
+    http_response_code(409);
+    echo json_encode(['success' => false, 'message' => 'This listing is not currently marked unavailable.']);
+    exit;
+}
 
 echo json_encode(['success' => true, 'message' => 'Listing is visible to tenants again.', 'status' => 'available']);

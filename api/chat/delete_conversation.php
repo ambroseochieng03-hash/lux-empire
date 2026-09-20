@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once '../../includes/init.php';
 require_once '../../config/session.php';
+require_once '../../config/csrf.php';
 require_once '../../classes/Chat.php';
 require_once '../../config/security/DoSProtection.php';
 
@@ -11,22 +12,24 @@ header('Content-Type: application/json');
 
 if (!Session::isAuthenticated()) {
     http_response_code(401);
-    exit(json_encode(['error' => 'Not authenticated.']));
+    echo json_encode(['error' => 'Not authenticated.']);
+    exit;
 }
 
-require_once '../../config/csrf.php';
+Csrf::requireValid($_POST['csrf_token'] ?? null);
 
 $user = Session::user();
-DoSProtection::check((int) $user['id'], 'polling');
-
-Csrf::requireValid($_POST['csrf_token'] ?? null);
+$userId = (int) $user['id'];
+DoSProtection::check($userId);
 
 $conversationId = (int) ($_POST['conversation_id'] ?? 0);
 
 $chat = new Chat();
 
-if ($chat->userBelongsToConversation($conversationId, (int) $user['id'])) {
-    $chat->setTyping($conversationId, (int) $user['id']);
+if ($conversationId <= 0 || !$chat->clearConversationForUser($conversationId, $userId, $_SERVER['REMOTE_ADDR'] ?? null)) {
+    http_response_code(404);
+    echo json_encode(['error' => 'Conversation not found.']);
+    exit;
 }
 
 echo json_encode(['ok' => true]);

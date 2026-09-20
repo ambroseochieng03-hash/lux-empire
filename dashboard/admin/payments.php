@@ -66,6 +66,7 @@ $csrfToken = Csrf::token();
                     <?php echo htmlspecialchars($p['full_name']); ?> (<?php echo htmlspecialchars($p['email']); ?>)<br>
                     Phone: <?php echo htmlspecialchars($p['phone']); ?><br>
                     User-submitted code: <strong><?php echo htmlspecialchars($p['user_submitted_receipt'] ?? '—'); ?></strong><br>
+                    <span style="color:#ffb84d;">Approve only after confirming in your M-Pesa portal that KES <?php echo number_format((float) $p['amount']); ?> was received under this code.</span><br>
                     <?php echo date('d M Y H:i', strtotime($p['created_at'])); ?>
                 </div>
 

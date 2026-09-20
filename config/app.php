@@ -167,6 +167,15 @@ define(
     $_ENV['GOOGLE_OAUTH_CLIENT_ID'] ?? ''
 );
 
+/*
+ * Cloudflare Turnstile site key — public, safe to expose to the
+ * frontend. The SECRET key (CAPTCHA_SECRET in Captcha.php) never
+ * leaves the server.
+ */
+define(
+    'TURNSTILE_SITE_KEY',
+    $_ENV['TURNSTILE_SITE_KEY'] ?? ''
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -654,3 +663,29 @@ define('LANDLORD_BOOKED_VISIBLE_HOURS', 24);
 | releases the house and queues the refund.
 */
 define('RESERVATION_RESPONSE_HOURS', 48);
+
+/*
+| When may a tenant see a landlord's phone/email?
+|   false (recommended): only AFTER the landlord accepts the booking. Until then the
+|          tenant and landlord talk through the in-app chat. If contact details were shown as
+|          soon as the fee is paid, a tenant could pay, phone the landlord, ask them to
+|          decline in the app, get refunded and finish the deal off-platform.
+|   true : as soon as the fee is paid (pending or approved booking).
+*/
+define('REVEAL_CONTACT_BEFORE_ACCEPTANCE', false);
+
+/*
+| Chat edit / delete rules (enforced on the server, mirrored in the UI).
+|   - Edit a message: sender only, within this many minutes of sending.
+|   - Delete for everyone: sender only, within this many minutes.
+|   - Delete for me: any participant, any time (hides it for them only).
+| Every edit and delete is recorded in the message_audit table.
+*/
+define('CHAT_EDIT_WINDOW_MINUTES', 15);
+define('CHAT_DELETE_EVERYONE_WINDOW_MINUTES', 60);
+
+/*
+| The floating "?" guided-tour button. Switched off for now because it covers page
+| content. Set to true to bring it back.
+*/
+define('SHOW_HELP_TOUR', false);

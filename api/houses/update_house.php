@@ -376,6 +376,20 @@ try {
 
             exit;
         }
+
+        // A tenant has paid for this property (or the landlord accepted them):
+        // its price, location and details must not change underneath them.
+        if ($existingHouse !== null && in_array($existingHouse['status'], ['reserved', 'booked'], true)) {
+
+            http_response_code(409);
+
+            echo json_encode([
+                'success' => false,
+                'message' => 'This property has a booking in progress and cannot be edited. Accept or decline the request first.'
+            ]);
+
+            exit;
+        }
     }
 
     /*
@@ -474,6 +488,16 @@ try {
      * ============================================================
      */
 
+    require_once '../../classes/ContactMasker.php';
+
+    // Landlords can't publish phone numbers or emails in the public title or
+    // description — contact details are unlocked by the booking flow, not by
+    // reading the listing.
+    [$title, $titleMasked] = ContactMasker::mask($title);
+    [$description, $descriptionMasked] = ContactMasker::mask($description);
+    [$location, $locationMasked] = ContactMasker::mask($location);
+    $contactRemoved = $titleMasked || $descriptionMasked || $locationMasked;
+
     $updated = $house->updateHouse(
         $houseId,
         [
@@ -513,7 +537,9 @@ try {
 
     echo json_encode([
         'success' => true,
-        'message' => 'Property updated successfully.'
+            'message' => $contactRemoved
+            ? 'Property updated. Phone numbers and emails were removed from the title and description — tenants get your contact details through the booking flow.'
+            : 'Property updated successfully.'
     ]);
 
 } catch (InvalidArgumentException $e) {

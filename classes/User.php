@@ -385,16 +385,17 @@ class User {
 
             $driverStmt = $this->conn->prepare("
                 INSERT INTO drivers
-                    (user_id, vehicle_type, vehicle_plate, license_number, identity_type, is_available)
+                    (user_id, vehicle_type, vehicle_plate, license_number, national_id_encrypted, identity_type, is_available)
                 VALUES
-                    (:user_id, :vehicle_type, :vehicle_plate, :license_number, :identity_type, 0)
+                    (:user_id, :vehicle_type, :vehicle_plate, :license_number, :national_id_encrypted, :identity_type, 0)
             ");
 
             $driverStmt->execute([
                 ':user_id' => $userId,
                 ':vehicle_type' => $vehicleType,
                 ':vehicle_plate' => $encryptedPlate,
-                ':license_number' => $encryptedIdentity,
+                ':license_number' => $identityType === 'license' ? $encryptedIdentity : null,
+                ':national_id_encrypted' => $identityType === 'national_id' ? $encryptedIdentity : null,
                 ':identity_type' => $identityType
             ]);
 

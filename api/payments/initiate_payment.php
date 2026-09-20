@@ -100,6 +100,8 @@ try {
 
     $amount = null;
     $metadata = [];
+    $holdKey = null;
+    $redisHold = null;
 
     switch ($purpose) {
 
@@ -155,6 +157,36 @@ try {
 
             $amount = (float) BOOKING_FEE_AMOUNT;
             $metadata = ['house_id' => $houseId];
+
+            /*
+             * SOFT HOLD — stops two tenants paying for the same house at the same
+             * moment. The first to start a payment holds the house for 2 minutes
+             * (long enough for the M-Pesa PIN prompt); anyone else is told BEFORE
+             * any money is requested. If Redis is down we carry on: the database
+             * check in Payment::applyEntitlement() still guarantees only one
+             * booking is created and the other payment is refunded automatically.
+             */
+            try {
+                require_once '../../config/RedisConnection.php';
+
+                $redisHold = RedisConnection::get();
+                $holdKey = 'hold:house:' . $houseId;
+
+                $acquired = $redisHold->set($holdKey, (string) $userId, ['nx', 'ex' => 120]);
+
+                if (!$acquired && (string) $redisHold->get($holdKey) !== (string) $userId) {
+                    http_response_code(409);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Another tenant is completing payment for this property right now. Please try again in about two minutes.'
+                    ]);
+                    exit;
+                }
+            } catch (Throwable $holdError) {
+                $holdKey = null;
+                $redisHold = null;
+            }
+
             break;
 
         case 'driver_wallet_topup':
@@ -188,6 +220,18 @@ try {
     }
 
     $result = $payment->initiateStkPush($userId, $purpose, $amount, $phoneInput, $metadata);
+
+    // The M-Pesa prompt was refused, so nobody is paying — free the house
+    // straight away instead of making others wait out the 2-minute hold.
+    if (empty($result['success']) && $holdKey !== null && $redisHold !== null) {
+        try {
+            if ((string) $redisHold->get($holdKey) === (string) $userId) {
+                $redisHold->del($holdKey);
+            }
+        } catch (Throwable $holdError) {
+            // Not fatal — the hold expires by itself.
+        }
+    }
 
     echo json_encode($result);
 

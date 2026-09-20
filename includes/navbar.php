@@ -57,7 +57,9 @@ if ($isLoggedIn) {
 
 <?php if (!$isDashboardContext): ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/mobile-nav.css">
+<?php if (defined('SHOW_HELP_TOUR') && SHOW_HELP_TOUR): ?>
 <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/product-tour.css">
+<?php endif; ?>
 <?php endif; ?>
 
 <?php if ($isDashboardContext): ?>
@@ -171,7 +173,7 @@ require __DIR__ . '/nav_menu.php';
 <!-- NOTIFICATION BELL -->
 <div class="lux-notif-bell-wrap" id="luxNotifBell" data-notif-link="<?php echo htmlspecialchars($navNotifLink); ?>">
 <i class="fa-solid fa-bell lux-notif-bell-icon"></i>
-<span class="lux-notif-bell-badge is-hidden" id="luxNotifBellBadge">0</span>
+<span class="lux-notif-bell-badge is-hidden" id="luxNotifBellBadge" style="display:none;"></span>
 </div>
 <?php endif; ?>
 
@@ -183,8 +185,10 @@ require __DIR__ . '/nav_menu.php';
 <?php if (!$isDashboardContext): ?>
 <script src="<?php echo BASE_URL; ?>/assets/js/nav-menu.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/mobile-nav.js"></script>
+<?php if (defined('SHOW_HELP_TOUR') && SHOW_HELP_TOUR): ?>
 <script src="<?php echo BASE_URL; ?>/assets/js/product-tour.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/home-tour.js"></script>
+<?php endif; ?>
 
 <script>
 /*

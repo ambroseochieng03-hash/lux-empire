@@ -11,7 +11,7 @@ header('Content-Type: application/json');
 
 if (Session::isAuthenticated()) {
     $user = Session::user();
-    DoSProtection::check((int) $user['id']);
+    DoSProtection::check((int) $user['id'], 'polling');
     (new Chat())->touchLastSeen((int) $user['id']);
 }
 

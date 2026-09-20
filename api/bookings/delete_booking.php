@@ -21,10 +21,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-/**
- * Previously had NO CSRF check at all — closing that gap here,
- * matching the convention used by every other booking endpoint.
- */
 Csrf::requireValid($_POST['csrf_token'] ?? null);
 
 $tenantId = (int) Session::user()['id'];
@@ -56,13 +52,6 @@ if (!$booking_id) {
 
 $bookingModel = new Booking();
 
-/*
-|--------------------------------------------------------------------------
-| VERIFY BOOKING — ownership check derived from session, never from
-| client-supplied tenant_id.
-|--------------------------------------------------------------------------
-*/
-
 $booking = $bookingModel->getBookingById($booking_id);
 
 if (!$booking || (int) $booking['tenant_id'] !== $tenantId) {
@@ -72,22 +61,32 @@ if (!$booking || (int) $booking['tenant_id'] !== $tenantId) {
 }
 
 /*
-|--------------------------------------------------------------------------
-| DELETE BOOKING
-|--------------------------------------------------------------------------
-*/
+ * A live request can never be "deleted" — that would leave the house
+ * reserved and the fee unrefunded. It has to be cancelled first, which
+ * frees the house and refunds the fee.
+ */
+if ($booking['status'] === 'pending') {
+    http_response_code(409);
+    echo json_encode([
+        'success' => false,
+        'message' => 'This request is still waiting for the landlord. Cancel it first (your fee is refunded), then you can remove it from your list.'
+    ]);
+    exit;
+}
 
-$deleted = $bookingModel->deleteBooking($booking_id, $tenantId);
-
-if ($deleted) {
+/*
+ * Soft delete: hides the booking from THIS tenant's list only. The row
+ * stays for the landlord's history, admin oversight and payment disputes.
+ */
+if ($bookingModel->hideBookingForTenant($booking_id, $tenantId)) {
     echo json_encode([
         'success' => true,
-        'message' => 'Booking deleted successfully.',
+        'message' => 'Removed from your list.',
         'booking_id' => $booking_id
     ]);
     exit;
 }
 
 http_response_code(500);
-echo json_encode(['success' => false, 'message' => 'Failed to delete booking.']);
+echo json_encode(['success' => false, 'message' => 'Failed to remove this booking.']);
 exit;

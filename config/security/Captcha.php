@@ -42,8 +42,8 @@ final class Captcha
      */
     public static function isConfigured(): bool
     {
-        $secret = getenv(self::SECRET_ENV);
-        $verifyUrl = getenv(self::VERIFY_URL_ENV);
+        $secret = $_ENV[self::SECRET_ENV] ?? '';
+        $verifyUrl = $_ENV[self::VERIFY_URL_ENV] ?? '';
 
         return is_string($secret)
             && $secret !== ''
@@ -79,12 +79,12 @@ final class Captcha
             return false;
         }
 
-        $secret = getenv(self::SECRET_ENV);
-        $verifyUrl = getenv(self::VERIFY_URL_ENV);
+        $secret = $_ENV[self::SECRET_ENV] ?? '';
+        $verifyUrl = $_ENV[self::VERIFY_URL_ENV] ?? '';
 
         if (
-            !is_string($secret)
-            || !is_string($verifyUrl)
+            $secret === ''
+            || $verifyUrl === ''
         ) {
             return false;
         }

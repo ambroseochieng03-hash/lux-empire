@@ -5,8 +5,10 @@ declare(strict_types=1);
 header('Content-Type: application/json');
 
 require_once '../../config/db.php';
+require_once '../../config/session.php';
 require_once '../../config/security/DoSProtection.php';
 require_once '../../classes/House.php';
+require_once '../../classes/Booking.php';
 require_once '../../classes/ListingState.php';
 
 DoSProtection::check();
@@ -34,20 +36,40 @@ try {
 
     $result = $houseModel->filterHouses($filters, $limit, $offset);
 
-    // Attach full media (all images / the video) per house — the 'image'
-    // field from filterHouses() is just the first thumbnail. Batched into
-    // ONE query instead of one query per house.
-    $mediaByHouse = $houseModel->getMediaForHouseIds(
-        array_map(static fn ($h) => (int) $h['id'], $result['houses'])
-    );
+    $houseIds = array_map(static fn ($h) => (int) $h['id'], $result['houses']);
+
+    $mediaByHouse = $houseModel->getMediaForHouseIds($houseIds);
+
+    // What may THIS visitor do per house?
+    //   chat_visible    -> logged-in tenant with a paid, live booking (pending/approved)
+    //   contact_visible -> tenant whose booking unlocks phone/email
+    //                      (ListingState::contactRevealStatuses())
+    // Guests and everyone else get neither.
+    $chatHouseMap = [];
+    $contactHouseMap = [];
+
+    Session::start();
+
+    if (Session::isAuthenticated() && (Session::user()['role'] ?? '') === 'tenant') {
+        $bookingModel = new Booking();
+        $tenantId = (int) Session::user()['id'];
+
+        $chatHouseMap = $bookingModel->getPaidHouseIdsForTenant($tenantId, $houseIds);
+        $contactHouseMap = $bookingModel->getContactHouseIdsForTenant($tenantId, $houseIds);
+    }
 
     foreach ($result['houses'] as &$house) {
 
-        $house['media'] = $mediaByHouse[(int) $house['id']] ?? [];
+        $houseId = (int) $house['id'];
 
-        // This endpoint is PUBLIC (guests call it) — never hand out
-        // landlord contact details from it.
-        unset($house['landlord_email'], $house['landlord_phone']);
+        $house['media'] = $mediaByHouse[$houseId] ?? [];
+
+        $house['chat_visible'] = isset($chatHouseMap[$houseId]);
+        $house['contact_visible'] = isset($contactHouseMap[$houseId]);
+
+        if (!$house['contact_visible']) {
+            unset($house['landlord_email'], $house['landlord_phone']);
+        }
 
         $status = (string) ($house['status'] ?? 'available');
         $house['is_bookable'] = ListingState::isBookable($status);

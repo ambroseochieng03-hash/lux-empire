@@ -15,6 +15,7 @@ require_once '../../classes/IdempotencyGuard.php';
 require_once '../../config/security/DoSProtection.php';
 require_once '../../config/security/RedisThrottle.php';
 require_once '../../classes/Validator.php';
+require_once '../../classes/ContactMasker.php';
 
 /**
  * Returns a message safe to show to the user. Walks the exception
@@ -142,6 +143,14 @@ if (!Validator::isValidPrice($price)) {
     echo json_encode(['success' => false, 'message' => 'Enter a valid price (numbers only, up to 2 decimal places).']);
     exit;
 }
+
+// Landlords can't publish phone numbers or emails in the public title, description
+// or location — contact details are unlocked by the booking flow, not by reading
+// the listing.
+[$title, $titleMasked] = ContactMasker::mask($title);
+[$description, $descriptionMasked] = ContactMasker::mask($description);
+[$location, $locationMasked] = ContactMasker::mask($location);
+$contactRemoved = $titleMasked || $descriptionMasked || $locationMasked;
 
 $price = (float) $price;
 $bedrooms = $bedrooms !== '' ? (int) $bedrooms : 0;
@@ -293,7 +302,13 @@ try {
 
     if ($houseId > 0) {
         $responseCode = 200;
-        $responseBody = json_encode(['success' => true, 'message' => 'Luxury property published successfully.', 'house_id' => $houseId]);
+        $responseBody = json_encode([
+            'success' => true,
+            'message' => $contactRemoved
+                ? 'Luxury property published. Phone numbers and emails were removed from the text — tenants get your contact details through the booking flow.'
+                : 'Luxury property published successfully.',
+            'house_id' => $houseId
+        ]);
         $idempotency->complete($idempotencyKey, 'create_house', $responseCode, $responseBody);
         http_response_code($responseCode);
         echo $responseBody;

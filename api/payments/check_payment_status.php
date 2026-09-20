@@ -20,7 +20,7 @@ if (!Session::isAuthenticated()) {
 }
 
 $user = Session::user();
-DoSProtection::check((int) $user['id']);
+DoSProtection::check((int) $user['id'], 'polling');
 
 $paymentId = (int) ($_GET['payment_id'] ?? 0);
 

@@ -17,7 +17,14 @@ $originLng = filter_input(INPUT_GET, 'pickup_lng', FILTER_VALIDATE_FLOAT);
 $destLat = filter_input(INPUT_GET, 'destination_lat', FILTER_VALIDATE_FLOAT);
 $destLng = filter_input(INPUT_GET, 'destination_lng', FILTER_VALIDATE_FLOAT);
 
-if ($originLat === null || $originLng === null || $destLat === null || $destLng === null) {
+$coords = [$originLat, $originLng, $destLat, $destLng];
+
+if (
+    in_array(null, $coords, true)
+    || in_array(false, $coords, true)
+    || abs($originLat) > 90 || abs($destLat) > 90
+    || abs($originLng) > 180 || abs($destLng) > 180
+) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Missing or invalid coordinates.']);
     exit;

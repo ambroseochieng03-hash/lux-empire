@@ -8,15 +8,21 @@ header('Content-Type: application/json');
 
 require_once '../../config/db.php';
 require_once '../../config/RedisConnection.php';
-
-$db = new Database();
-$pdo = $db->connect();
+require_once '../../config/security/DoSProtection.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Method not allowed.']);
     exit;
 }
+
+$user = Session::user();
+$role = $user['role'] ?? '';
+$userId = (int) ($user['id'] ?? 0);
+
+// A tenant watching a trip polls this every few seconds — it gets its own
+// budget, so tracking a driver can never use up the limit for real actions.
+DoSProtection::check($userId, 'polling');
 
 $driver_id = (int) ($_GET['driver_id'] ?? 0);
 
@@ -26,9 +32,8 @@ if ($driver_id <= 0) {
     exit;
 }
 
-$user = Session::user();
-$role = $user['role'] ?? '';
-$userId = (int) ($user['id'] ?? 0);
+$db = new Database();
+$pdo = $db->connect();
 
 /*
 |--------------------------------------------------------------------------
@@ -120,7 +125,11 @@ try {
         'location' => $location
     ]);
 
-} catch (PDOException $e) {
+} catch (Throwable $e) {
+
+    // The real error goes to the log only — never to the browser.
+    error_log('LUX EMPIRE get_driver_location error: ' . $e->getMessage());
+
     http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Database error.', 'error' => $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'Could not load the driver location.']);
 }

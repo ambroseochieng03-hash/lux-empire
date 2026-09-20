@@ -11,6 +11,7 @@ require_once '../../config/session.php';
 require_once '../../config/csrf.php';
 require_once '../../classes/Payment.php';
 require_once '../../config/security/DoSProtection.php';
+require_once '../../config/security/RateLimiter.php';
 
 Session::start();
 
@@ -22,6 +23,25 @@ if (!Session::isAuthenticated()) {
 
 $user = Session::user();
 DoSProtection::check((int) $user['id']);
+
+/*
+ * Every submission triggers a live lookup at Safaricom, so it is limited:
+ * 10 per hour per user, then blocked for an hour.
+ */
+$rateKey = 'receipt_submit:' . (int) $user['id'];
+
+if (RateLimiter::isBlocked($rateKey)) {
+    http_response_code(429);
+    echo json_encode(['success' => false, 'message' => 'Too many attempts. Please wait a while and try again.']);
+    exit;
+}
+
+if (RateLimiter::hit($rateKey, 3600) > 10) {
+    RateLimiter::block($rateKey, 3600);
+    http_response_code(429);
+    echo json_encode(['success' => false, 'message' => 'Too many attempts. Please wait a while and try again.']);
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
