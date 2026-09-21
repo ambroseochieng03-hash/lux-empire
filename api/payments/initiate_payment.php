@@ -147,13 +147,8 @@ try {
                 exit;
             }
 
-            require_once '../../classes/PaymentWaiver.php';
-
-            if (PaymentWaiver::isWaived($userId, 'tenant')) {
-                $waivedResult = $payment->grantWaivedPayment($userId, 'booking_fee', 0.0, ['house_id' => $houseId, 'waived' => true]);
-                echo json_encode($waivedResult);
-                exit;
-            }
+            // Free bookings are redeemed with a voucher through
+            // api/waivers/book_with_voucher.php — never through this payment endpoint.
 
             $amount = (float) BOOKING_FEE_AMOUNT;
             $metadata = ['house_id' => $houseId];

@@ -81,6 +81,16 @@ foreach ($orphans as $orphan) {
     }
 }
 
-if (empty($pendingIds) && empty($orphans)) {
+/* ---------- 3) vouchers past their expiry date ---------- */
+
+require_once __DIR__ . '/../classes/PaymentWaiver.php';
+
+$expiredVouchers = PaymentWaiver::expireOverdue();
+
+if ($expiredVouchers > 0) {
+    echo "[" . date('Y-m-d H:i:s') . "] Marked {$expiredVouchers} voucher(s) as expired." . PHP_EOL;
+}
+
+if (empty($pendingIds) && empty($orphans) && $expiredVouchers === 0) {
     echo "[" . date('Y-m-d H:i:s') . "] Nothing to reconcile." . PHP_EOL;
 }

@@ -7,6 +7,7 @@ requireRoleAccess('tenant');
 
 require_once '../../classes/Booking.php';
 require_once '../../classes/Payment.php';
+require_once '../../classes/PaymentWaiver.php';
 require_once '../../classes/House.php';
 require_once '../../classes/Notification.php';
 require_once '../../config/app.php';
@@ -87,6 +88,8 @@ if ($houseTitle === '') {
  * If it throws, scripts/reconcile_pending_payments.php creates the missing
  * refund on its next run.
  */
+PaymentWaiver::notifyOutcome($tenantId, $result['voucher_outcome'] ?? null, $houseTitle);
+
 $refundQueued = false;
 $refundAmount = (float) BOOKING_FEE_AMOUNT;
 

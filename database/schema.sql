@@ -769,3 +769,31 @@ CREATE TABLE message_audit (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE bookings ADD COLUMN hidden_by_admin_at TIMESTAMP NULL DEFAULT NULL;
+
+ALTER TABLE payment_waivers
+    ADD COLUMN kind ENUM('tenant_booking','landlord_pro','driver_commission') NOT NULL DEFAULT 'tenant_booking' AFTER role,
+    ADD COLUMN status ENUM('active','in_use','used','expired','revoked') NOT NULL DEFAULT 'active' AFTER kind,
+    ADD COLUMN attempts_used TINYINT UNSIGNED NOT NULL DEFAULT 0 AFTER status,
+    ADD COLUMN max_attempts TINYINT UNSIGNED NOT NULL DEFAULT 2 AFTER attempts_used,
+    ADD COLUMN benefit_jobs INT NULL AFTER max_attempts,
+    ADD COLUMN batch_label VARCHAR(100) NULL AFTER benefit_jobs,
+    ADD INDEX idx_waiver_user_kind (user_id, kind, status, expires_at);
+
+UPDATE payment_waivers SET status = 'revoked', revoked_at = COALESCE(revoked_at, NOW()) WHERE status = 'active';
+
+ALTER TABLE bookings
+    ADD COLUMN waiver_id INT NULL AFTER payment_id,
+    ADD CONSTRAINT fk_bookings_waiver FOREIGN KEY (waiver_id) REFERENCES payment_waivers(id) ON DELETE SET NULL;
+
+CREATE TABLE waiver_events (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    waiver_id INT NOT NULL,
+    user_id INT NOT NULL,
+    event ENUM('granted','redeemed','restored','used','exhausted','expired','revoked') NOT NULL,
+    booking_id INT NULL,
+    actor_id INT NULL,
+    note VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_waiver_events_waiver (waiver_id, id),
+    INDEX idx_waiver_events_user (user_id, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

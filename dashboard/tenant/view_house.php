@@ -84,6 +84,9 @@ $tenantStatus = $tenantBooking['status'] ?? null;
 $tenantHasPending = ($tenantStatus === 'pending');
 $tenantHasApproved = ($tenantStatus === 'approved');
 $hasContactAccess = $bookingModel->hasContactAccessForHouse($tenantId, $houseId);
+
+require_once '../../classes/PaymentWaiver.php';
+$bookingVoucher = PaymentWaiver::activeTenantVoucher($tenantId);
 $revealsOnPayment = in_array('pending', ListingState::contactRevealStatuses(), true);
 
 if (
@@ -413,6 +416,8 @@ require_once '../../includes/sidebar.php';
 <script>
     window.LUX_BOOKING_CONFIG = {
         bookingFee: <?php echo (int) BOOKING_FEE_AMOUNT; ?>,
+        hasBookingVoucher: <?php echo $bookingVoucher ? 'true' : 'false'; ?>,
+        voucherExpiresLabel: <?php echo json_encode($bookingVoucher ? date('d M Y, H:i', strtotime($bookingVoucher['expires_at'])) : ''); ?>,
         reservationHours: <?php echo (int) RESERVATION_RESPONSE_HOURS; ?>,
         baseUrl: "<?php echo BASE_URL; ?>",
         csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"

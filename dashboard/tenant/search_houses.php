@@ -15,6 +15,9 @@ $bookingModel = new Booking();
 $tenantId = (int) Session::user()['id'];
 $csrfToken = Csrf::token();
 
+require_once '../../classes/PaymentWaiver.php';
+$bookingVoucher = PaymentWaiver::activeTenantVoucher($tenantId);
+
 /**
  * Search handling
  */
@@ -126,6 +129,18 @@ require_once '../../includes/sidebar.php';
             </p>
 
         </div>
+
+        <?php if ($bookingVoucher): ?>
+            <div class="lux-card tenant-card tenant-card-padding" style="margin-bottom:20px; border:1px solid rgba(212,175,55,0.45);">
+                <i class="fa-solid fa-gift" style="color:var(--gold);"></i>
+                <strong style="color:var(--gold);">You have a free booking voucher.</strong>
+                <span style="color:var(--gray);">
+                    Book any property without paying the booking fee. Valid until
+                    <?php echo htmlspecialchars(date('d M Y, H:i', strtotime($bookingVoucher['expires_at']))); ?>.
+                    If a landlord declines your first booking, the voucher comes back once.
+                </span>
+            </div>
+        <?php endif; ?>
 
         <!-- SEARCH BAR -->
         <div class="lux-card tenant-card tenant-card-padding lux-explore-search-card">
@@ -510,6 +525,8 @@ require_once '../../includes/sidebar.php';
 <script>
     window.LUX_BOOKING_CONFIG = {
         bookingFee: <?php echo (int) BOOKING_FEE_AMOUNT; ?>,
+        hasBookingVoucher: <?php echo $bookingVoucher ? 'true' : 'false'; ?>,
+        voucherExpiresLabel: <?php echo json_encode($bookingVoucher ? date('d M Y, H:i', strtotime($bookingVoucher['expires_at'])) : ''); ?>,
         reservationHours: <?php echo (int) RESERVATION_RESPONSE_HOURS; ?>,
         baseUrl: "<?php echo BASE_URL; ?>",
         csrfToken: "<?php echo htmlspecialchars($csrfToken); ?>"

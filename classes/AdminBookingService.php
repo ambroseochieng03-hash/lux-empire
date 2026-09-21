@@ -6,6 +6,7 @@ require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/security/Audit.php';
 require_once __DIR__ . '/Payment.php';
+require_once __DIR__ . '/PaymentWaiver.php';
 require_once __DIR__ . '/Notification.php';
 
 /**
@@ -51,7 +52,7 @@ final class AdminBookingService
 
         $stmt = $this->conn->prepare("
             SELECT
-                b.id, b.status, b.payment_status, b.payment_id, b.booking_date,
+                b.id, b.status, b.payment_status, b.payment_id, b.waiver_id, b.booking_date,
                 p.amount AS paid_amount,
                 r.status AS refund_status,
                 h.id AS house_id, COALESCE(h.title, b.house_title_snapshot) AS house_title,
@@ -131,6 +132,8 @@ final class AdminBookingService
                 $this->conn->rollBack();
                 return ['success' => false, 'message' => 'This booking was just handled by someone else.', 'code' => 409];
             }
+
+            $voucherOutcome = PaymentWaiver::settleOnEnd($this->conn, $bookingId);
 
             if (!empty($booking['house_id'])) {
                 $houseStatus = 'available';
@@ -225,6 +228,8 @@ final class AdminBookingService
         } catch (Throwable $e) {
             error_log('LUX EMPIRE admin cancelAndRefund: notification failed for booking #' . $bookingId . ' — ' . $e->getMessage());
         }
+
+        PaymentWaiver::notifyOutcome((int) $booking['tenant_id'], $voucherOutcome ?? null, $title);
 
         $this->recordReason($adminId, 'cancel_refund_booking', 'bookings', $bookingId, $reason);
         Audit::log("Admin #{$adminId} cancelled booking #{$bookingId}" . ($refundQueued ? ' and queued a refund' : '') . " ({$reason})", $adminId);

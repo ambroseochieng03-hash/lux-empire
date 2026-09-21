@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/ListingState.php';
+require_once __DIR__ . '/PaymentWaiver.php';
 
 class Booking {
 
@@ -219,6 +220,9 @@ class Booking {
                 return ['success' => false, 'message' => 'This request has already been handled.'];
             }
 
+            // A free-voucher booking that gets approved uses its voucher up for good.
+            PaymentWaiver::settleOnApproval($this->conn, $bookingId);
+
             /**
              * Lock and collect every other pending request for the
              * same house, so we can notify those tenants after commit.
@@ -340,11 +344,15 @@ class Booking {
                 WHERE id = :house_id AND reserved_by_booking_id = :booking_id
             ")->execute([':house_id' => $booking['house_id'], ':booking_id' => $bookingId]);
 
+            // Free-voucher booking: hand the voucher back (first attempt) or use it up (second).
+            $voucherOutcome = PaymentWaiver::settleOnEnd($this->conn, $bookingId);
+
             $this->conn->commit();
 
             return [
                 'success' => true,
                 'message' => 'Booking rejected.',
+                'voucher_outcome' => $voucherOutcome,
                 'booking_id' => $bookingId,
                 'house_id' => (int) $booking['house_id'],
                 'tenant_id' => (int) $booking['tenant_id'],
@@ -543,6 +551,8 @@ class Booking {
                 return ['success' => false, 'message' => 'This request has already been handled.'];
             }
 
+            $voucherOutcome = PaymentWaiver::settleOnEnd($this->conn, $bookingId);
+
             if (!empty($booking['house_id'])) {
                 $this->conn->prepare("
                     UPDATE houses
@@ -562,6 +572,7 @@ class Booking {
                 'house_id' => $booking['house_id'] !== null ? (int) $booking['house_id'] : null,
                 'landlord_id' => (int) $booking['landlord_id'],
                 'title' => (string) ($booking['house_title_snapshot'] ?? ''),
+                'voucher_outcome' => $voucherOutcome,
                 'payment_status' => $booking['payment_status'] ?? 'unpaid',
                 'payment_id' => $booking['payment_id'] ?? null,
             ];
@@ -613,6 +624,7 @@ class Booking {
                     u.phone AS landlord_phone,
                     u.email AS landlord_email,
                     r.status AS refund_status,
+                    w.status AS waiver_status,
                     (
                         SELECT hi.image_path
                         FROM house_images hi
@@ -623,6 +635,7 @@ class Booking {
                   LEFT JOIN houses h ON b.house_id = h.id
                   LEFT JOIN users u ON b.landlord_id = u.id
                   LEFT JOIN refunds r ON r.payment_id = b.payment_id
+                  LEFT JOIN payment_waivers w ON w.id = b.waiver_id
                   WHERE b.tenant_id = :tenant_id
                   AND b.hidden_by_tenant_at IS NULL
                   ORDER BY b.booking_date DESC";

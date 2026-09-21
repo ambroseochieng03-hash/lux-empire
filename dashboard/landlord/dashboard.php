@@ -16,6 +16,7 @@ $user_name = $user['full_name'] ?? 'Landlord';
 $isPro = PlanLimits::isPro($landlordId);
 $planLimits = PlanLimits::forLandlord($landlordId);
 $planExpiresAt = PlanLimits::expiresAt($landlordId);
+$waiverProUntil = PlanLimits::waiverExpiresAt($landlordId);
 
 $houseModel = new House();
 $bookingModel = new Booking();
@@ -104,7 +105,9 @@ require_once '../../includes/sidebar.php';
                 </div>
 
                 <p style="color:var(--gray); margin:0;">
-                    <?php if ($isPro && $planExpiresAt): ?>
+                    <?php if ($isPro && $waiverProUntil): ?>
+                        Complimentary Pro — up to <?php echo $planLimits['max_listings']; ?> listings, each with up to <?php echo $planLimits['max_images']; ?> photos or one video. Free until <?php echo date('M d, Y H:i', strtotime($waiverProUntil)); ?>.
+                    <?php elseif ($isPro && $planExpiresAt): ?>
                         Up to <?php echo $planLimits['max_listings']; ?> listings, video enabled — renews <?php echo date('M d, Y', strtotime($planExpiresAt)); ?>.
                     <?php else: ?>
                         Up to <?php echo $planLimits['max_listings']; ?> listings, <?php echo $planLimits['max_images']; ?> photos each. Upgrade for more reach.

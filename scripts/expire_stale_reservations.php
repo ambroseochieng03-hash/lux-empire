@@ -73,13 +73,29 @@ foreach ($stale as $row) {
             );
         }
 
-        $notification->create(
-            (int) $row['tenant_id'],
-            'booking_rejected_refund',
-            'Booking Expired — Refund Processing',
-            'The landlord did not respond to your request for "' . $title . '" within ' . $hours . ' hours, so it was cancelled. Your booking fee is being refunded automatically to your M-Pesa — you\'ll get a confirmation once it completes.',
-            BASE_URL . '/tenant/my-bookings'
-        );
+        if (!empty($result['voucher_outcome'])) {
+
+            // Free-voucher booking: nothing was paid, so nothing is refunded.
+            $notification->create(
+                (int) $row['tenant_id'],
+                'booking_expired',
+                'Booking Expired',
+                'The landlord did not respond to your request for "' . $title . '" within ' . $hours . ' hours, so it was cancelled.',
+                BASE_URL . '/tenant/my-bookings'
+            );
+
+            PaymentWaiver::notifyOutcome((int) $row['tenant_id'], $result['voucher_outcome'], $title);
+
+        } else {
+
+            $notification->create(
+                (int) $row['tenant_id'],
+                'booking_rejected_refund',
+                'Booking Expired — Refund Processing',
+                'The landlord did not respond to your request for "' . $title . '" within ' . $hours . ' hours, so it was cancelled. Your booking fee is being refunded automatically to your M-Pesa — you\'ll get a confirmation once it completes.',
+                BASE_URL . '/tenant/my-bookings'
+            );
+        }
 
         $notification->create(
             (int) $row['landlord_id'],

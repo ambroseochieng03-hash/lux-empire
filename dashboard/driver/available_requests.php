@@ -6,7 +6,6 @@ requireRoleAccess('driver');
 
 require_once '../../config/db.php';
 
-require_once '../../config/db.php';
 require_once '../../config/csrf.php';
 
 $db = new Database();
@@ -14,6 +13,15 @@ $pdo = $db->connect();
 
 $driver_id = (int) Session::user()['id'];
 $csrfToken = Csrf::token();
+
+// A driver who is already on a trip cannot take another job.
+$activeTripStmt = $pdo->prepare("
+    SELECT id FROM truck_requests
+    WHERE driver_id = ? AND status IN ('accepted', 'arrived_at_pickup', 'in_transit')
+    LIMIT 1
+");
+$activeTripStmt->execute([$driver_id]);
+$hasActiveTrip = $activeTripStmt->fetchColumn() !== false;
 
 /*
  * Both instant and scheduled pending requests are shown — a
@@ -159,6 +167,17 @@ require_once '../../includes/sidebar.php';
         </p>
 
     </div>
+
+    <?php if ($hasActiveTrip): ?>
+        <div class="lux-card" style="padding:22px; border-radius:20px; margin-bottom:30px; border:1px solid rgba(255,165,0,0.45);">
+            <i class="fa-solid fa-truck-fast" style="color:orange;"></i>
+            <strong style="color:orange;">You have an active trip.</strong>
+            <span style="color:var(--gray);">
+                Finish it before accepting another job.
+                <a href="<?php echo BASE_URL; ?>/driver/active-trip" style="color:var(--gold);">Go to your active trip →</a>
+            </span>
+        </div>
+    <?php endif; ?>
 
     <!-- REQUEST GRID -->
     <div id="driverRequestsGrid" style="
@@ -317,7 +336,13 @@ require_once '../../includes/sidebar.php';
                     </button>
 
                     <!-- ACTION -->
-                    <?php if ($isAcceptableNow): ?>
+                    <?php if ($hasActiveTrip): ?>
+
+                        <button type="button" class="accept-locked-btn" disabled>
+                            <i class="fa-solid fa-lock"></i> Finish your active trip first
+                        </button>
+
+                    <?php elseif ($isAcceptableNow): ?>
 
                         <button type="button" class="lux-btn accept-request-btn"
                                 data-request-id="<?php echo (int) $request['id']; ?>"

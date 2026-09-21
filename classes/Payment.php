@@ -25,6 +25,7 @@ require_once __DIR__ . '/RefundJobPublisher.php';
 
 require_once __DIR__ . '/Notification.php';
 require_once __DIR__ . '/ReceiptExtractor.php';
+require_once __DIR__ . '/PaymentWaiver.php';
 
 final class Payment
 {
@@ -1764,6 +1765,155 @@ final class Payment
         }
     }
 
+    /**
+     * FREE BOOKING WITH A VOUCHER
+     *
+     * No payment screen and NO payments row — nothing was paid, so this must never
+     * appear on the admin Payments page. One transaction locks the house, claims the
+     * voucher and creates the booking, so a voucher can't be spent twice and a house
+     * can't be double-booked. The booking is stored with payment_status 'paid' (fee
+     * satisfied), payment_id NULL and waiver_id set, so chat, contact reveal and the
+     * landlord queue behave exactly as for a paid booking.
+     */
+    public function bookWithVoucher(int $userId, int $houseId): array
+    {
+        $bookingId = 0;
+        $voucher = null;
+        $house = null;
+        $tenant = null;
+        $landlord = null;
+
+        try {
+
+            $this->conn->beginTransaction();
+
+            $houseLock = $this->conn->prepare("
+                SELECT status, landlord_id, title, is_hidden
+                FROM houses
+                WHERE id = :id
+                FOR UPDATE
+            ");
+            $houseLock->execute([':id' => $houseId]);
+            $house = $houseLock->fetch(PDO::FETCH_ASSOC);
+
+            if (!$house || !empty($house['is_hidden']) || $house['status'] !== 'available') {
+                $this->conn->rollBack();
+                return ['success' => false, 'message' => 'This property is no longer available to book.'];
+            }
+
+            if ((int) $house['landlord_id'] === $userId) {
+                $this->conn->rollBack();
+                return ['success' => false, 'message' => 'You cannot book your own property.'];
+            }
+
+            $voucher = PaymentWaiver::claimForBooking($this->conn, $userId);
+
+            if ($voucher === null) {
+                $this->conn->rollBack();
+                return ['success' => false, 'message' => 'You do not have an active free-booking voucher.'];
+            }
+
+            $bookingInsert = $this->conn->prepare("
+                INSERT INTO bookings
+                    (tenant_id, house_id, house_title_snapshot, landlord_id, status, payment_status, payment_id, waiver_id)
+                VALUES
+                    (:tenant_id, :house_id, :title, :landlord_id, 'pending', 'paid', NULL, :waiver_id)
+            ");
+            $bookingInsert->execute([
+                ':tenant_id' => $userId,
+                ':house_id' => $houseId,
+                ':title' => $house['title'],
+                ':landlord_id' => $house['landlord_id'],
+                ':waiver_id' => $voucher['id'],
+            ]);
+            $bookingId = (int) $this->conn->lastInsertId();
+
+            $this->conn->prepare("
+                UPDATE houses
+                SET status = 'reserved', reserved_by_booking_id = :booking_id
+                WHERE id = :house_id
+            ")->execute([':booking_id' => $bookingId, ':house_id' => $houseId]);
+
+            PaymentWaiver::logEvent(
+                $this->conn,
+                (int) $voucher['id'],
+                $userId,
+                'redeemed',
+                $bookingId,
+                null,
+                'attempt ' . $voucher['attempts_used'] . ' of ' . $voucher['max_attempts']
+            );
+
+            $people = $this->conn->prepare("SELECT full_name, email FROM users WHERE id = :id");
+
+            $people->execute([':id' => $userId]);
+            $tenant = $people->fetch(PDO::FETCH_ASSOC);
+
+            $people->execute([':id' => $house['landlord_id']]);
+            $landlord = $people->fetch(PDO::FETCH_ASSOC);
+
+            $this->conn->commit();
+
+        } catch (Throwable $e) {
+
+            if ($this->conn->inTransaction()) {
+                $this->conn->rollBack();
+            }
+
+            error_log('LUX EMPIRE Payment: voucher booking failed — ' . $e->getMessage());
+
+            return ['success' => false, 'message' => 'Something went wrong. Please try again.'];
+        }
+
+        // ---- after the commit ----
+
+        $canRetry = (int) $voucher['attempts_used'] < (int) $voucher['max_attempts'];
+
+        $actions = [];
+
+        $actions[] = [
+            'type' => 'notification',
+            'user_id' => $userId,
+            'notif_type' => 'booking_voucher_used',
+            'title' => 'Booking sent — free of charge',
+            'message' => 'Your request for "' . $house['title'] . '" was sent to the landlord using your free booking voucher. '
+                . ($canRetry
+                    ? 'If the landlord declines, your voucher comes back once.'
+                    : 'If the landlord declines, this voucher is used up.'),
+            'link' => BASE_URL . '/tenant/my-bookings',
+        ];
+
+        $actions[] = [
+            'type' => 'notification',
+            'user_id' => (int) $house['landlord_id'],
+            'notif_type' => 'new_booking_request',
+            'title' => 'New Booking Request',
+            'message' => ($tenant['full_name'] ?? 'A tenant') . ' has requested to book "' . $house['title'] . '".',
+            'link' => BASE_URL . '/booking-requests',
+        ];
+
+        if ($landlord) {
+            $actions[] = [
+                'type' => 'email',
+                'subject_key' => 'email.new_booking_request',
+                'payload' => [
+                    'email' => $landlord['email'],
+                    'name' => $landlord['full_name'],
+                    'tenant_name' => $tenant['full_name'] ?? 'A tenant',
+                    'house_title' => $house['title'],
+                ],
+            ];
+        }
+
+        $this->dispatchPostCommitActions($actions);
+
+        return [
+            'success' => true,
+            'message' => 'Booking sent to the landlord — no payment needed.',
+            'booking_id' => $bookingId,
+        ];
+    }
+
     public function listNeedingReview(): array
     {
         return $this->conn->query("
@@ -1839,6 +1989,7 @@ final class Payment
         $stmt = $this->conn->prepare("
             SELECT p.*, u.full_name, u.email
             FROM payments p JOIN users u ON p.user_id = u.id
+            WHERE p.phone <> 'WAIVED'
             ORDER BY p.id DESC LIMIT :limit
         ");
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);

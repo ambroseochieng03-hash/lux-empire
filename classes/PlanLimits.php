@@ -71,6 +71,14 @@ final class PlanLimits
             && strtotime($row['plan_expires_at']) > time();
     }
 
+    /** When a complimentary (admin-granted) Pro voucher ends, or null when there is none. */
+    public static function waiverExpiresAt(int $landlordId): ?string
+    {
+        require_once __DIR__ . '/PaymentWaiver.php';
+
+        return PaymentWaiver::landlordProUntil($landlordId);
+    }
+
     public static function forLandlord(int $landlordId): array
     {
         return self::isPro($landlordId) ? self::proLimits() : self::freeLimits();

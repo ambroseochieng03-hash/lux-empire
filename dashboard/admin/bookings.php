@@ -98,7 +98,9 @@ $csrfToken = Csrf::token();
                     <?php echo date('d M Y H:i', strtotime($booking['booking_date'])); ?><br>
                     Payment:
                     <?php if ($isPaid): ?>
-                        KES <?php echo number_format((float) ($booking['paid_amount'] ?? 0)); ?> paid
+                            <?php echo !empty($booking['waiver_id'])
+                            ? 'Free booking voucher (nothing paid)'
+                            : 'KES ' . number_format((float) ($booking['paid_amount'] ?? 0)) . ' paid'; ?>
                         <?php if ($refundStatus): ?> · Refund: <strong><?php echo htmlspecialchars(ucfirst($refundStatus)); ?></strong><?php endif; ?>
                     <?php else: ?>
                         Unpaid

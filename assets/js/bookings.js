@@ -141,6 +141,14 @@ without re-binding handlers.
             dismissLabel: 'No, keep it',
             icon: 'fa-solid fa-triangle-exclamation'
         },
+        use_voucher: {
+            title: 'Use your free booking voucher?',
+            message: 'This booking will not cost you anything. Your voucher is valid until {expires}. If the landlord declines, the voucher comes back once; a second decline uses it up.',
+            confirmLabel: 'Yes, book for free',
+            dismissLabel: 'Cancel',
+            icon: 'fa-solid fa-gift'
+        },
+
         delete_booking: {
             title: 'Remove this booking from your list?',
             message: 'This only removes it from your bookings page. It does not change the property or any refund.',
@@ -150,7 +158,7 @@ without re-binding handlers.
         }
     };
 
-    function confirmAction(kind) {
+    function confirmAction(kind, vars = {}) {
 
         const copy = CONFIRM_COPY[kind];
 
@@ -169,7 +177,7 @@ without re-binding handlers.
                 <div class="lux-booking-modal-box" role="alertdialog" aria-modal="true">
                     <div class="lux-booking-modal-icon"><i class="${copy.icon}"></i></div>
                     <div class="lux-booking-modal-title">${copy.title}</div>
-                    <div class="lux-booking-modal-message">${copy.message}</div>
+                    <div class="lux-booking-modal-message">${copy.message.replace('{expires}', vars.expires || '')}</div>
                     <div class="lux-booking-modal-actions">
                         <button type="button" class="lux-booking-modal-cancel" data-confirm-cancel>${copy.dismissLabel}</button>
                         <button type="button" class="lux-booking-modal-ok" data-confirm-ok>${copy.confirmLabel}</button>
@@ -265,7 +273,7 @@ without re-binding handlers.
 
     function bindTenantBookButtons() {
 
-        document.addEventListener('click', (event) => {
+        document.addEventListener('click', async (event) => {
 
             const button = event.target.closest('.book-now-btn');
 
@@ -276,6 +284,58 @@ without re-binding handlers.
             const houseId = button.dataset.houseId;
 
             if (!houseId) {
+                return;
+            }
+
+            /*
+             * FREE BOOKING VOUCHER — no payment step at all. One tap, one confirmation,
+             * and the request goes straight to the landlord.
+             */
+            if (cfg.hasBookingVoucher) {
+
+                const useVoucher = await confirmAction('use_voucher', { expires: cfg.voucherExpiresLabel || '' });
+
+                if (!useVoucher) {
+                    return;
+                }
+
+                setLoading(button, true, 'Booking...');
+
+                try {
+
+                    const data = await postForm(`${cfg.baseUrl}/api/waivers/book_with_voucher.php`, {
+                        house_id: houseId,
+                        csrf_token: cfg.csrfToken
+                    });
+
+                    if (data.success) {
+
+                        button.textContent = 'Request Sent — Awaiting Landlord';
+                        button.classList.remove('book-now-btn');
+                        button.classList.add('lux-explore-btn-pending');
+                        button.disabled = true;
+
+                        // The voucher is now in use — the next Book Now must not offer it again.
+                        cfg.hasBookingVoucher = false;
+
+                        showBookingModal(data.message || 'Booking sent to the landlord.', 'success');
+
+                        document.dispatchEvent(new CustomEvent('lux:booking-paid', {
+                            detail: { houseId: houseId }
+                        }));
+
+                    } else {
+
+                        setLoading(button, false);
+                        showBookingModal(data.message || 'Could not use your voucher.', 'error');
+                    }
+
+                } catch (error) {
+
+                    setLoading(button, false);
+                    showBookingModal('Network error. Please try again.', 'error');
+                }
+
                 return;
             }
 

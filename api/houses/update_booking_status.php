@@ -7,6 +7,7 @@ requireRoleAccess('landlord');
 
 require_once '../../classes/House.php';
 require_once '../../classes/Payment.php';
+require_once '../../classes/PaymentWaiver.php';
 require_once '../../classes/Booking.php';
 require_once '../../classes/Notification.php';
 require_once '../../config/app.php';
@@ -162,6 +163,9 @@ if ($action === 'reject') {
 
     $house = $houseModel->getHouseById($result['house_id']);
     $houseTitle = $house['title'] ?? 'the property';
+
+    // Free-voucher booking: tell the tenant whether their voucher came back or is used up.
+    PaymentWaiver::notifyOutcome((int) $result['tenant_id'], $result['voucher_outcome'] ?? null, $houseTitle);
 
     if ($result['payment_status'] === 'paid' && $result['payment_id']) {
 

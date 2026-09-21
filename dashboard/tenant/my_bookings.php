@@ -336,6 +336,8 @@ require_once '../../includes/sidebar.php';
                                     $isLive = $isPaid && in_array($status, ['pending', 'approved'], true);
                                     $showContact = $isLive && in_array($status, ListingState::contactRevealStatuses(), true);
                                     $refundStatus = $booking['refund_status'] ?? null;
+                                    $usedVoucher = !empty($booking['waiver_id']);
+                                    $waiverStatus = $booking['waiver_status'] ?? null;
 
                                     $refundLabel = match (true) {
                                         $refundStatus === 'completed' => 'Your booking fee has been refunded to your M-Pesa.',
@@ -364,8 +366,16 @@ require_once '../../includes/sidebar.php';
                                 <?php if ($isPaid && in_array($status, ['rejected', 'cancelled'], true)): ?>
 
                                     <div class="lux-landlord-contact">
-                                        <span class="lux-landlord-contact-label">Refund</span>
-                                        <?php echo htmlspecialchars($refundLabel); ?>
+                                        <span class="lux-landlord-contact-label"><?php echo $usedVoucher ? 'Voucher' : 'Refund'; ?></span>
+                                        <?php
+                                            if ($usedVoucher) {
+                                                echo htmlspecialchars($waiverStatus === 'active'
+                                                    ? 'This booking used your free voucher. It did not go ahead, so your voucher is back — use it on another property.'
+                                                    : 'This booking used your free voucher. It did not go ahead, and the voucher has now been used up.');
+                                            } else {
+                                                echo htmlspecialchars($refundLabel);
+                                            }
+                                        ?>
                                     </div>
 
                                 <?php endif; ?>
