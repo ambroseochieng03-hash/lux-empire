@@ -32,14 +32,12 @@ $hasActiveTrip = $activeTripStmt->fetchColumn() !== false;
  * float to the top, since those are the ones a driver can actually
  * act on right now.
  */
+// Pending requests show the driver ONLY pickup, destination and price —
+// no tenant name or phone until they actually accept. That's the same
+// reveal boundary agreed for landlord contact, applied here too.
 $stmt = $pdo->prepare("
-    SELECT
-        truck_requests.*,
-        users.full_name,
-        users.phone
+    SELECT truck_requests.*
     FROM truck_requests
-    JOIN users
-    ON truck_requests.tenant_id = users.id
     WHERE truck_requests.status = 'pending'
     ORDER BY
         (truck_requests.trip_type = 'instant') DESC,
@@ -267,14 +265,6 @@ require_once '../../includes/sidebar.php';
 
                     </div>
 
-                    <!-- TENANT -->
-                    <div style="margin-bottom:20px;">
-                        <div style="color:var(--gray); margin-bottom:6px;">Tenant</div>
-                        <div style="color:white;">
-                            <?php echo htmlspecialchars($request['full_name']); ?>
-                        </div>
-                    </div>
-
                     <!-- PICKUP -->
                     <div style="margin-bottom:20px;">
                         <div style="color:var(--gray); margin-bottom:6px;">Pickup Location</div>
@@ -314,26 +304,6 @@ require_once '../../includes/sidebar.php';
                             PENDING REQUEST
                         </span>
                     </div>
-
-                    <!-- MESSAGE TENANT -->
-                    <button type="button"
-                            class="lux-btn chat-starter-btn"
-                            data-tenant-id="<?php echo (int) $request['tenant_id']; ?>"
-                            data-truck-request-id="<?php echo (int) $request['id']; ?>"
-                            data-other-name="<?php echo htmlspecialchars($request['full_name']); ?>"
-                            style="
-                                width:100%;
-                                border:1px solid var(--gold);
-                                background:rgba(255,255,255,0.06);
-                                color:var(--gold);
-                                padding:14px;
-                                border-radius:16px;
-                                font-weight:bold;
-                                cursor:pointer;
-                                margin-bottom:12px;
-                            ">
-                        <i class="fa-solid fa-comment-dots"></i> Message Tenant
-                    </button>
 
                     <!-- ACTION -->
                     <?php if ($hasActiveTrip): ?>

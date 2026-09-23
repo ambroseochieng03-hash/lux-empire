@@ -675,6 +675,13 @@ define('RESERVATION_RESPONSE_HOURS', 48);
 define('REVEAL_CONTACT_BEFORE_ACCEPTANCE', false);
 
 /*
+| A trip 'in_transit' with no driver location ping in this many minutes gets an
+| automatic alert into emergency_alerts (scripts/monitor_active_trips.php), so a
+| silent driver is caught by the system instead of only by a worried tenant calling in.
+*/
+define('STALE_LOCATION_ALERT_MINUTES', 20);
+
+/*
 | Chat edit / delete rules (enforced on the server, mirrored in the UI).
 |   - Edit a message: sender only, within this many minutes of sending.
 |   - Delete for everyone: sender only, within this many minutes.
@@ -689,3 +696,15 @@ define('CHAT_DELETE_EVERYONE_WINDOW_MINUTES', 60);
 | content. Set to true to bring it back.
 */
 define('SHOW_HELP_TOUR', false);
+
+/*
+| How long a completed/cancelled truck trip stays visible on the
+| tenant's My Bookings page before it's automatically filtered out
+| of the list. The row itself is never deleted — trip_status_history
+| has a hard foreign key to truck_requests with no ON DELETE action,
+| so an accepted trip literally cannot be hard-deleted without first
+| removing its history, and that history is exactly what you want
+| kept for disputes/audits. This only hides it from the tenant's own
+| view once it's old enough to no longer be "in progress" news.
+*/
+define('AUTO_CLEAR_FINISHED_TRIP_HOURS', 2);

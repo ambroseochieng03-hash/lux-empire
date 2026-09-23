@@ -86,6 +86,25 @@ foreach ($alerts as $a) {
                     <?= date("d M Y H:i", strtotime($alert['created_at'])) ?>
                 </div>
 
+                <?php if ($alert['trip_id'] && ($alert['trip_status'] ?? '') === 'in_transit'): ?>
+                    <div class="lux-entity-actions" style="margin-bottom:14px;">
+                        <button class="lux-btn lux-btn-success" data-action="resolve-trip-completed" data-trip-id="<?= (int) $alert['trip_id'] ?>">
+                            Force Resolve: Trip Completed
+                        </button>
+                        <button class="lux-btn lux-btn-danger" data-action="resolve-trip-cancelled" data-trip-id="<?= (int) $alert['trip_id'] ?>">
+                            Force Resolve: Trip Cancelled
+                        </button>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($alert['trip_id'] && in_array($alert['trip_status'] ?? '', ['accepted', 'arrived_at_pickup'], true)): ?>
+                    <div class="lux-entity-actions" style="margin-bottom:14px;">
+                        <button class="lux-btn lux-btn-outline-danger" data-action="force-cancel-trip" data-trip-id="<?= (int) $alert['trip_id'] ?>">
+                            Cancel Trip Now
+                        </button>
+                    </div>
+                <?php endif; ?>
+
                 <?php if ($alert['trip_id']): ?>
                 <div class="lux-intelligence-box">
                     <div class="lux-intelligence-heading">Live Trip Intelligence</div>
@@ -94,12 +113,12 @@ foreach ($alerts as $a) {
                     <div class="lux-entity-meta">Destination: <?= htmlspecialchars($alert['destination'] ?? 'Unknown') ?></div>
                     <hr class="lux-intelligence-divider">
                     <div class="lux-intelligence-subheading lux-intelligence-tenant">Tenant Location</div>
-                    <div class="lux-entity-meta">Lat: <?= htmlspecialchars($alert['tenant_latitude'] ?? 'N/A') ?> &nbsp; Long: <?= htmlspecialchars($alert['tenant_longitude'] ?? 'N/A') ?></div>
+                    <div class="lux-entity-meta">Lat: <?= htmlspecialchars((string) ($alert['tenant_latitude'] ?? 'N/A')) ?> &nbsp; Long: <?= htmlspecialchars((string) ($alert['tenant_longitude'] ?? 'N/A')) ?></div>
                     <hr class="lux-intelligence-divider">
                     <div class="lux-intelligence-subheading lux-intelligence-driver">Driver Intelligence</div>
                     <div class="lux-entity-name"><?= htmlspecialchars($alert['driver_name'] ?? 'No driver assigned') ?></div>
                     <div class="lux-entity-meta"><?= htmlspecialchars($alert['driver_phone'] ?? 'N/A') ?></div>
-                    <div class="lux-entity-meta">Lat: <?= htmlspecialchars($alert['driver_latitude'] ?? 'N/A') ?> &nbsp; Long: <?= htmlspecialchars($alert['driver_longitude'] ?? 'N/A') ?></div>
+                    <div class="lux-entity-meta">Lat: <?= htmlspecialchars((string) ($alert['driver_latitude'] ?? 'N/A')) ?> &nbsp; Long: <?= htmlspecialchars((string) ($alert['driver_longitude'] ?? 'N/A')) ?></div>
                 </div>
                 <?php endif; ?>
 

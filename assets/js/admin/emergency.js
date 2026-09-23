@@ -18,6 +18,47 @@
         var action = btn.getAttribute('data-action');
         var alertId = btn.getAttribute('data-alert-id');
         var card = grid.querySelector('[data-alert-card="' + alertId + '"]');
+        
+        if (action === 'resolve-trip-completed' || action === 'resolve-trip-cancelled') {
+            var outcome = action === 'resolve-trip-completed' ? 'trip_completed' : 'trip_cancelled';
+            var tripId = btn.getAttribute('data-trip-id');
+
+            LuxAdmin.confirm({
+                title: outcome === 'trip_completed' ? 'Mark this trip as completed?' : 'Mark this trip as cancelled?',
+                message: outcome === 'trip_completed'
+                    ? 'Confirm the delivery actually happened. Commission will be deducted from the driver as normal. Explain what you confirmed.'
+                    : 'Confirm the move did NOT happen. No commission will be charged. Explain what you confirmed.',
+                requireReason: true,
+                onConfirm: function (reason) {
+                    LuxAdmin.request(baseUrl + '/api/admin/truck_resolve_stuck.php', {
+                        body: { request_id: tripId, outcome: outcome, reason: reason }
+                    }).then(function () {
+                        LuxAdmin.toast('Trip resolved.', 'success');
+                        setTimeout(function () { window.location.reload(); }, 700);
+                    }).catch(function (err) { LuxAdmin.toast(err.message, 'error'); });
+                }
+            });
+            return;
+        }
+
+        if (action === 'force-cancel-trip') {
+            var cancelTripId = btn.getAttribute('data-trip-id');
+
+            LuxAdmin.confirm({
+                title: 'Cancel this trip right now?',
+                message: 'The trip stops immediately, both tenant and driver are notified with your reason. No commission is charged.',
+                requireReason: true,
+                onConfirm: function (reason) {
+                    LuxAdmin.request(baseUrl + '/api/admin/truck_force_cancel.php', {
+                        body: { request_id: cancelTripId, reason: reason }
+                    }).then(function () {
+                        LuxAdmin.toast('Trip cancelled.', 'success');
+                        setTimeout(function () { window.location.reload(); }, 700);
+                    }).catch(function (err) { LuxAdmin.toast(err.message, 'error'); });
+                }
+            });
+            return;
+        }
 
         if (action === 'delete') {
             LuxAdmin.confirm({

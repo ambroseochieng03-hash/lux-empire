@@ -332,13 +332,17 @@ require_once '../../includes/sidebar.php';
                 </h3>
 
                 <p class="vh-desc">
-                    <?php if ($revealsOnPayment): ?>
+                    <?php if (!empty($tenantBooking['waiver_id']) && $tenantHasPending): ?>
+                        You booked this property with your free voucher — nothing to pay. The landlord's phone and email
+                        will appear here the moment they accept, and you can message them in the app while you wait.
+                    <?php elseif ($revealsOnPayment): ?>
                         The landlord's phone and email are shared once you've paid the booking fee for this property.
+                        If the landlord declines, your fee is refunded automatically.
                     <?php else: ?>
                         Pay the booking fee to secure this property and message the landlord in the app.
                         Their phone and email are shared once they accept your booking.
+                        If the landlord declines, your fee is refunded automatically.
                     <?php endif; ?>
-                    If the landlord declines, your fee is refunded automatically.
                 </p>
 
                 <?php if ($isLandlordVerified): ?>

@@ -174,36 +174,25 @@ body { overflow-x: hidden; }
 
                 <?php if ($trip['status'] === 'accepted'): ?>
 
-                    <form action="<?php echo BASE_URL; ?>/api/trucks/update_trip_status.php" method="POST">
-                        <input type="hidden" name="trip_id" value="<?php echo $trip['id']; ?>">
-                        <input type="hidden" name="status" value="arrived_at_pickup">
-                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES); ?>">
-                        <button class="lux-btn" style="border:none; padding:16px 28px; border-radius:18px; cursor:pointer;">
-                            <i class="fa-solid fa-location-dot"></i> Arrived at Pickup
-                        </button>
-                    </form>
+                    <button type="button" class="lux-btn trip-action-btn" data-status="arrived_at_pickup" data-trip-id="<?php echo $trip['id']; ?>" style="border:none; padding:16px 28px; border-radius:18px; cursor:pointer;">
+                        <i class="fa-solid fa-location-dot"></i> Arrived at Pickup
+                    </button>
 
                 <?php elseif ($trip['status'] === 'arrived_at_pickup'): ?>
 
-                    <form action="<?php echo BASE_URL; ?>/api/trucks/update_trip_status.php" method="POST">
-                        <input type="hidden" name="trip_id" value="<?php echo $trip['id']; ?>">
-                        <input type="hidden" name="status" value="in_transit">
-                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES); ?>">
-                        <button class="lux-btn" style="border:none; padding:16px 28px; border-radius:18px; cursor:pointer;">
-                            <i class="fa-solid fa-play"></i> Start Trip
-                        </button>
-                    </form>
+                    <button type="button" class="lux-btn trip-action-btn" data-status="in_transit" data-trip-id="<?php echo $trip['id']; ?>" style="border:none; padding:16px 28px; border-radius:18px; cursor:pointer;">
+                        <i class="fa-solid fa-play"></i> Start Trip
+                    </button>
 
                 <?php elseif ($trip['status'] === 'in_transit'): ?>
 
-                    <form action="<?php echo BASE_URL; ?>/api/trucks/update_trip_status.php" method="POST">
-                        <input type="hidden" name="trip_id" value="<?php echo $trip['id']; ?>">
-                        <input type="hidden" name="status" value="completed">
-                        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES); ?>">
-                        <button style="background:lightgreen; color:black; border:none; padding:16px 28px; border-radius:18px; cursor:pointer; font-weight:bold;">
-                            <i class="fa-solid fa-flag-checkered"></i> Complete Trip
-                        </button>
-                    </form>
+                    <button type="button" class="trip-action-btn" data-status="completed" data-trip-id="<?php echo $trip['id']; ?>" style="background:lightgreen; color:black; border:none; padding:16px 28px; border-radius:18px; cursor:pointer; font-weight:bold;">
+                        <i class="fa-solid fa-flag-checkered"></i> Complete Trip
+                    </button>
+
+                    <button type="button" class="trip-action-btn" data-status="report_stuck" data-trip-id="<?php echo $trip['id']; ?>" data-confirm="Report this trip as stuck? Our team will review it — your trip stays open until they resolve it." style="background:rgba(255,165,0,0.15); color:orange; border:1px solid orange; padding:16px 28px; border-radius:18px; cursor:pointer; font-weight:bold;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Trip Stuck? Report It
+                    </button>
 
                 <?php elseif ($trip['status'] === 'cancelled'): ?>
 
@@ -268,5 +257,13 @@ body { overflow-x: hidden; }
 
 </main>
 </div>
+
+<script>
+    window.LUX_TRIP_ACTION_CONFIG = {
+        baseUrl: "<?php echo BASE_URL; ?>",
+        csrfToken: "<?php echo htmlspecialchars($csrfToken, ENT_QUOTES); ?>"
+    };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/trip-status-actions.js"></script>
 
 <?php require_once '../../includes/footer.php'; ?>

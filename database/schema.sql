@@ -797,3 +797,45 @@ CREATE TABLE waiver_events (
     INDEX idx_waiver_events_waiver (waiver_id, id),
     INDEX idx_waiver_events_user (user_id, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE booking_celebrations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    booking_id INT NOT NULL,
+    tenant_id INT NOT NULL,
+    house_title VARCHAR(150) NOT NULL,
+    shown_at TIMESTAMP NULL DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_booking_celebration (booking_id),
+    INDEX idx_celebration_tenant (tenant_id, shown_at),
+    FOREIGN KEY (tenant_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE trip_status_history
+    ADD COLUMN ip_address VARCHAR(45) NULL AFTER changed_by;
+
+ALTER TABLE truck_requests
+    ADD COLUMN cancel_reason TEXT NULL AFTER status,
+    ADD COLUMN cancelled_by_admin_id INT NULL AFTER cancel_reason,
+    ADD CONSTRAINT fk_truck_cancelled_by_admin FOREIGN KEY (cancelled_by_admin_id) REFERENCES users(id) ON DELETE SET NULL;
+
+ALTER TABLE emergency_alerts
+    ADD COLUMN resolution ENUM('unresolved','trip_completed','trip_cancelled') NULL AFTER status;
+
+ALTER TABLE conversations
+    ADD INDEX idx_conversations_tenant_id (tenant_id);
+    
+ALTER TABLE conversations DROP INDEX uniq_pair;
+ALTER TABLE conversations ADD UNIQUE KEY uniq_pair_scoped (tenant_id, other_user_id, house_id, truck_request_id);
+
+USE house_truck_platform;
+
+CREATE TABLE driver_active_trip_lock (
+    driver_id INT NOT NULL PRIMARY KEY,
+    trip_id INT NOT NULL,
+    locked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (trip_id) REFERENCES truck_requests(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE bookings
+    ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;

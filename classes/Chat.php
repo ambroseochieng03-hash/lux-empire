@@ -28,14 +28,20 @@ class Chat
         ?int $truckRequestId = null
     ): array {
 
+        // Scoped to the SPECIFIC house/trip, not just the two people — a new
+        // truck trip with the same driver (or a new booking on a different
+        // house with the same landlord) must never reopen an old conversation.
         $stmt = $this->conn->prepare("
             SELECT * FROM conversations
             WHERE tenant_id = :tenant_id AND other_user_id = :other_user_id
+            AND house_id <=> :house_id AND truck_request_id <=> :truck_request_id
             LIMIT 1
         ");
         $stmt->execute([
             ':tenant_id' => $tenantId,
-            ':other_user_id' => $otherUserId
+            ':other_user_id' => $otherUserId,
+            ':house_id' => $houseId,
+            ':truck_request_id' => $truckRequestId,
         ]);
 
         $existing = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -187,10 +193,12 @@ class Chat
                 usr.full_name AS with_name,
                 usr.profile_image AS with_image,
                 usr.last_seen_at AS with_last_seen,
+                tr.status AS trip_status,
                 {$unreadSql},
                 {$lastSql}
             FROM conversations c
             JOIN users usr ON usr.id = {$joinExpr}
+            LEFT JOIN truck_requests tr ON tr.id = c.truck_request_id
             WHERE {$whereSql}
             ORDER BY c.last_message_at IS NULL, c.last_message_at DESC
         ";
@@ -198,7 +206,26 @@ class Chat
         $stmt = $this->conn->prepare($sql);
         $stmt->execute($params);
 
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        /*
+         * Once a truck trip is completed or cancelled, neither side needs
+         * the other's identity any more — the name/photo shown for this
+         * conversation is anonymized here so a finished trip's entry in
+         * the chat list no longer reveals who the other person was.
+         * Message CONTENT redaction (contact info inside old messages)
+         * happens separately, in api/chat/fetch_messages.php.
+         */
+        foreach ($rows as &$row) {
+            if (($row['other_role'] ?? '') === 'driver' && in_array($row['trip_status'] ?? null, ['completed', 'cancelled'], true)) {
+                $row['with_name'] = 'Trip ended';
+                $row['with_image'] = null;
+                $row['with_last_seen'] = null;
+            }
+        }
+        unset($row);
+
+        return $rows;
     }
 
     public function sendMessage(int $conversationId, int $senderId, string $message, string $senderType = 'user'): array

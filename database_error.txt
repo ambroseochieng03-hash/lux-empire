@@ -1,0 +1,28 @@
+╭─ambitious@archlinux
+╰─$ cd /srv/http/house_truck_platform
+mariadb -u root -p house_truck_platform -e "
+ALTER TABLE truck_requests
+  ADD COLUMN active_driver_lock VARCHAR(20)
+    GENERATED ALWAYS AS (
+      CASE WHEN status IN ('accepted','arrived_at_pickup','in_transit')
+           THEN CAST(driver_id AS CHAR)
+           ELSE NULL END
+    ) STORED;
+ALTER TABLE truck_requests
+  ADD UNIQUE KEY uniq_driver_active_trip (active_driver_lock);
+"
+Enter password: 
+--------------
+ALTER TABLE truck_requests
+  ADD COLUMN active_driver_lock VARCHAR(20)
+    GENERATED ALWAYS AS (
+      CASE WHEN status IN ('accepted','arrived_at_pickup','in_transit')
+           THEN CAST(driver_id AS CHAR)
+           ELSE NULL END
+    ) STORED
+--------------
+
+ERROR 1901 (HY000) at line 2: Function or expression 'driver_id' cannot be used in the GENERATED ALWAYS AS clause of `active_driver_lock`
+
+╭─ambitious@archlinux
+╰─$ 

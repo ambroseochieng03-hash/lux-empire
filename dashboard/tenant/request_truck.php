@@ -4,6 +4,15 @@ require_once '../../includes/init.php';
 require_once '../../includes/auth_check.php';
 requireRoleAccess('tenant');
 
+$existingTripStmt = (new Database())->connect()->prepare("
+    SELECT id, status, pickup_location, destination
+    FROM truck_requests
+    WHERE tenant_id = :tenant_id AND status IN ('pending', 'accepted', 'arrived_at_pickup', 'in_transit')
+    ORDER BY requested_at DESC
+");
+$existingTripStmt->execute([':tenant_id' => Session::user()['id']]);
+$existingTrips = $existingTripStmt->fetchAll(PDO::FETCH_ASSOC);
+
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
@@ -114,6 +123,17 @@ require_once '../../includes/sidebar.php';
     <main class="request-main">
 
         <!-- HEADER -->
+        <?php if (!empty($existingTrips)): ?>
+            <div class="lux-card" style="padding:22px; border-radius:20px; margin-bottom:30px; border:1px solid rgba(100,180,255,0.4);">
+                <i class="fa-solid fa-circle-info" style="color:#7fc4ff;"></i>
+                <strong style="color:#7fc4ff;">You already have <?php echo count($existingTrips); ?> move request(s) in progress.</strong>
+                <div style="color:var(--gray); margin-top:8px;">
+                    That's fine — you can request another. Just know they'll run independently.
+                    <a href="<?php echo BASE_URL; ?>/tenant/my-bookings" style="color:var(--gold);">View your current requests →</a>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <div style="margin-bottom:40px;">
 
             <h1 style="

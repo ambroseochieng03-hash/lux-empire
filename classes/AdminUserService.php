@@ -92,6 +92,23 @@ final class AdminUserService
 
     public function suspendUser(int $userId, int $adminId): bool
     {
+        $check = $this->conn->prepare("SELECT role FROM users WHERE id = :id LIMIT 1");
+        $check->execute([':id' => $userId]);
+        $role = $check->fetchColumn();
+
+        if ($role === 'driver') {
+            $active = $this->conn->prepare("
+                SELECT 1 FROM truck_requests
+                WHERE driver_id = :id AND status IN ('accepted', 'arrived_at_pickup', 'in_transit')
+                LIMIT 1
+            ");
+            $active->execute([':id' => $userId]);
+
+            if ($active->fetchColumn()) {
+                throw new RuntimeException('This driver has a trip in progress. Resolve it first from Logistics Operations before suspending.');
+            }
+        }
+
         $stmt = $this->conn->prepare("
             UPDATE users SET status = 'suspended'
             WHERE id = :id AND role <> 'admin'

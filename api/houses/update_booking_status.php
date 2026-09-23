@@ -127,6 +127,9 @@ if ($action === 'accept') {
         }
     }
 
+    require_once '../../classes/BookingCelebration.php';
+    BookingCelebration::create($result['booking_id'], $result['tenant_id'], $houseTitle);
+
     $notification->create(
         $landlord_id,
         'booking_accepted_confirmation',

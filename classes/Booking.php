@@ -630,7 +630,12 @@ class Booking {
                         FROM house_images hi
                         WHERE hi.house_id = h.id
                         LIMIT 1
-                    ) AS image
+                    ) AS image,
+                    CASE
+                        WHEN b.status = 'pending' THEN 0
+                        WHEN b.status = 'approved' THEN 1
+                        ELSE 2
+                    END AS priority_tier
                   FROM bookings b
                   LEFT JOIN houses h ON b.house_id = h.id
                   LEFT JOIN users u ON b.landlord_id = u.id
@@ -638,7 +643,11 @@ class Booking {
                   LEFT JOIN payment_waivers w ON w.id = b.waiver_id
                   WHERE b.tenant_id = :tenant_id
                   AND b.hidden_by_tenant_at IS NULL
-                  ORDER BY b.booking_date DESC";
+                  AND (
+                        b.status NOT IN ('rejected', 'cancelled')
+                        OR b.updated_at > (NOW() - INTERVAL " . (int) AUTO_CLEAR_FINISHED_TRIP_HOURS . " HOUR)
+                  )
+                  ORDER BY priority_tier ASC, b.booking_date DESC";
 
         $stmt = $this->conn->prepare($query);
 
@@ -874,7 +883,7 @@ class Booking {
     public function getTenantBookingForHouse(int $tenantId, int $houseId): ?array
     {
         $stmt = $this->conn->prepare("
-            SELECT id, status
+            SELECT id, status, waiver_id
             FROM " . $this->table . "
             WHERE tenant_id = :tenant_id
             AND house_id = :house_id

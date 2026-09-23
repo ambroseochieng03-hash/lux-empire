@@ -14,6 +14,8 @@ $pdo = $db->connect();
 
 try {
 
+    // No tenant name or phone here — this feed is pending-only, and pending
+    // requests must show a driver just pickup, destination and price.
     $stmt = $pdo->prepare("
         SELECT
             truck_requests.id,
@@ -25,15 +27,9 @@ try {
             truck_requests.destination,
             truck_requests.price,
             truck_requests.status,
-            truck_requests.requested_at,
-
-            users.full_name,
-            users.phone
+            truck_requests.requested_at
 
         FROM truck_requests
-
-        JOIN users
-        ON truck_requests.tenant_id = users.id
 
         WHERE truck_requests.status = 'pending'
 

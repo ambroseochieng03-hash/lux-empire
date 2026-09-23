@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/Crypto.php';
 
 class TruckRequest {
 
@@ -296,6 +297,60 @@ class TruckRequest {
             'message' => 'Request updated.',
             'items_description' => $itemsDescription,
             'scheduled_at' => $scheduledAt
+        ];
+    }
+
+    /**
+     * Vehicle plate, vehicle type and this driver's completed-trip count —
+     * returned ONLY while the given trip belongs to this tenant AND is
+     * currently accepted/arrived_at_pickup/in_transit. Returns null before
+     * acceptance and after completion/cancellation, so callers never need
+     * to remember the gate themselves — it lives here, once.
+     */
+    public function getActiveTripDriverInfo(int $tripId, int $tenantId): ?array
+    {
+        $stmt = $this->conn->prepare("
+            SELECT tr.status, tr.driver_id, u.full_name AS driver_name, u.phone AS driver_phone,
+                   d.vehicle_plate, d.vehicle_type
+            FROM " . $this->table . " tr
+            JOIN users u ON tr.driver_id = u.id
+            JOIN drivers d ON d.user_id = tr.driver_id
+            WHERE tr.id = :id AND tr.tenant_id = :tenant_id
+            LIMIT 1
+        ");
+        $stmt->execute([':id' => $tripId, ':tenant_id' => $tenantId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$row || empty($row['driver_id'])) {
+            return null;
+        }
+
+        if (!in_array($row['status'], ['accepted', 'arrived_at_pickup', 'in_transit'], true)) {
+            return null;
+        }
+
+        $tripCountStmt = $this->conn->prepare("
+            SELECT COUNT(*) FROM " . $this->table . "
+            WHERE driver_id = :driver_id AND status = 'completed'
+        ");
+        $tripCountStmt->execute([':driver_id' => $row['driver_id']]);
+        $completedTrips = (int) $tripCountStmt->fetchColumn();
+
+        $plate = null;
+
+        try {
+            $plate = $row['vehicle_plate'] ? Crypto::decrypt($row['vehicle_plate']) : null;
+        } catch (Throwable $e) {
+            error_log('LUX EMPIRE vehicle plate decrypt failed for trip #' . $tripId . ': ' . $e->getMessage());
+            $plate = null;
+        }
+
+        return [
+            'driver_name' => $row['driver_name'],
+            'driver_phone' => $row['driver_phone'],
+            'vehicle_plate' => $plate,
+            'vehicle_type' => $row['vehicle_type'],
+            'completed_trips' => $completedTrips,
         ];
     }
 

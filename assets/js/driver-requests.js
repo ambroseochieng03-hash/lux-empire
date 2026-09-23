@@ -94,6 +94,9 @@ since this is a working list, not a marketing page.
                </div>`
             : '';
 
+        // No tenant name/phone and no Message button here — pending requests
+        // show a driver only pickup, destination and price, same as the
+        // server-rendered page. Chat and contact only appear once accepted.
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
                 <div>
@@ -108,11 +111,6 @@ since this is a working list, not a marketing page.
             <div style="margin-bottom:20px;">
                 ${tripTypeHtml}
                 ${distanceHtml}
-            </div>
-
-            <div style="margin-bottom:20px;">
-                <div style="color:var(--gray); margin-bottom:6px;">Tenant</div>
-                <div style="color:white;">${escapeHtml(request.full_name)}</div>
             </div>
 
             <div style="margin-bottom:20px;">
@@ -132,14 +130,6 @@ since this is a working list, not a marketing page.
                     PENDING REQUEST
                 </span>
             </div>
-
-            <button type="button" class="lux-btn chat-starter-btn"
-                    data-tenant-id="${request.tenant_id || ''}"
-                    data-truck-request-id="${request.id}"
-                    data-other-name="${escapeHtml(request.full_name)}"
-                    style="width:100%; border:1px solid var(--gold); background:rgba(255,255,255,0.06); color:var(--gold); padding:14px; border-radius:16px; font-weight:bold; cursor:pointer; margin-bottom:12px;">
-                <i class="fa-solid fa-comment-dots"></i> Message Tenant
-            </button>
 
             <div class="accept-action-wrap">
                 ${buildAcceptActionHtml(request)}

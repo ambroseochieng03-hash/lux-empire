@@ -25,6 +25,7 @@ requireRoleAccess('tenant');
 require_once '../../classes/Booking.php';
 require_once '../../classes/House.php';
 require_once '../../classes/ListingState.php';
+require_once '../../classes/TruckRequest.php';
 require_once '../../config/db.php';
 require_once '../../config/csrf.php';
 
@@ -49,7 +50,11 @@ $truckStmt = $pdo->prepare("
     SELECT
         truck_requests.*,
         users.full_name AS driver_name,
-        users.phone AS driver_phone
+        users.phone AS driver_phone,
+        CASE
+            WHEN truck_requests.status IN ('pending', 'accepted', 'arrived_at_pickup', 'in_transit') THEN 0
+            ELSE 1
+        END AS priority_tier
 
     FROM truck_requests
 
@@ -57,8 +62,12 @@ $truckStmt = $pdo->prepare("
     ON truck_requests.driver_id = users.id
 
     WHERE truck_requests.tenant_id = ?
+    AND (
+        truck_requests.status NOT IN ('completed', 'cancelled')
+        OR truck_requests.updated_at > (NOW() - INTERVAL " . (int) AUTO_CLEAR_FINISHED_TRIP_HOURS . " HOUR)
+    )
 
-    ORDER BY truck_requests.requested_at DESC
+    ORDER BY priority_tier ASC, truck_requests.requested_at DESC
 ");
 
 $truckStmt->execute([
@@ -66,6 +75,24 @@ $truckStmt->execute([
 ]);
 
 $truckRequests = $truckStmt->fetchAll();
+
+/*
+ * Vehicle plate, vehicle type and this driver's completed-trip count are
+ * only ever shown to the tenant while a trip is actively assigned
+ * (accepted / arrived_at_pickup / in_transit) — never before acceptance,
+ * never after completion/cancellation. Fetched per-trip via the model
+ * so decryption and the status gate live in one place, not duplicated
+ * across pages.
+ */
+$truckModel = new TruckRequest();
+$activeDriverInfoMap = [];
+
+foreach ($truckRequests as $tripRow) {
+    $info = $truckModel->getActiveTripDriverInfo((int) $tripRow['id'], $tenantId);
+    if ($info !== null) {
+        $activeDriverInfoMap[(int) $tripRow['id']] = $info;
+    }
+}
 
 require_once '../../classes/VerificationLookup.php';
 
@@ -579,8 +606,11 @@ require_once '../../includes/sidebar.php';
                                 KES <?php echo number_format($trip['price']); ?>
                             </div>
 
-                            <!-- DRIVER -->
-                            <?php if ($trip['driver_id']): ?>
+                            <!-- DRIVER — shown ONLY while the trip is actively assigned
+                                 (accepted / arrived_at_pickup / in_transit). Nothing here
+                                 before acceptance, nothing here after completion/cancellation. -->
+                            <?php $driverInfo = $activeDriverInfoMap[(int) $trip['id']] ?? null; ?>
+                            <?php if ($driverInfo !== null): ?>
 
                                 <div class="mb-driver-box">
 
@@ -588,29 +618,25 @@ require_once '../../includes/sidebar.php';
                                         Assigned Driver
                                     </div>
 
-                                    <!-- MESSAGE DRIVER (only once a driver is actually assigned) -->
-                                    <?php if ($trip['driver_id'] && in_array($truckStatus, ['accepted', 'in_transit'], true)): ?>
-
-                                        <button type="button"
-                                                class="lux-btn chat-starter-btn mb-message-driver-btn"
-                                                data-other-user-id="<?php echo (int) $trip['driver_id']; ?>"
-                                                data-other-role="driver"
-                                                data-truck-request-id="<?php echo (int) $trip['id']; ?>"
-                                                data-other-name="<?php echo htmlspecialchars($trip['driver_name']); ?>">
-                                            <i class="fa-solid fa-comment-dots"></i> Message Driver
-                                        </button>
-
-                                    <?php endif; ?>
-
                                     <div class="mb-driver-name">
-                                        <?php echo htmlspecialchars($trip['driver_name']); ?>
+                                        <?php echo htmlspecialchars($driverInfo['driver_name']); ?>
                                         <?php if ($verifiedDriverMap[(int) $trip['driver_id']] ?? false): ?>
                                             <span class="lux-verified-badge" title="Verified Driver"><i class="fa-solid fa-circle-check"></i></span>
                                         <?php endif; ?>
                                     </div>
 
                                     <div class="mb-driver-phone">
-                                        <?php echo htmlspecialchars($trip['driver_phone']); ?>
+                                        <?php echo htmlspecialchars($driverInfo['driver_phone']); ?>
+                                    </div>
+
+                                    <div class="mb-driver-vehicle" style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08); color:var(--gray); font-size:0.9rem; line-height:1.7;">
+                                        <?php if ($driverInfo['vehicle_plate']): ?>
+                                            <div><i class="fa-solid fa-trailer" style="color:var(--gold); margin-right:6px;"></i><?php echo htmlspecialchars($driverInfo['vehicle_plate']); ?></div>
+                                        <?php endif; ?>
+                                        <?php if ($driverInfo['vehicle_type']): ?>
+                                            <div><i class="fa-solid fa-truck" style="color:var(--gold); margin-right:6px;"></i><?php echo htmlspecialchars($driverInfo['vehicle_type']); ?></div>
+                                        <?php endif; ?>
+                                        <div><i class="fa-solid fa-route" style="color:var(--gold); margin-right:6px;"></i><?php echo (int) $driverInfo['completed_trips']; ?> completed trip<?php echo $driverInfo['completed_trips'] === 1 ? '' : 's'; ?> on LUX EMPIRE</div>
                                     </div>
 
                                 </div>
@@ -619,6 +645,21 @@ require_once '../../includes/sidebar.php';
 
                             <!-- ACTIONS -->
                             <div class="tenant-actions mb-actions">
+
+                                <!-- MESSAGE DRIVER — moved out of the identity box, sits here
+                                     alongside the other real actions where it reads as one. -->
+                                <?php if ($driverInfo !== null && in_array($truckStatus, ['accepted', 'arrived_at_pickup', 'in_transit'], true)): ?>
+
+                                    <button type="button"
+                                            class="lux-btn chat-starter-btn mb-message-driver-btn"
+                                            data-other-user-id="<?php echo (int) $trip['driver_id']; ?>"
+                                            data-other-role="driver"
+                                            data-truck-request-id="<?php echo (int) $trip['id']; ?>"
+                                            data-other-name="<?php echo htmlspecialchars($driverInfo['driver_name']); ?>">
+                                        <i class="fa-solid fa-comment-dots"></i> Message
+                                    </button>
+
+                                <?php endif; ?>
 
                                 <!-- TRACK DRIVER (real navigation — unrelated to this AJAX refactor) -->
                                 <?php if ($truckStatus === 'accepted' || $truckStatus === 'in_transit'): ?>

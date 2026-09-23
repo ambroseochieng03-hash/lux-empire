@@ -54,6 +54,31 @@ if ($afterId > 0 && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $since
     $changes = $chat->getMessageChanges($conversationId, $afterId, $since, $userId);
 }
 
+/*
+ * Once a truck trip's chat has closed for good (completed/cancelled),
+ * contact info inside the message HISTORY is redacted on every read.
+ * This runs only on the text already fetched into memory — it never
+ * rewrites the stored row — so nothing here is destructive or
+ * irreversible at the database level; it just never leaves the server
+ * once the trip is over. ContactMasker is already loaded via
+ * ChatGuard.php's own require at the top of this file.
+ */
+if ($closed && ($conversation['other_role'] ?? '') === 'driver') {
+    foreach ($messages as &$m) {
+        if (!empty($m['message'])) {
+            [$m['message']] = ContactMasker::mask($m['message']);
+        }
+    }
+    unset($m);
+
+    foreach ($changes as &$c) {
+        if (!empty($c['message'])) {
+            [$c['message']] = ContactMasker::mask($c['message']);
+        }
+    }
+    unset($c);
+}
+
 // Opening the conversation clears its "new message" notification (and the bell).
 if (!empty($messages)) {
     try {

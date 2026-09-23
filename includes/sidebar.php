@@ -399,3 +399,11 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 </script>
 <script src="<?php echo BASE_URL; ?>/assets/js/sidebar-counters.js"></script>
 <?php endif; ?>
+
+<?php if ($userRole === 'tenant'): ?>
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/booking-celebration.css">
+<script>
+    window.LUX_CELEBRATION = { baseUrl: "<?php echo BASE_URL; ?>" };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/booking-celebration.js"></script>
+<?php endif; ?>

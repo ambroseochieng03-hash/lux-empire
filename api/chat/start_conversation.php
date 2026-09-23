@@ -70,7 +70,14 @@ if ($role === 'tenant') {
 
     // Tenant -> Driver: only allowed once that driver is the one assigned
     // to an accepted trip (not while it's still pending).
-    if ($otherRole === 'driver' && $truckRequestId !== null) {
+    if ($otherRole === 'driver') {
+
+        if ($truckRequestId === null) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid trip.']);
+            exit;
+        }
+
         $database = new Database();
         $pdo = $database->connect();
 
@@ -82,7 +89,7 @@ if ($role === 'tenant') {
             !$trip
             || (int) $trip['tenant_id'] !== $tenantId
             || (int) $trip['driver_id'] !== $otherUserId
-            || !in_array($trip['status'], ['accepted', 'in_transit', 'completed'], true)
+            || !in_array($trip['status'], ['accepted', 'arrived_at_pickup', 'in_transit', 'completed'], true)
         ) {
             http_response_code(403);
             echo json_encode(['error' => 'You can only message the driver assigned to an accepted trip.']);
@@ -124,31 +131,34 @@ if ($role === 'tenant') {
 
 } elseif ($role === 'driver') {
 
-    // Driver -> Tenant: driver picks a pending request and messages the
-    // tenant who posted it. Multiple drivers can each open their own
-    // conversation with the same tenant before anyone accepts.
+    // Driver -> Tenant: only for a trip THIS driver has actually accepted.
+    // A driver messaging about a still-pending request (before accepting) is
+    // exactly the "arrange it off-platform" gap we're closing — no exception here.
     $tenantId = (int) ($_POST['tenant_id'] ?? 0);
     $otherUserId = (int) $user['id'];
 
-    if ($tenantId <= 0) {
+    if ($tenantId <= 0 || $truckRequestId === null) {
         http_response_code(400);
-        echo json_encode(['error' => 'Invalid tenant.']);
+        echo json_encode(['error' => 'Invalid tenant or trip.']);
         exit;
     }
 
-    if ($truckRequestId !== null) {
-        $database = new Database();
-        $pdo = $database->connect();
+    $database = new Database();
+    $pdo = $database->connect();
 
-        $stmt = $pdo->prepare("SELECT tenant_id FROM truck_requests WHERE id = :id LIMIT 1");
-        $stmt->execute([':id' => $truckRequestId]);
-        $trip = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt = $pdo->prepare("SELECT tenant_id, driver_id, status FROM truck_requests WHERE id = :id LIMIT 1");
+    $stmt->execute([':id' => $truckRequestId]);
+    $trip = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$trip || (int) $trip['tenant_id'] !== $tenantId) {
-            http_response_code(403);
-            echo json_encode(['error' => 'This request does not belong to that tenant.']);
-            exit;
-        }
+    if (
+        !$trip
+        || (int) $trip['tenant_id'] !== $tenantId
+        || (int) $trip['driver_id'] !== $otherUserId
+        || !in_array($trip['status'], ['accepted', 'arrived_at_pickup', 'in_transit', 'completed'], true)
+    ) {
+        http_response_code(403);
+        echo json_encode(['error' => 'You can only message the tenant on a trip you have accepted.']);
+        exit;
     }
 
     $conversation = $chat->getOrCreateConversation($tenantId, $otherUserId, 'driver', $houseId, $truckRequestId);

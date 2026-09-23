@@ -431,54 +431,36 @@ require_once '../../includes/sidebar.php';
                 });
             }
 
-            function fetchAllSelectedLocations() {
-                if (selected.size === 0) return;
+            function fetchDriverLocation(id) {
+                const trip = tripsById[id];
+                if (!trip || !trip.driverId) return;
 
-                const driverIds = [];
-                selected.forEach(id => {
-                    const trip = tripsById[id];
-                    if (trip && trip.driverId) driverIds.push(trip.driverId);
-                });
-
-                if (driverIds.length === 0) return;
-
-                // ONE request covers every selected trip, regardless of how many
-                // are selected — this is what keeps multi-trip tracking cheap and
-                // fast: N trips never means N round-trips to the server.
-                fetch(`${cfg.baseUrl}/api/maps/get_driver_locations_batch.php?driver_ids=${driverIds.join(',')}`)
+                fetch(`${cfg.baseUrl}/api/maps/get_driver_location.php?driver_id=${trip.driverId}`)
                     .then(r => r.json())
                     .then(data => {
-                        if (!data.success || !data.locations) return;
+                        if (!data.success) return;
 
-                        selected.forEach(id => {
-                            const trip = tripsById[id];
-                            if (!trip) return;
+                        const pos = {
+                            lat: parseFloat(data.location.latitude),
+                            lng: parseFloat(data.location.longitude)
+                        };
 
-                            const loc = data.locations[trip.driverId];
-                            if (!loc) return;
+                        if (!markers[id]) {
+                            markers[id] = new google.maps.Marker({
+                                map: map,
+                                title: 'Trip #' + id,
+                                icon: { url: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png" },
+                                label: { text: String(id), color: '#000', fontWeight: 'bold' }
+                            });
+                        }
 
-                            const pos = {
-                                lat: parseFloat(loc.latitude),
-                                lng: parseFloat(loc.longitude)
-                            };
+                        markers[id].setPosition(pos);
 
-                            if (!markers[id]) {
-                                markers[id] = new google.maps.Marker({
-                                    map: map,
-                                    title: 'Trip #' + id,
-                                    icon: { url: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png" },
-                                    label: { text: String(id), color: '#000', fontWeight: 'bold' }
-                                });
-                            }
+                        if (selected.size === 1 && selected.has(id)) {
+                            updateSingleTripRoute(id, pos);
+                        }
 
-                            markers[id].setPosition(pos);
-
-                            if (selected.size === 1 && selected.has(id)) {
-                                updateSingleTripRoute(id, pos);
-                            }
-                        });
-
-                        fitBoundsToSelected();
+                        if (selected.has(id)) fitBoundsToSelected();
                     })
                     .catch(() => {});
             }
@@ -520,7 +502,7 @@ require_once '../../includes/sidebar.php';
             }
 
             function pollAll() {
-                fetchAllSelectedLocations();
+                selected.forEach(id => fetchDriverLocation(id));
                 Object.keys(tripsById).forEach(id => pollTripStatus(parseInt(id, 10)));
             }
 
