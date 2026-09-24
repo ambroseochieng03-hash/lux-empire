@@ -35,6 +35,20 @@ if (!$chat->userBelongsToConversation($conversationId, $userId)) {
 
 $conversation = $chat->getConversationById($conversationId);
 
+/*
+ * A finished driver-trip conversation is not just closed for sending —
+ * it must be fully inaccessible, even to someone who saved or guessed
+ * its conversation_id. Landlord conversations are never blocked this
+ * way; they persist by design (see the production notes on chat
+ * lifecycle — a rejected/cancelled booking's messages were already
+ * masked at send time, so there is nothing left to hide retroactively).
+ */
+if ($chat->isFinishedDriverConversation($conversation) || ChatGuard::isFinishedLandlordConversation($conversation)) {
+    http_response_code(410);
+    echo json_encode(['error' => 'This conversation is no longer available.']);
+    exit;
+}
+
 // Captured BEFORE reading, so an edit that lands mid-request is picked up next poll.
 $serverTime = $chat->getServerTime();
 
@@ -52,31 +66,6 @@ $changes = [];
 
 if ($afterId > 0 && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $since)) {
     $changes = $chat->getMessageChanges($conversationId, $afterId, $since, $userId);
-}
-
-/*
- * Once a truck trip's chat has closed for good (completed/cancelled),
- * contact info inside the message HISTORY is redacted on every read.
- * This runs only on the text already fetched into memory — it never
- * rewrites the stored row — so nothing here is destructive or
- * irreversible at the database level; it just never leaves the server
- * once the trip is over. ContactMasker is already loaded via
- * ChatGuard.php's own require at the top of this file.
- */
-if ($closed && ($conversation['other_role'] ?? '') === 'driver') {
-    foreach ($messages as &$m) {
-        if (!empty($m['message'])) {
-            [$m['message']] = ContactMasker::mask($m['message']);
-        }
-    }
-    unset($m);
-
-    foreach ($changes as &$c) {
-        if (!empty($c['message'])) {
-            [$c['message']] = ContactMasker::mask($c['message']);
-        }
-    }
-    unset($c);
 }
 
 // Opening the conversation clears its "new message" notification (and the bell).

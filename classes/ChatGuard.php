@@ -9,14 +9,14 @@ require_once __DIR__ . '/../config/db.php';
 /**
  * LUX EMPIRE
  * Chat rules in ONE place, for both house-booking chats and truck-trip chats.
- * Called generically by api/chat/send_message.php and fetch_messages.php —
- * neither of those files needs to know which kind of conversation it is.
  *
- *   landlord chat: open only while the tenant holds a paid, live booking with
- *                  that landlord. Frozen the moment the booking ends.
+ *   landlord chat: gated by the SPECIFIC booking this conversation is tied
+ *                  to (conversations.booking_id) — open while that booking
+ *                  is paid + pending/approved. A conversation created
+ *                  before per-booking scoping existed (booking_id NULL)
+ *                  falls back to "any live booking with this landlord".
  *   driver chat:   open only from the moment the driver ACCEPTS the trip until
- *                  it completes or is cancelled. Frozen after that — old
- *                  messages stay readable, nothing new can be sent.
+ *                  it completes or is cancelled.
  */
 final class ChatGuard
 {
@@ -25,7 +25,20 @@ final class ChatGuard
         $role = $conversation['other_role'] ?? '';
 
         if ($role === 'landlord') {
-            return (new Booking())->hasLiveBookingWithLandlord(
+
+            $bookingModel = new Booking();
+            $bookingId = (int) ($conversation['booking_id'] ?? 0);
+
+            if ($bookingId > 0) {
+                return $bookingModel->isBookingLiveById(
+                    $bookingId,
+                    (int) $conversation['tenant_id'],
+                    (int) $conversation['other_user_id']
+                );
+            }
+
+            // Legacy conversation, created before booking_id existed.
+            return $bookingModel->hasLiveBookingWithLandlord(
                 (int) $conversation['tenant_id'],
                 (int) $conversation['other_user_id']
             );
@@ -66,17 +79,16 @@ final class ChatGuard
     {
         $notice = null;
 
-        // Masking only matters for the landlord pre-reveal window. A driver trip
-        // chat is only ever open once contact is already mutually visible, so
-        // there is nothing to mask there.
         if (($conversation['other_role'] ?? '') === 'landlord') {
 
             $bookingModel = new Booking();
+            $bookingId = (int) ($conversation['booking_id'] ?? 0);
 
-            if (!$bookingModel->hasContactRevealBetween(
-                (int) $conversation['tenant_id'],
-                (int) $conversation['other_user_id']
-            )) {
+            $revealed = $bookingId > 0
+                ? $bookingModel->hasContactRevealForBooking($bookingId, (int) $conversation['tenant_id'], (int) $conversation['other_user_id'])
+                : $bookingModel->hasContactRevealBetween((int) $conversation['tenant_id'], (int) $conversation['other_user_id']);
+
+            if (!$revealed) {
                 [$text, $wasMasked] = ContactMasker::mask($text);
 
                 if ($wasMasked) {
@@ -86,5 +98,43 @@ final class ChatGuard
         }
 
         return [$text, $notice];
+    }
+
+    /**
+     * True if this is a landlord conversation whose booking has ended badly
+     * (rejected/cancelled — hidden immediately) or ended well long enough
+     * ago to age out (approved, past LANDLORD_CHAT_APPROVED_VISIBLE_DAYS).
+     * Used to hard-block direct access, not just hide it from the list.
+     * A legacy conversation with no booking_id is never auto-expired.
+     */
+    public static function isFinishedLandlordConversation(array $conversation): bool
+    {
+        if (($conversation['other_role'] ?? '') !== 'landlord') {
+            return false;
+        }
+
+        $bookingId = (int) ($conversation['booking_id'] ?? 0);
+
+        if ($bookingId <= 0) {
+            return false;
+        }
+
+        $bookingModel = new Booking();
+        $info = $bookingModel->getBookingLifecycleInfo($bookingId);
+
+        if (!$info) {
+            return true;
+        }
+
+        if (in_array($info['status'], ['rejected', 'cancelled'], true)) {
+            return true;
+        }
+
+        if ($info['status'] === 'approved' && !empty($info['updated_at'])) {
+            $ageSeconds = time() - strtotime((string) $info['updated_at']);
+            return $ageSeconds > (LANDLORD_CHAT_APPROVED_VISIBLE_DAYS * 86400);
+        }
+
+        return false;
     }
 }

@@ -335,6 +335,10 @@ require_once '../../includes/sidebar.php';
                     <?php if (!empty($tenantBooking['waiver_id']) && $tenantHasPending): ?>
                         You booked this property with your free voucher — nothing to pay. The landlord's phone and email
                         will appear here the moment they accept, and you can message them in the app while you wait.
+                    <?php elseif ($tenantHasPending): ?>
+                        You've already paid the booking fee for this property — thank you. The landlord's phone and
+                        email will appear here as soon as they accept your request, and you can message them in the
+                        app in the meantime. If they decline, your fee is refunded automatically.
                     <?php elseif ($revealsOnPayment): ?>
                         The landlord's phone and email are shared once you've paid the booking fee for this property.
                         If the landlord declines, your fee is refunded automatically.

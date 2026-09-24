@@ -60,12 +60,22 @@ if ($role === 'tenant') {
     // Tenant -> Landlord: in-app chat is unlocked by a PAID, still-live
     // booking with THAT landlord. Hiding the button is not enough — this is
     // the real gate, so nobody can start a conversation by posting here directly.
-    if ($otherRole === 'landlord' && !$bookingModel->hasLiveBookingWithLandlord($tenantId, $otherUserId)) {
-        http_response_code(403);
-        echo json_encode([
-            'error' => 'Messaging opens once you have paid the booking fee for one of this landlord\'s properties. If the landlord declines, your fee is refunded.'
-        ]);
-        exit;
+    // The conversation is scoped to THIS SPECIFIC booking, so a later,
+    // separate booking (even for the same house) always gets a fresh thread.
+    $landlordLiveBookingId = null;
+
+    if ($otherRole === 'landlord') {
+        $liveBooking = $bookingModel->getLiveBookingBetween($tenantId, $otherUserId, $houseId);
+
+        if (!$liveBooking) {
+            http_response_code(403);
+            echo json_encode([
+                'error' => 'Messaging opens once you have paid the booking fee for one of this landlord\'s properties. If the landlord declines, your fee is refunded.'
+            ]);
+            exit;
+        }
+
+        $landlordLiveBookingId = (int) $liveBooking['id'];
     }
 
     // Tenant -> Driver: only allowed once that driver is the one assigned
@@ -97,7 +107,7 @@ if ($role === 'tenant') {
         }
     }
 
-    $conversation = $chat->getOrCreateConversation($tenantId, $otherUserId, $otherRole, $houseId, $truckRequestId);
+    $conversation = $chat->getOrCreateConversation($tenantId, $otherUserId, $otherRole, $houseId, $truckRequestId, $landlordLiveBookingId);
 
 } elseif ($role === 'landlord') {
 
@@ -121,13 +131,15 @@ if ($role === 'tenant') {
         }
     }
 
-    if (!$bookingModel->hasLiveBookingWithLandlord($tenantId, $landlordId)) {
+    $liveBooking = $bookingModel->getLiveBookingBetween($tenantId, $landlordId, $houseId);
+
+    if (!$liveBooking) {
         http_response_code(403);
         echo json_encode(['error' => 'You can message tenants who have an active booking request with you.']);
         exit;
     }
 
-    $conversation = $chat->getOrCreateConversation($tenantId, $landlordId, 'landlord', $houseId, null);
+    $conversation = $chat->getOrCreateConversation($tenantId, $landlordId, 'landlord', $houseId, null, (int) $liveBooking['id']);
 
 } elseif ($role === 'driver') {
 

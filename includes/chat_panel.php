@@ -69,3 +69,30 @@ $csrfToken = Csrf::token();
     };
 </script>
 <script src="<?php echo BASE_URL; ?>/assets/js/chat.js"></script>
+
+<script>
+(function () {
+    /*
+     * The bar only conflicts with the message input INSIDE an open
+     * thread (mobile's sliding "thread-open" state, added/removed by
+     * chat.js on openConversation()/the back button). The
+     * conversation LIST is a normal page with nothing at its bottom
+     * to collide with — hiding the bar there just strands the person
+     * with no way back to the rest of the app, which is the bug.
+     */
+    var shell = document.getElementById('chatShell');
+    if (!shell) { return; }
+
+    function syncNavForThread() {
+        var inThread = shell.classList.contains('thread-open');
+        document.body.classList.toggle('lux-nav-hidden-temp', inThread);
+    }
+
+    syncNavForThread();
+
+    new MutationObserver(syncNavForThread).observe(shell, {
+        attributes: true,
+        attributeFilter: ['class']
+    });
+}());
+</script>

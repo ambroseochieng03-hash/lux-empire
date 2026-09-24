@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>You're Offline — LUX EMPIRE</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: #0A0A0A;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .offline-box { text-align: center; max-width: 420px; padding: 40px 30px; }
+  .offline-logo { width: 72px; height: 72px; margin-bottom: 24px; }
+  .offline-icon { width: 56px; height: 56px; margin: 0 auto 20px; }
+  h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #D4AF37; font-size: 1.6rem; margin: 0 0 14px;
+  }
+  p { color: #a8a8a8; line-height: 1.7; margin: 0 0 28px; }
+  button {
+    background: linear-gradient(135deg, #D4AF37, #f5d76e);
+    color: #0A0A0A; border: none; padding: 14px 32px;
+    border-radius: 14px; font-weight: bold; font-size: 1rem; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="offline-box">
+    <img class="offline-logo" src="/luxempire/assets/images/logo.svg" alt="LUX EMPIRE">
+    <svg class="offline-icon" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.6">
+      <path d="M2 8.5C6 5 18 5 22 8.5" stroke-opacity="0.35"/>
+      <path d="M5 12c4-2.6 10-2.6 14 0" stroke-opacity="0.55"/>
+      <path d="M8.5 15.5c2-1.1 5-1.1 7 0" stroke-opacity="0.8"/>
+      <circle cx="12" cy="19" r="1.4" fill="#D4AF37" stroke="none"/>
+      <line x1="3" y1="3" x2="21" y2="21" stroke="#ff6b6b" stroke-width="1.8"/>
+    </svg>
+    <h1>You're Offline</h1>
+    <p>This page hasn't been saved for offline viewing yet. Reconnect and try again — pages you've already visited will keep working without a connection.</p>
+    <button id="offlineRetryBtn" type="button">Try Again</button>
+  </div>
+  <script>
+    document.getElementById('offlineRetryBtn').addEventListener('click', function () {
+      window.location.reload();
+    });
+    window.addEventListener('online', function () {
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>

@@ -1030,4 +1030,77 @@ class Booking {
         ]);
     }
 
+    /**
+     * The single CURRENT live (paid, pending/approved) booking between this
+     * tenant and landlord — optionally narrowed to one house. This is what
+     * a new conversation gets tied to, so a later, separate booking (even
+     * on the same house) is never confused with an older one.
+     */
+    public function getLiveBookingBetween(int $tenantId, int $landlordId, ?int $houseId = null): ?array
+    {
+        $query = "SELECT id, status FROM " . $this->table . "
+                  WHERE tenant_id = :tenant_id
+                  AND landlord_id = :landlord_id
+                  AND payment_status = 'paid'
+                  AND status IN ('pending', 'approved')";
+
+        $params = [':tenant_id' => $tenantId, ':landlord_id' => $landlordId];
+
+        if ($houseId !== null) {
+            $query .= " AND house_id = :house_id";
+            $params[':house_id'] = $houseId;
+        }
+
+        $query .= " ORDER BY id DESC LIMIT 1";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute($params);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
+    }
+
+    /** Is THIS SPECIFIC booking (by id) still live? Used by ChatGuard once a conversation has a booking_id attached. */
+    public function isBookingLiveById(int $bookingId, int $tenantId, int $landlordId): bool
+    {
+        $stmt = $this->conn->prepare("
+            SELECT 1 FROM " . $this->table . "
+            WHERE id = :id AND tenant_id = :tenant_id AND landlord_id = :landlord_id
+            AND payment_status = 'paid' AND status IN ('pending', 'approved')
+            LIMIT 1
+        ");
+        $stmt->execute([':id' => $bookingId, ':tenant_id' => $tenantId, ':landlord_id' => $landlordId]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /** Contact-reveal check scoped to ONE specific booking, not "any booking with this landlord". */
+    public function hasContactRevealForBooking(int $bookingId, int $tenantId, int $landlordId): bool
+    {
+        $statuses = ListingState::contactRevealStatuses();
+        $marks = implode(',', array_fill(0, count($statuses), '?'));
+
+        $stmt = $this->conn->prepare("
+            SELECT 1 FROM " . $this->table . "
+            WHERE id = ? AND tenant_id = ? AND landlord_id = ?
+            AND payment_status = 'paid' AND status IN ({$marks})
+            LIMIT 1
+        ");
+        $stmt->execute(array_merge([$bookingId, $tenantId, $landlordId], $statuses));
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    /** Status + updated_at (approval time) for a booking, used to decide when its chat should expire. */
+    public function getBookingLifecycleInfo(int $bookingId): ?array
+    {
+        $stmt = $this->conn->prepare("SELECT status, updated_at FROM " . $this->table . " WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $bookingId]);
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
+    }
+
 }

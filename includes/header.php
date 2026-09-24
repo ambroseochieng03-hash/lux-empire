@@ -24,15 +24,24 @@ require_once __DIR__ . '/../config/app.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Open Graph / Social Media Link Previews (Fixes WhatsApp Preview) -->
+    <!-- Open Graph / Social Media Link Previews (WhatsApp, Facebook, etc.) -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="<?php echo BASE_URL; ?>">
     <meta property="og:title" content="<?php echo APP_NAME; ?> | <?php echo APP_TAGLINE; ?>">
     <meta property="og:description" content="Luxury Living. Elite Movement. One Empire.">
-    <!-- Point Open Graph image to logo.svg or your preview asset -->
-    <meta property="og:image" content="<?php echo BASE_URL . '/' . APP_FAVICON; ?>">
-    
-    
+    <!--
+        Most social crawlers (WhatsApp included) do not reliably render
+        SVG for link previews — this MUST be a raster image, not
+        logo.svg. See assets/images/generate-icons.sh.
+    -->
+    <meta property="og:image" content="<?php echo BASE_URL . '/' . APP_OG_IMAGE; ?>">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<?php echo APP_NAME; ?> | <?php echo APP_TAGLINE; ?>">
+    <meta name="twitter:description" content="Luxury Living. Elite Movement. One Empire.">
+    <meta name="twitter:image" content="<?php echo BASE_URL . '/' . APP_OG_IMAGE; ?>">
+
     <title><?php echo APP_NAME; ?> | <?php echo APP_TAGLINE; ?></title>
 
     <!-- Font Awesome Icons -->
@@ -61,6 +70,16 @@ require_once __DIR__ . '/../config/app.php';
 
     <!-- PWA manifest — enables offline support / "Add to Home Screen". -->
     <link rel="manifest" href="<?php echo BASE_URL; ?>/manifest.json">
+
+    <!--
+        iOS ignores manifest.json's colors entirely for "Add to Home
+        Screen" — without these tags, standalone mode shows a plain
+        WHITE status bar no matter what the manifest says. This is the
+        actual cause of the white background on iOS.
+    -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LUX EMPIRE">
 
     <!-- Premium Meta -->
     <meta name="theme-color" content="#0A0A0A">

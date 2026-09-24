@@ -74,6 +74,16 @@ define(
     'assets/images/apple-touch-icon.png'
 );
 
+/*
+ * Social link-preview image (WhatsApp, Facebook, etc.) — must be a
+ * raster image; most crawlers don't render SVG previews reliably.
+ * Generated from logo.svg by assets/images/generate-icons.sh.
+ */
+define(
+    'APP_OG_IMAGE',
+    'assets/images/og-preview.png'
+);
+
 
 /*
 |--------------------------------------------------------------------------
@@ -269,7 +279,7 @@ define(
  */
 define(
     'SESSION_IDLE_TIMEOUT',
-    1800
+    21600
 );
 
 
@@ -304,7 +314,7 @@ define(
  */
 define(
     'SESSION_LIFETIME',
-    0
+    3600
 );
 
 
@@ -708,3 +718,13 @@ define('SHOW_HELP_TOUR', false);
 | view once it's old enough to no longer be "in progress" news.
 */
 define('AUTO_CLEAR_FINISHED_TRIP_HOURS', 2);
+/*
+| How long an ACCEPTED house-booking conversation stays visible after
+| approval before it's auto-hidden the same way a rejected/cancelled
+| one is (removed from the list, hard-blocked on direct access). There
+| is no "tenancy ended" event in this schema yet, so this is a
+| placeholder default, not a modeled business rule — revisit once you
+| have real usage data on how long tenants/landlords actually need to
+| keep talking after move-in.
+*/
+define('LANDLORD_CHAT_APPROVED_VISIBLE_DAYS', 30);

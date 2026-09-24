@@ -77,6 +77,11 @@ $isDashboardContext = $isLoggedIn
 </script>
 
 <script>
+    window.LUX_OFFLINE_MODAL_CONFIG = { baseUrl: "<?php echo BASE_URL; ?>" };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/offline-required-modal.js"></script>
+
+<script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('<?php echo BASE_URL; ?>/sw.js')

@@ -75,8 +75,17 @@ $userId = (int) $user['id'];
 
 $trustedDevice = new TrustedDevice();
 
-if ($trustedDevice->isTrusted($userId)) {
+/*
+ * Admin accounts NEVER skip OTP via device trust, no matter what a
+ * stored trust cookie says — admin access always requires the full
+ * password + OTP challenge, every single time. isTrusted() is still
+ * called (not skipped) so a stray/expired trust row belonging to an
+ * admin account still gets cleaned up normally; its result is simply
+ * never allowed to short-circuit the OTP step below for that role.
+ */
+$deviceIsTrusted = $trustedDevice->isTrusted($userId);
 
+if ($deviceIsTrusted && $user['role'] !== 'admin') {
     // Recognized device — skip OTP, log straight in.
     completeLogin($user);
     exit;

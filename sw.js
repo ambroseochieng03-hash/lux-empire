@@ -19,8 +19,8 @@ Three layers:
 =========================================
 */
 
-const SHELL_CACHE = 'lux-empire-shell-v2';
-const RUNTIME_CACHE = 'lux-empire-runtime-v2';
+const SHELL_CACHE = 'lux-empire-shell-v5';
+const RUNTIME_CACHE = 'lux-empire-runtime-v5';
 
 // Precached on install so the very first offline visit (before any
 // online browsing) still has basic chrome to show. Runtime caching
@@ -28,9 +28,12 @@ const RUNTIME_CACHE = 'lux-empire-runtime-v2';
 // actually visited — this list doesn't need to be exhaustive.
 const APP_SHELL = [
     '/luxempire/manifest.json',
+    '/luxempire/offline.html',
+    '/luxempire/maintenance.html',
     '/luxempire/assets/css/style.css',
     '/luxempire/assets/js/offline-db.js',
     '/luxempire/assets/js/offline-drafts.js',
+    '/luxempire/assets/js/offline-required-modal.js',
     '/luxempire/assets/images/logo.svg',
     '/luxempire/assets/images/favicon-32.png'
 ];
@@ -105,9 +108,17 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Everything else same-origin (pages, CSS, JS, other assets):
+    // Full-page navigations get the proper branded offline page when
+    // both the network AND this URL's own cache miss — rather than
+    // the plain-text fallback used below for CSS/JS/other GETs.
+    if (request.mode === 'navigate') {
+        event.respondWith(networkFirstNavigation(request, RUNTIME_CACHE));
+        return;
+    }
+
+    // Everything else same-origin (CSS, JS, other GET requests):
     // network-first, cached on success, served from cache on
-    // failure. Covers navigations and the app shell uniformly.
+    // failure.
     event.respondWith(networkFirst(request, RUNTIME_CACHE));
 });
 
@@ -156,5 +167,50 @@ function networkFirst(request, cacheName) {
                 '<h1>You are offline</h1><p>This has not been loaded before, so it is not available offline yet.</p>',
                 { status: 503, headers: { 'Content-Type': 'text/html' } }
             );
+        }));
+}
+
+
+/*
+ * Same network-first strategy, but for a full PAGE NAVIGATION whose
+ * fallback should be the branded, precached offline.html page rather
+ * than a bare text response — this is what replaces the browser's
+ * default "can't reach this page" error with LUX EMPIRE's own offline
+ * screen.
+ */
+function networkFirstNavigation(request, cacheName) {
+
+    return fetch(request)
+        .then((response) => {
+
+            /*
+             * Reachable, but the server itself is erroring (PHP-FPM
+             * crashed, upstream down, etc.) — genuinely different from
+             * "no network at all", so it gets the maintenance page, not
+             * offline.html. 4xx is deliberately left untouched: the
+             * app's own legitimate 404s/redirect targets must keep
+             * rendering normally, not get silently swapped out.
+             */
+            if (response.status >= 500) {
+                return caches.match('/luxempire/maintenance.html').then((maintenancePage) => {
+                    return maintenancePage || response;
+                });
+            }
+
+            safePut(cacheName, request, response);
+            return response;
+        })
+        .catch(() => caches.match(request).then((cached) => {
+
+            if (cached) {
+                return cached;
+            }
+
+            return caches.match('/luxempire/offline.html').then((offlinePage) => {
+                return offlinePage || new Response(
+                    '<h1>You are offline</h1><p>This has not been loaded before, so it is not available offline yet.</p>',
+                    { status: 503, headers: { 'Content-Type': 'text/html' } }
+                );
+            });
         }));
 }

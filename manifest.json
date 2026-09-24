@@ -8,30 +8,13 @@
     "background_color": "#0A0A0A",
     "theme_color": "#0A0A0A",
     "icons": [
-        {
-            "src": "/luxempire/assets/images/favicon-16.png",
-            "sizes": "16x16",
-            "type": "image/png"
-        },
-        {
-            "src": "/luxempire/assets/images/favicon-32.png",
-            "sizes": "32x32",
-            "type": "image/png"
-        },
-        {
-            "src": "/luxempire/assets/images/favicon-48.png",
-            "sizes": "48x48",
-            "type": "image/png"
-        },
-        {
-            "src": "/luxempire/assets/images/apple-touch-icon.png",
-            "sizes": "180x180",
-            "type": "image/png"
-        },
-        {
-            "src": "/luxempire/assets/images/logo.svg",
-            "sizes": "any",
-            "type": "image/svg+xml"
-        }
+        { "src": "/luxempire/assets/images/favicon-16.png", "sizes": "16x16", "type": "image/png" },
+        { "src": "/luxempire/assets/images/favicon-32.png", "sizes": "32x32", "type": "image/png" },
+        { "src": "/luxempire/assets/images/favicon-48.png", "sizes": "48x48", "type": "image/png" },
+        { "src": "/luxempire/assets/images/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+        { "src": "/luxempire/assets/images/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "/luxempire/assets/images/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "/luxempire/assets/images/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+        { "src": "/luxempire/assets/images/logo.svg", "sizes": "any", "type": "image/svg+xml" }
     ]
 }

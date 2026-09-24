@@ -121,10 +121,6 @@ require_once '../includes/navbar.php';
 
 </section>
 
-<script>
-    window.LUX_OFFLINE_MODAL_CONFIG = { baseUrl: "<?php echo BASE_URL; ?>" };
-</script>
-<script src="<?php echo BASE_URL; ?>/assets/js/offline-required-modal.js"></script>
 <script src="https://challenges.cloudflare.com/turnstile/api.js" async defer></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/registration-otp-step.js"></script>
 <script>
@@ -180,10 +176,6 @@ require_once '../includes/navbar.php';
 
         event.preventDefault();
 
-        if (!window.LuxOfflineRequiredModal.check('You need to be online to log in. Please check your connection and try again.')) {
-            return;
-        }
-
         hideTopError();
         submitBtn.disabled = true;
 
@@ -221,7 +213,20 @@ require_once '../includes/navbar.php';
 
         } catch (error) {
 
-            showTopError('Network error. Please try again.');
+            /*
+             * The request never reached the server at all — genuinely
+             * different from a wrong password, so it gets the branded
+             * offline modal instead of the inline error line. We no
+             * longer pre-check navigator.onLine before attempting: that
+             * flag reflects "is there any network interface," not "can
+             * this server be reached," and pre-checking it was blocking
+             * logins — including trusted-device ones that would have
+             * succeeded fine over a local connection — before they were
+             * even tried. Always attempting first is both more correct
+             * and lets a trusted device log in instantly whenever the
+             * server is actually reachable, with no OTP delay.
+             */
+            window.LuxOfflineRequiredModal.show('You need to be online to log in. Please check your connection and try again.');
             submitBtn.disabled = false;
         }
     });

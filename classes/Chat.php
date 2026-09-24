@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/GroqClient.php';
+require_once __DIR__ . '/ContactMasker.php';
 require_once __DIR__ . '/../config/security/RedisThrottle.php';
 
 class Chat
@@ -25,16 +26,20 @@ class Chat
         int $otherUserId,
         string $otherRole,
         ?int $houseId = null,
-        ?int $truckRequestId = null
+        ?int $truckRequestId = null,
+        ?int $bookingId = null
     ): array {
 
-        // Scoped to the SPECIFIC house/trip, not just the two people — a new
-        // truck trip with the same driver (or a new booking on a different
-        // house with the same landlord) must never reopen an old conversation.
+        // Scoped to the SPECIFIC house/trip/booking, not just the two people —
+        // a new truck trip with the same driver, or a NEW booking (even on
+        // the same house, with the same landlord) must never reopen an old
+        // conversation. booking_id is what makes a rebooking always get a
+        // fresh thread instead of resurrecting a rejected one.
         $stmt = $this->conn->prepare("
             SELECT * FROM conversations
             WHERE tenant_id = :tenant_id AND other_user_id = :other_user_id
             AND house_id <=> :house_id AND truck_request_id <=> :truck_request_id
+            AND booking_id <=> :booking_id
             LIMIT 1
         ");
         $stmt->execute([
@@ -42,6 +47,7 @@ class Chat
             ':other_user_id' => $otherUserId,
             ':house_id' => $houseId,
             ':truck_request_id' => $truckRequestId,
+            ':booking_id' => $bookingId,
         ]);
 
         $existing = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -52,9 +58,9 @@ class Chat
 
         $stmt = $this->conn->prepare("
             INSERT INTO conversations
-                (tenant_id, other_user_id, other_role, house_id, truck_request_id)
+                (tenant_id, other_user_id, other_role, house_id, truck_request_id, booking_id)
             VALUES
-                (:tenant_id, :other_user_id, :other_role, :house_id, :truck_request_id)
+                (:tenant_id, :other_user_id, :other_role, :house_id, :truck_request_id, :booking_id)
         ");
 
         $stmt->execute([
@@ -62,7 +68,8 @@ class Chat
             ':other_user_id' => $otherUserId,
             ':other_role' => $otherRole,
             ':house_id' => $houseId,
-            ':truck_request_id' => $truckRequestId
+            ':truck_request_id' => $truckRequestId,
+            ':booking_id' => $bookingId
         ]);
 
         $id = (int) $this->conn->lastInsertId();
@@ -132,7 +139,6 @@ class Chat
         $params = [];
         $n = 0;
 
-        // Real prepared statements need a UNIQUE placeholder for every use.
         $u = function () use (&$params, &$n, $userId): string {
             $name = ':u' . (++$n);
             $params[$name] = $userId;
@@ -184,7 +190,16 @@ class Chat
                     SELECT 1 FROM messages m2
                     WHERE m2.conversation_id = c.id AND m2.id > (" . $cleared() . ")
                 )
-            )";
+            )
+            AND NOT (c.other_role = 'driver' AND tr.status IN ('completed', 'cancelled'))
+            AND NOT (
+                c.other_role = 'landlord' AND c.booking_id IS NOT NULL AND (
+                    bk.id IS NULL
+                    OR bk.status IN ('rejected', 'cancelled')
+                    OR (bk.status = 'approved' AND bk.updated_at <= (NOW() - INTERVAL " . (int) LANDLORD_CHAT_APPROVED_VISIBLE_DAYS . " DAY))
+                )
+            )
+        ";
 
         $sql = "
             SELECT
@@ -193,12 +208,12 @@ class Chat
                 usr.full_name AS with_name,
                 usr.profile_image AS with_image,
                 usr.last_seen_at AS with_last_seen,
-                tr.status AS trip_status,
                 {$unreadSql},
                 {$lastSql}
             FROM conversations c
             JOIN users usr ON usr.id = {$joinExpr}
             LEFT JOIN truck_requests tr ON tr.id = c.truck_request_id
+            LEFT JOIN bookings bk ON bk.id = c.booking_id
             WHERE {$whereSql}
             ORDER BY c.last_message_at IS NULL, c.last_message_at DESC
         ";
@@ -206,26 +221,35 @@ class Chat
         $stmt = $this->conn->prepare($sql);
         $stmt->execute($params);
 
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 
-        /*
-         * Once a truck trip is completed or cancelled, neither side needs
-         * the other's identity any more — the name/photo shown for this
-         * conversation is anonymized here so a finished trip's entry in
-         * the chat list no longer reveals who the other person was.
-         * Message CONTENT redaction (contact info inside old messages)
-         * happens separately, in api/chat/fetch_messages.php.
-         */
-        foreach ($rows as &$row) {
-            if (($row['other_role'] ?? '') === 'driver' && in_array($row['trip_status'] ?? null, ['completed', 'cancelled'], true)) {
-                $row['with_name'] = 'Trip ended';
-                $row['with_image'] = null;
-                $row['with_last_seen'] = null;
-            }
+    /**
+     * True if this is a driver-trip conversation whose trip is completed
+     * or cancelled (or whose trip reference is gone/invalid). Used to
+     * hard-block access to the conversation entirely, not just hide it
+     * from the list — a saved/guessed conversation_id must not still
+     * be able to read a finished trip's chat. Landlord conversations
+     * are never affected by this: they persist by design (see the
+     * production notes on chat lifecycle).
+     */
+    public function isFinishedDriverConversation(array $conversation): bool
+    {
+        if (($conversation['other_role'] ?? '') !== 'driver') {
+            return false;
         }
-        unset($row);
 
-        return $rows;
+        $truckRequestId = (int) ($conversation['truck_request_id'] ?? 0);
+
+        if ($truckRequestId <= 0) {
+            return true;
+        }
+
+        $stmt = $this->conn->prepare("SELECT status FROM truck_requests WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $truckRequestId]);
+        $status = $stmt->fetchColumn();
+
+        return $status === false || in_array($status, ['completed', 'cancelled'], true);
     }
 
     public function sendMessage(int $conversationId, int $senderId, string $message, string $senderType = 'user'): array

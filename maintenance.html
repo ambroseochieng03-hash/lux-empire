@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restoring Service — LUX EMPIRE</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    background: #0A0A0A; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .box { text-align: center; max-width: 420px; padding: 40px 30px; }
+  .logo { width: 72px; height: 72px; margin-bottom: 24px; }
+  .spinner {
+    width: 46px; height: 46px; margin: 0 auto 22px;
+    border: 3px solid rgba(212,175,55,0.2);
+    border-top-color: #D4AF37;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  h1 {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #D4AF37; font-size: 1.6rem; margin: 0 0 14px;
+  }
+  p { color: #a8a8a8; line-height: 1.7; margin: 0 0 8px; }
+  .countdown { color: #6b6b6b; font-size: 0.85rem; margin-top: 20px; }
+</style>
+</head>
+<body>
+  <div class="box">
+    <img class="logo" src="/luxempire/assets/images/logo.svg" alt="LUX EMPIRE">
+    <div class="spinner"></div>
+    <h1>Something Went Wrong</h1>
+    <p>Our servers are temporarily unavailable. We're already working on restoring service — this page will refresh itself automatically.</p>
+    <div class="countdown" id="countdownText">Retrying in 15s...</div>
+  </div>
+  <script>
+    let seconds = 15;
+    const el = document.getElementById('countdownText');
+    setInterval(function () {
+      seconds -= 1;
+      if (seconds <= 0) {
+        window.location.reload();
+        return;
+      }
+      el.textContent = 'Retrying in ' + seconds + 's...';
+    }, 1000);
+  </script>
+</body>
+</html>

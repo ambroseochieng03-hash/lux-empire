@@ -1,0 +1,279 @@
+/* ===================== BOTTOM NAV — all screen sizes, opt-in ===================== */
+
+.lux-bottom-nav,
+.lux-bottom-nav-more {
+    display: none;
+}
+
+.lux-bottom-nav-desktop-only {
+    display: none;
+}
+
+    body.lux-nav-bottom .lux-sidebar-toggle {
+        display: none !important;
+    }
+
+    /*
+     * THE actual fix for "sidebar stays until refresh": nothing was
+     * ever telling the sidebar itself to hide — only the hamburger
+     * toggle button was hidden before. This is driven by the same
+     * body class nav-preference.js toggles synchronously on click,
+     * so it now takes effect instantly, no reload needed.
+     */
+    body.lux-nav-bottom .lux-sidebar {
+        display: none !important;
+    }
+
+    body.lux-nav-bottom main {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding-bottom: 88px !important;
+    }
+
+    body.lux-nav-bottom .lux-bottom-nav {
+        display: flex;
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        z-index: 1500;
+        background: rgba(10, 10, 10, 0.78);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-top: 1px solid rgba(212, 175, 55, 0.18);
+        padding: 8px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+        justify-content: space-around;
+        align-items: center;
+        transition: transform 0.25s ease, opacity 0.25s ease;
+    }
+
+    body.lux-nav-bottom.lux-nav-hidden-temp .lux-bottom-nav {
+        transform: translateY(110%);
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /*
+     * When the bar is hidden, the space reserved for it must go away
+     * too — otherwise a blank gap the exact height of the bar is left
+     * sitting where content used to reach the bottom of the screen.
+     * This is what was showing as "unnecessary spaces" and is also
+     * why the chat input rendered as if pushed off-screen.
+     */
+    body.lux-nav-bottom.lux-nav-hidden-temp main {
+        padding-bottom: 0 !important;
+    }
+
+    /* Every visible control receives an equal share of the full bar width. */
+    body.lux-nav-bottom .lux-bottom-nav {
+        overflow: hidden;
+        justify-content: stretch;
+    }
+
+    .lux-bottom-nav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        text-decoration: none;
+        color: #8a8a8a;
+        font-size: 0.62rem;
+        font-weight: 600;
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 6px 4px;
+        position: relative;
+    }
+
+    .lux-bottom-nav-item i {
+        font-size: 1.25rem;
+        color: var(--lux-icon-color, #8a8a8a);
+    }
+
+    .lux-bottom-nav-item.is-active {
+        color: #fff;
+    }
+
+    .lux-bottom-nav-item.is-active i {
+        text-shadow: 0 0 14px var(--lux-icon-color, #D4AF37);
+    }
+
+    .lux-bottom-nav-more-btn {
+        background: none;
+        border: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        color: #8a8a8a;
+        font-size: 0.66rem;
+        font-weight: 600;
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 6px 4px;
+        cursor: pointer;
+    }
+
+    .lux-bottom-nav-more-btn i {
+        font-size: 1.25rem;
+        color: #d0d0d0;
+    }
+
+/* ===================== "MORE" BOTTOM SHEET ===================== */
+
+.lux-bottom-nav-more {
+    position: fixed;
+    inset: 0;
+    z-index: 1600;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.lux-bottom-nav-more.is-open {
+    display: flex;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.lux-bottom-nav-more-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(3px);
+}
+
+.lux-bottom-nav-more-box {
+    position: relative;
+    width: 100%;
+    max-width: 520px;
+    background: #101010;
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: 24px 24px 0 0;
+    padding: 22px 18px calc(22px + env(safe-area-inset-bottom, 0px));
+    transform: translateY(100%);
+    transition: transform 0.25s ease;
+}
+
+.lux-bottom-nav-more.is-open .lux-bottom-nav-more-box {
+    transform: translateY(0);
+}
+
+.lux-bottom-nav-more-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.lux-bottom-nav-more-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: #ddd;
+    font-size: 0.78rem;
+    padding: 14px 6px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.04);
+    position: relative;
+}
+
+.lux-bottom-nav-more-item i {
+    font-size: 1.4rem;
+    color: var(--gold);
+}
+
+.lux-bottom-nav-more-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: #ff3b3b;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+}
+
+.lux-nav-mode-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ccc;
+    font-size: 0.88rem;
+}
+
+.lux-nav-mode-toggle-row button {
+    background: rgba(212, 175, 55, 0.12);
+    color: var(--gold);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-weight: 600;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+
+/* ===================== UNREAD BADGES / GLOW — mirrors sidebar-counters.js ===================== */
+
+.lux-bottom-nav-badge {
+    position: absolute;
+    top: 2px;
+    right: 8px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #ff3b3b;
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.lux-bottom-nav-item.has-unread i,
+.lux-bottom-nav-more-btn.has-unread i {
+    text-shadow: 0 0 12px rgba(255, 59, 59, 0.7);
+}
+
+.lux-bottom-nav-more-btn {
+    position: relative;
+}
+
+.lux-bottom-nav-more-item.has-unread {
+    box-shadow: inset 0 0 0 1px rgba(255, 59, 59, 0.45);
+}
+
+.lux-bottom-nav-more-item.has-unread i {
+    color: #ff6b6b;
+}
+
+/* Desktop only: Notifications lives on the bar, so More contains only
+   the navigation switch and sign-out controls and never shows a badge. */
+@media (min-width: 769px) {
+    body.lux-nav-bottom .lux-bottom-nav-desktop-only {
+        display: flex;
+    }
+
+    body.lux-nav-bottom .lux-bottom-nav-more-grid,
+    body.lux-nav-bottom #luxBottomMoreIndicator {
+        display: none !important;
+    }
+
+    body.lux-nav-bottom .lux-bottom-nav-more-btn.has-unread i {
+        text-shadow: none;
+    }
+}
