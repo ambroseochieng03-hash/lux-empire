@@ -113,13 +113,13 @@ require_once '../../includes/sidebar.php';
 }
 
 .trip-type-tag.instant {
-    background: rgba(0, 255, 120, 0.12);
-    color: lightgreen;
+    background: var(--lux-success-bg);
+    color: var(--lux-success);
 }
 
 .trip-type-tag.scheduled {
-    background: rgba(100, 180, 255, 0.12);
-    color: #7fc4ff;
+    background: var(--lux-info-bg);
+    color: var(--lux-info);
 }
 
 .accept-locked-btn {
@@ -127,8 +127,8 @@ require_once '../../includes/sidebar.php';
     padding: 16px;
     border-radius: 18px;
     font-size: 1rem;
-    border: 1px solid rgba(255,255,255,0.15);
-    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--lux-card-border);
+    background: var(--glass);
     color: var(--gray);
     cursor: not-allowed;
 }
@@ -168,8 +168,8 @@ require_once '../../includes/sidebar.php';
 
     <?php if ($hasActiveTrip): ?>
         <div class="lux-card" style="padding:22px; border-radius:20px; margin-bottom:30px; border:1px solid rgba(255,165,0,0.45);">
-            <i class="fa-solid fa-truck-fast" style="color:orange;"></i>
-            <strong style="color:orange;">You have an active trip.</strong>
+            <i class="fa-solid fa-truck-fast" style="color:var(--lux-warning);"></i>
+            <strong style="color:var(--lux-warning);">You have an active trip.</strong>
             <span style="color:var(--gray);">
                 Finish it before accepting another job.
                 <a href="<?php echo BASE_URL; ?>/driver/active-trip" style="color:var(--gold);">Go to your active trip →</a>
@@ -218,7 +218,7 @@ require_once '../../includes/sidebar.php';
                     ">
 
                         <div>
-                            <h2 style="color:white; margin-bottom:8px;">
+                            <h2 style="color:var(--white); margin-bottom:8px;">
                                 Transport Request
                             </h2>
 
@@ -268,7 +268,7 @@ require_once '../../includes/sidebar.php';
                     <!-- PICKUP -->
                     <div style="margin-bottom:20px;">
                         <div style="color:var(--gray); margin-bottom:6px;">Pickup Location</div>
-                        <div style="color:white;">
+                        <div style="color:var(--white);">
                             <?php echo htmlspecialchars($request['pickup_location']); ?>
                         </div>
                     </div>
@@ -276,7 +276,7 @@ require_once '../../includes/sidebar.php';
                     <!-- DESTINATION -->
                     <div style="margin-bottom:<?php echo !empty($request['items_description']) ? '20' : '25'; ?>px;">
                         <div style="color:var(--gray); margin-bottom:6px;">Destination</div>
-                        <div style="color:white;">
+                        <div style="color:var(--white);">
                             <?php echo htmlspecialchars($request['destination']); ?>
                         </div>
                     </div>
@@ -285,7 +285,7 @@ require_once '../../includes/sidebar.php';
                     <?php if (!empty($request['items_description'])): ?>
                         <div style="margin-bottom:25px;">
                             <div style="color:var(--gray); margin-bottom:6px;">Items</div>
-                            <div style="color:white; white-space:pre-line; font-size:0.9rem;">
+                            <div style="color:var(--white); white-space:pre-line; font-size:0.9rem;">
                                 <?php echo htmlspecialchars($request['items_description']); ?>
                             </div>
                         </div>
@@ -294,8 +294,8 @@ require_once '../../includes/sidebar.php';
                     <!-- STATUS -->
                     <div style="margin-bottom:25px;">
                         <span style="
-                            background:rgba(255,165,0,0.15);
-                            color:orange;
+                            background:var(--lux-warning-bg);
+                            color:var(--lux-warning);
                             padding:10px 15px;
                             border-radius:12px;
                             font-weight:bold;
@@ -351,7 +351,7 @@ require_once '../../includes/sidebar.php';
             ">
                 <div style="font-size:4rem; margin-bottom:20px;"></div>
 
-                <h2 style="color:white; margin-bottom:15px;">
+                <h2 style="color:var(--white); margin-bottom:15px;">
                     No Requests Available
                 </h2>
 

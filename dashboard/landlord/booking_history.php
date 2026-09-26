@@ -19,6 +19,25 @@ $history = $result['bookings'];
 $total = (int) $result['total'];
 $totalPages = max(1, (int) ceil($total / $perPage));
 
+/*
+ * Same rule as the tenant's My Bookings page: a tenant can have more
+ * than one APPROVED booking with THIS landlord (different properties,
+ * one after another) — only the MOST RECENT one's "Message Tenant"
+ * button stays available, matching ChatGuard's "superseded" rule so
+ * the landlord never sees two live-looking chat entry points to the
+ * same tenant. Here the landlord is fixed, so this is keyed by tenant
+ * instead of by landlord (the tenant side keys it the other way).
+ */
+$tenantIdsWithApprovedBooking = array_values(array_unique(array_filter(array_map(
+    static fn ($b) => ($b['status'] === 'approved') ? (int) $b['tenant_id'] : null,
+    $history
+))));
+
+$latestApprovedBookingIdByTenant = [];
+foreach ($tenantIdsWithApprovedBooking as $tenantIdForLookup) {
+    $latestApprovedBookingIdByTenant[$tenantIdForLookup] = $bookingModel->getLatestApprovedBookingId($tenantIdForLookup, $landlordId);
+}
+
 require_once '../../includes/header.php';
 require_once '../../includes/navbar.php';
 require_once '../../includes/sidebar.php';
@@ -129,7 +148,11 @@ require_once '../../includes/sidebar.php';
                                 Requested <?php echo date('d M Y, H:i', strtotime((string) $booking['booking_date'])); ?>
                             </div>
 
-                            <?php if ($status === 'approved'): ?>
+                            <?php
+                                $canMessageTenant = ($latestApprovedBookingIdByTenant[(int) $booking['tenant_id']] ?? null) === (int) $booking['id'];
+                            ?>
+
+                            <?php if ($status === 'approved' && $canMessageTenant): ?>
                                 <div style="margin-top:12px;">
                                     <button type="button"
                                             class="lux-btn chat-starter-btn"

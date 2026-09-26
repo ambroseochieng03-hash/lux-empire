@@ -160,7 +160,7 @@ require_once '../../includes/sidebar.php';
             </div>
 
             <h2 style="
-                color:white;
+                color:var(--white);
                 margin-bottom:10px;
             ">
                 Tracking Status
@@ -169,7 +169,7 @@ require_once '../../includes/sidebar.php';
             <div
                 id="trackingStatus"
                 style="
-                    color:orange;
+                    color:var(--lux-warning);
                     font-weight:bold;
                     font-size:1.1rem;
                 "
@@ -267,7 +267,7 @@ require_once '../../includes/sidebar.php';
             <div>
 
                 <h2 style="
-                    color:white;
+                    color:var(--white);
                     margin-bottom:10px;
                 ">
                     Live GPS Monitoring
@@ -285,8 +285,8 @@ require_once '../../includes/sidebar.php';
 
             <!-- LIVE BADGE -->
             <div style="
-                background:rgba(0,255,120,0.15);
-                color:lightgreen;
+                background:var(--lux-success-bg);
+                color:var(--lux-success);
                 padding:12px 18px;
                 border-radius:14px;
                 font-weight:bold;

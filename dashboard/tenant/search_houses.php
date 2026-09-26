@@ -379,7 +379,7 @@ require_once '../../includes/sidebar.php';
                                     <?php endif; ?>
                                     <?php if (!$hasContactAccess && $landlordIsVerified): ?>
                                         <span class="lux-perk-chip">
-                                            <i class="fa-solid fa-circle-check" style="color:var(--gold);"></i> Verified landlord
+                                            <span class="lux-verified-badge" title="Verified"><i class="fa-solid fa-circle-check"></i></span> Verified landlord
                                         </span>
                                     <?php endif; ?>
                                 </div>

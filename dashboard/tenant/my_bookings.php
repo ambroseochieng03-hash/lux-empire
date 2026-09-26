@@ -484,19 +484,28 @@ require_once '../../includes/sidebar.php';
                                 </div>
 
                                 <!-- META -->
+                                <?php
+                                    $mbBedroomsCount = (int) ($booking['bedrooms'] ?? 0);
+                                    $mbBathroomsCount = (int) ($booking['bathrooms'] ?? 0);
+                                ?>
+
+                                <?php if ($mbBedroomsCount > 0 || $mbBathroomsCount > 0): ?>
                                 <div class="tenant-meta mb-meta-row">
 
-                                    <span>
-                                        Bedrooms:
-                                        <?php echo htmlspecialchars($booking['bedrooms'] ?? 0); ?> Beds
-                                    </span>
+                                    <?php if ($mbBedroomsCount > 0): ?>
+                                        <span>
+                                            Bedrooms: <?php echo $mbBedroomsCount; ?> Bed<?php echo $mbBedroomsCount === 1 ? '' : 's'; ?>
+                                        </span>
+                                    <?php endif; ?>
 
-                                    <span>
-                                        Bathrooms:
-                                        <?php echo htmlspecialchars($booking['bathrooms'] ?? 0); ?> Baths
-                                    </span>
+                                    <?php if ($mbBathroomsCount > 0): ?>
+                                        <span>
+                                            Bathrooms: <?php echo $mbBathroomsCount; ?> Bath<?php echo $mbBathroomsCount === 1 ? '' : 's'; ?>
+                                        </span>
+                                    <?php endif; ?>
 
                                 </div>
+                                <?php endif; ?>
 
                             </div>
 

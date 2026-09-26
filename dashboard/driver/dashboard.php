@@ -158,15 +158,15 @@ require_once '../../includes/sidebar.php';
         </div>
 
         <div class="lux-card" style="padding:30px; border-radius:24px; text-align:center;">
-            <div style="font-size:2.5rem; color:lightgreen;"><i class="fa-solid fa-truck-fast"></i></div>
-            <h2 style="color:lightgreen; font-size:2.2rem; margin:15px 0 10px;">
+            <div style="font-size:2.5rem; color:var(--lux-success);"><i class="fa-solid fa-truck-fast"></i></div>
+            <h2 style="color:var(--lux-success); font-size:2.2rem; margin:15px 0 10px;">
                 <?php echo $activeTrip ? '1' : '0'; ?>
             </h2>
             <p style="color:var(--gray);">Active Trips</p>
         </div>
 
         <div class="lux-card" style="padding:30px; border-radius:24px; text-align:center;">
-            <div style="font-size:2.5rem; color:lightgreen;"><i class="fa-solid fa-circle-check"></i></div>
+            <div style="font-size:2.5rem; color:var(--lux-success);"><i class="fa-solid fa-circle-check"></i></div>
             <h2 style="color:var(--gold); font-size:1.5rem; margin:15px 0 10px;">
                 ONLINE
             </h2>
@@ -185,19 +185,19 @@ require_once '../../includes/sidebar.php';
 
         <a href="<?php echo BASE_URL; ?>/driver/available-requests" class="lux-card"
            style="padding:30px; border-radius:24px; text-decoration:none;">
-            <h3 style="color:white;">Available Requests</h3>
+            <h3 style="color:var(--white);">Available Requests</h3>
             <p style="color:var(--gray);">View incoming transport jobs.</p>
         </a>
 
         <a href="<?php echo BASE_URL; ?>/driver/active-trip" class="lux-card"
            style="padding:30px; border-radius:24px; text-decoration:none;">
-            <h3 style="color:white;">Active Trip</h3>
+            <h3 style="color:var(--white);">Active Trip</h3>
             <p style="color:var(--gray);">Manage current delivery trip.</p>
         </a>
 
         <a href="<?php echo BASE_URL; ?>/driver/location-tracker" class="lux-card"
            style="padding:30px; border-radius:24px; text-decoration:none;">
-            <h3 style="color:white;">Live GPS Tracker</h3>
+           <h3 style="color:var(--white);">Live GPS Tracker</h3>
             <p style="color:var(--gray);">Share live driver location.</p>
         </a>
 
@@ -206,7 +206,7 @@ require_once '../../includes/sidebar.php';
     <!-- ACTIVE TRIP -->
     <div class="lux-card" style="padding:35px; border-radius:28px;">
 
-        <h2 style="color:white; font-size:1.8rem; margin-bottom:25px;">
+        <h2 style="color:var(--white); font-size:1.8rem; margin-bottom:25px;">
             Current Logistics Status
         </h2>
 
@@ -220,21 +220,21 @@ require_once '../../includes/sidebar.php';
 
                 <div>
                     <div style="color:var(--gray);">Pickup</div>
-                    <div style="color:white;">
+                    <div style="color:var(--white);">
                         <?php echo htmlspecialchars($activeTrip['pickup_location']); ?>
                     </div>
                 </div>
 
                 <div>
                     <div style="color:var(--gray);">Destination</div>
-                    <div style="color:white;">
+                    <div style="color:var(--white);">
                         <?php echo htmlspecialchars($activeTrip['destination']); ?>
                     </div>
                 </div>
 
                 <div>
                     <div style="color:var(--gray);">Status</div>
-                    <div style="color:lightgreen; font-weight:bold;">
+                    <div style="color:var(--lux-success); font-weight:bold;">
                         <?php echo strtoupper($activeTrip['status']); ?>
                     </div>
                 </div>

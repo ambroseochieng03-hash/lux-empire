@@ -28,7 +28,7 @@ require_once '../../includes/sidebar.php';
     <div class="lux-card" style="padding:30px; border-radius:24px; max-width:500px;">
 
         <p style="color:var(--gray); margin-bottom:10px;">Current Balance</p>
-        <h2 style="color:<?php echo $balance < 0 ? '#ff6b6b' : 'lightgreen'; ?>; font-size:2.5rem;">
+        <h2 style="color:<?php echo $balance < 0 ? 'var(--lux-danger)' : 'var(--lux-success)'; ?>; font-size:2.5rem;">
             KES <?php echo number_format($balance, 2); ?>
         </h2>
 

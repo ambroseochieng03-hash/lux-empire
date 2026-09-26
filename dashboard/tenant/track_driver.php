@@ -66,7 +66,6 @@ require_once '../../includes/sidebar.php';
 .track-page {
     display: flex;
     min-height: 100vh;
-    background: #0a0a0a;
 }
 
 .track-main {
@@ -97,7 +96,7 @@ require_once '../../includes/sidebar.php';
     padding: 22px;
     border-radius: 22px;
     position: relative;
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid var(--lux-card-border);
     transition: border-color 0.2s ease;
 }
 
@@ -136,9 +135,9 @@ require_once '../../includes/sidebar.php';
     white-space: nowrap;
 }
 
-.track-trip-status-accepted { background: rgba(255,165,0,0.15); color: orange; }
-.track-trip-status-arrived_at_pickup { background: rgba(66,165,245,0.15); color: #42a5f5; }
-.track-trip-status-in_transit { background: rgba(0,255,120,0.15); color: lightgreen; }
+.track-trip-status-accepted { background: var(--lux-warning-bg); color: var(--lux-warning); }
+.track-trip-status-arrived_at_pickup { background: var(--lux-info-bg); color: var(--lux-info); }
+.track-trip-status-in_transit { background: var(--lux-success-bg); color: var(--lux-success); }
 
 .track-trip-field-label {
     color: var(--gray);
@@ -147,7 +146,7 @@ require_once '../../includes/sidebar.php';
 }
 
 .track-trip-field-value {
-    color: white;
+    color: var(--white);
     font-size: 0.95rem;
     margin-bottom: 12px;
     word-break: break-word;
@@ -156,7 +155,7 @@ require_once '../../includes/sidebar.php';
 .track-trip-driver-box {
     margin-top: 10px;
     padding-top: 12px;
-    border-top: 1px solid rgba(255,255,255,0.08);
+    border-top: 1px solid var(--lux-card-border);
     color: var(--gray);
     font-size: 0.88rem;
     line-height: 1.7;
@@ -222,7 +221,7 @@ require_once '../../includes/sidebar.php';
     <?php if (empty($trips)): ?>
 
         <div class="lux-card" style="padding:60px; border-radius:30px; text-align:center;">
-            <h2 style="color:white; margin-bottom:15px;">No Active Trips</h2>
+            <h2 style="color:var(--white); margin-bottom:15px;">No Active Trips</h2>
             <p style="color:var(--gray); max-width:600px; margin:auto; line-height:1.8;">
                 Once a driver accepts one of your requests, live tracking will appear here automatically.
             </p>
@@ -254,7 +253,7 @@ require_once '../../includes/sidebar.php';
                     <div class="track-trip-card-top">
                         <label class="track-trip-checkbox-row">
                             <input type="checkbox" class="track-trip-checkbox" data-trip-id="<?php echo $tripId; ?>" checked>
-                            <span style="color:white; font-weight:bold;">Trip #<?php echo $tripId; ?></span>
+                            <span style="color:var(--white); font-weight:bold;">Trip #<?php echo $tripId; ?></span>
                         </label>
                         <span class="track-trip-status-pill <?php echo $statusClass; ?>">
                             <?php echo strtoupper(str_replace('_', ' ', $trip['status'])); ?>
@@ -269,7 +268,7 @@ require_once '../../includes/sidebar.php';
 
                     <?php if ($driverInfo): ?>
                         <div class="track-trip-driver-box">
-                            <div style="color:white; font-weight:bold; margin-bottom:4px;">
+                            <div style="color:var(--white); font-weight:bold; margin-bottom:4px;">
                                 <?php echo htmlspecialchars($driverInfo['driver_name']); ?>
                                 <?php if ($verifiedDriverMap[(int) $trip['driver_id']] ?? false): ?>
                                     <span class="lux-verified-badge" title="Verified Driver"><i class="fa-solid fa-circle-check"></i></span>

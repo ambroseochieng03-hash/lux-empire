@@ -76,7 +76,7 @@ body { overflow-x: hidden; }
 }
 
 .trip-nav-stat {
-    background: rgba(255,255,255,0.05);
+    background: var(--glass);
     padding: 14px 20px;
     border-radius: 14px;
     color: var(--gold);
@@ -100,19 +100,19 @@ body { overflow-x: hidden; }
 
         <?php
             $statusColors = [
-                'accepted'          => ['bg' => 'rgba(255,165,0,0.15)', 'text' => 'orange'],
-                'arrived_at_pickup' => ['bg' => 'rgba(66,165,245,0.15)', 'text' => '#42a5f5'],
-                'in_transit'        => ['bg' => 'rgba(0,255,120,0.15)', 'text' => 'lightgreen'],
-                'cancelled'         => ['bg' => 'rgba(255,59,59,0.15)', 'text' => '#ff5252'],
+                'accepted'          => ['bg' => 'var(--lux-warning-bg)', 'text' => 'var(--lux-warning)'],
+                'arrived_at_pickup' => ['bg' => 'var(--lux-info-bg)', 'text' => 'var(--lux-info)'],
+                'in_transit'        => ['bg' => 'var(--lux-success-bg)', 'text' => 'var(--lux-success)'],
+                'cancelled'         => ['bg' => 'var(--lux-danger-bg)', 'text' => 'var(--lux-danger)'],
             ];
-            $color = $statusColors[$trip['status']] ?? ['bg' => 'rgba(255,255,255,0.08)', 'text' => 'white'];
+            $color = $statusColors[$trip['status']] ?? ['bg' => 'var(--glass)', 'text' => 'var(--white)'];
         ?>
 
         <div class="lux-card" style="padding:40px; border-radius:30px;">
 
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px; margin-bottom:35px;">
                 <div>
-                    <h2 style="color:white; margin-bottom:10px;">Trip #<?php echo $trip['id']; ?></h2>
+                    <h2 style="color:var(--white); margin-bottom:10px;">Trip #<?php echo $trip['id']; ?></h2>
                     <div style="color:var(--gray);">Premium transport assignment</div>
                 </div>
 
@@ -124,11 +124,11 @@ body { overflow-x: hidden; }
             <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:30px; margin-bottom:35px;">
                 <div>
                     <div style="color:var(--gray); margin-bottom:8px;">Tenant</div>
-                    <div style="color:white; font-size:1.1rem;"><?php echo htmlspecialchars($trip['full_name']); ?></div>
+                    <div style="color:var(--white); font-size:1.1rem;"><?php echo htmlspecialchars($trip['full_name']); ?></div>
                 </div>
                 <div>
                     <div style="color:var(--gray); margin-bottom:8px;">Contact</div>
-                    <div style="color:white; font-size:1.1rem;"><?php echo htmlspecialchars($trip['phone']); ?></div>
+                    <div style="color:var(--white); font-size:1.1rem;"><?php echo htmlspecialchars($trip['phone']); ?></div>
                 </div>
                 <div>
                     <div style="color:var(--gray); margin-bottom:8px;">Trip Value</div>
@@ -139,11 +139,11 @@ body { overflow-x: hidden; }
             <div style="margin-bottom:35px;">
                 <div style="margin-bottom:25px;">
                     <div style="color:var(--gray); margin-bottom:8px;">Pickup Location</div>
-                    <div style="color:white;"><?php echo htmlspecialchars($trip['pickup_location']); ?></div>
+                    <div style="color:var(--white);"><?php echo htmlspecialchars($trip['pickup_location']); ?></div>
                 </div>
                 <div>
                     <div style="color:var(--gray); margin-bottom:8px;">Destination</div>
-                    <div style="color:white;"><?php echo htmlspecialchars($trip['destination']); ?></div>
+                    <div style="color:var(--white);"><?php echo htmlspecialchars($trip['destination']); ?></div>
                 </div>
             </div>
 
@@ -163,8 +163,8 @@ body { overflow-x: hidden; }
 
             <?php elseif ($trip['status'] === 'arrived_at_pickup'): ?>
 
-                <div class="lux-card" style="padding:24px; border-radius:20px; margin-bottom:25px; background:rgba(66,165,245,0.08);">
-                    <i class="fa-solid fa-circle-check" style="color:#42a5f5; margin-right:8px;"></i>
+                <div class="lux-card" style="padding:24px; border-radius:20px; margin-bottom:25px; background:var(--lux-info-bg);">
+                    <i class="fa-solid fa-circle-check" style="color:var(--lux-info); margin-right:8px;"></i>
                     You've marked arrival at the pickup point. Tap Start Trip once the load is ready.
                 </div>
 
@@ -186,18 +186,18 @@ body { overflow-x: hidden; }
 
                 <?php elseif ($trip['status'] === 'in_transit'): ?>
 
-                    <button type="button" class="trip-action-btn" data-status="completed" data-trip-id="<?php echo $trip['id']; ?>" style="background:lightgreen; color:black; border:none; padding:16px 28px; border-radius:18px; cursor:pointer; font-weight:bold;">
+                    <button type="button" class="trip-action-btn" data-status="completed" data-trip-id="<?php echo $trip['id']; ?>" style="background:var(--lux-success); color:var(--black); border:none; padding:16px 28px; border-radius:18px; cursor:pointer; font-weight:bold;">
                         <i class="fa-solid fa-flag-checkered"></i> Complete Trip
                     </button>
 
-                    <button type="button" class="trip-action-btn" data-status="report_stuck" data-trip-id="<?php echo $trip['id']; ?>" data-confirm="Report this trip as stuck? Our team will review it — your trip stays open until they resolve it." style="background:rgba(255,165,0,0.15); color:orange; border:1px solid orange; padding:16px 28px; border-radius:18px; cursor:pointer; font-weight:bold;">
+                    <button type="button" class="trip-action-btn" data-status="report_stuck" data-trip-id="<?php echo $trip['id']; ?>" data-confirm="Report this trip as stuck? Our team will review it — your trip stays open until they resolve it." style="background:var(--lux-warning-bg); color:var(--lux-warning); border:1px solid var(--lux-warning); padding:16px 28px; border-radius:18px; cursor:pointer; font-weight:bold;">
                         <i class="fa-solid fa-triangle-exclamation"></i> Trip Stuck? Report It
                     </button>
 
                 <?php elseif ($trip['status'] === 'cancelled'): ?>
 
                     <div style="display:flex; gap:15px; align-items:center; flex-wrap:wrap;">
-                        <div style="background:rgba(255,0,0,0.12); color:#ff6b6b; padding:18px 24px; border-radius:18px; font-weight:bold;">
+                        <div style="background:var(--lux-danger-bg); color:var(--lux-danger); padding:18px 24px; border-radius:18px; font-weight:bold;">
                             Tenant cancelled this trip
                         </div>
 
@@ -247,7 +247,7 @@ body { overflow-x: hidden; }
     <?php else: ?>
 
         <div class="lux-card" style="padding:60px; border-radius:30px; text-align:center;">
-            <h2 style="color:white; margin-bottom:15px;">No Active Trip</h2>
+            <h2 style="color:var(--white); margin-bottom:15px;">No Active Trip</h2>
             <p style="color:var(--gray); line-height:1.9; max-width:550px; margin:auto;">
                 You currently have no active transport assignment.
             </p>

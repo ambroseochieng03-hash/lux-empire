@@ -14,9 +14,9 @@ $csrfToken = Csrf::token();
     <div class="chat-list-pane" id="chatListPane">
         <div class="chat-list-header">
             <h2><i class="fa-solid fa-comments"></i> Chats</h2>
-            <button type="button" class="chat-list-close-btn" id="chatListCloseBtn" aria-label="Hide chat list">
+          <!--  <button type="button" class="chat-list-close-btn" id="chatListCloseBtn" aria-label="Hide chat list">
                 <i class="fa-solid fa-xmark"></i>
-            </button>
+            </button> -->
         </div>
         <div class="chat-list" id="chatList">
             <div class="chat-list-empty">Loading conversations...</div>
