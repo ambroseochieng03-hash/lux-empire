@@ -3,14 +3,15 @@
     margin-left: 280px;
     border-radius: 24px;
     overflow: hidden; /* nothing inside this shell should ever scroll the page */
-    background: rgba(255,255,255,0.03);
+    background: var(--glass);
+    border: 1px solid var(--lux-card-border);
     box-sizing: border-box;
 }
 
 .chat-list-pane {
     width: 340px;
     flex-shrink: 0;
-    border-right: 1px solid rgba(212,175,55,0.2);
+    border-right: 1px solid var(--lux-card-border);
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -19,7 +20,7 @@
 
 .chat-list-header {
     padding: 24px;
-    border-bottom: 1px solid rgba(212,175,55,0.15);
+    border-bottom: 1px solid var(--lux-card-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -53,7 +54,7 @@
     gap: 14px;
     padding: 16px 20px;
     cursor: pointer;
-    border-bottom: 1px solid rgba(255,255,255,0.04);
+    border-bottom: 1px solid var(--lux-card-border);
     transition: 0.2s;
 }
 
@@ -77,7 +78,7 @@
 .chat-list-meta { flex: 1; min-width: 0; }
 
 .chat-list-name {
-    color: white;
+    color: var(--white);
     font-weight: 600;
     display: flex;
     justify-content: space-between;
@@ -95,7 +96,7 @@
 
 .chat-unread-count {
     background: var(--gold);
-    color: black;
+    color: var(--black);
     font-size: 0.7rem;
     font-weight: bold;
     border-radius: 50%;
@@ -137,7 +138,7 @@
 .chat-thread-header {
     display: flex; align-items: center; gap: 14px;
     padding: 18px 24px;
-    border-bottom: 1px solid rgba(212,175,55,0.15);
+    border-bottom: 1px solid var(--lux-card-border);
     flex-shrink: 0;
 }
 
@@ -156,7 +157,7 @@
     color: var(--gold);
     flex-shrink: 0;
 }
-.chat-thread-user h3 { color: white; font-size: 1.05rem; }
+.chat-thread-user h3 { color: var(--white); font-size: 1.05rem; }
 .chat-thread-user small { color: var(--gray); }
 
 /* Only this area scrolls on the right side. */
@@ -181,15 +182,16 @@
 
 .chat-bubble.mine {
     align-self: flex-end;
-    background: linear-gradient(135deg,#d4af37,#f5d76e);
-    color: black;
+    background: linear-gradient(135deg, var(--gold), var(--gold-secondary));
+    color: var(--black);
     border-bottom-right-radius: 4px;
 }
 
 .chat-bubble.theirs {
     align-self: flex-start;
-    background: rgba(255,255,255,0.08);
-    color: white;
+    background: var(--glass);
+    border: 1px solid var(--lux-card-border);
+    color: var(--white);
     border-bottom-left-radius: 4px;
 }
 
@@ -235,30 +237,30 @@
 .chat-input-bar {
     display: flex; gap: 10px;
     padding: 16px 24px;
-    border-top: 1px solid rgba(212,175,55,0.15);
+    border-top: 1px solid var(--lux-card-border);
     flex-shrink: 0;
 }
 .chat-input-bar input {
     flex: 1;
     padding: 14px 18px;
     border-radius: 20px;
-    border: none;
-    background: rgba(255,255,255,0.06);
-    color: white;
+    border: 1px solid var(--lux-card-border);
+    background: var(--glass);
+    color: var(--white);
 }
 .chat-input-bar button {
     width: 46px; height: 46px;
     border-radius: 50%;
     border: none;
-    background: linear-gradient(135deg,#d4af37,#f5d76e);
-    color: black;
+    background: linear-gradient(135deg, var(--gold), var(--gold-secondary));
+    color: var(--black);
     cursor: pointer;
     flex-shrink: 0;
 }
 
 .sidebar-badge {
     background: var(--gold);
-    color: black;
+    color: var(--black);
     font-size: 0.7rem;
     font-weight: bold;
     border-radius: 50%;
@@ -266,7 +268,7 @@
     margin-left: auto;
 }
 
-/* Chat starter modal (unchanged from before) */
+/* Chat starter modal */
 .chat-starter-overlay {
     display: none;
     position: fixed;
@@ -279,8 +281,8 @@
 .chat-starter-overlay.active { display: flex; }
 
 .chat-starter-box {
-    background: #101010;
-    border: 1px solid rgba(212,175,55,0.25);
+    background: var(--lux-modal-bg);
+    border: 1px solid var(--lux-modal-border);
     border-radius: 22px;
     padding: 28px;
     width: 90%;
@@ -297,11 +299,11 @@
 
 .chat-starter-box textarea {
     width: 100%;
-    background: rgba(255,255,255,0.06);
-    border: none;
+    background: var(--glass);
+    border: 1px solid var(--lux-card-border);
     border-radius: 14px;
     padding: 14px;
-    color: white;
+    color: var(--white);
     resize: vertical;
     margin-bottom: 16px;
     font-family: inherit;
@@ -340,7 +342,7 @@
         width: 100%;
         height: 100%;
         z-index: 5;
-        background: #0a0a0a;
+        background: var(--black);
         transform: translateX(0);
         transition: transform 0.28s ease;
     }
@@ -434,9 +436,9 @@
     min-width: 190px;
     padding: 6px;
     border-radius: 14px;
-    background: rgba(18, 18, 24, 0.98);
-    border: 1px solid rgba(212, 175, 55, 0.3);
-    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.55);
+    background: var(--lux-modal-bg);
+    border: 1px solid var(--lux-modal-border);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.25);
 }
 
 .chat-context-item {
@@ -448,18 +450,18 @@
     border: none;
     border-radius: 10px;
     background: none;
-    color: #eee;
+    color: var(--white);
     font-size: 0.92rem;
     text-align: left;
     cursor: pointer;
 }
 
 .chat-context-item:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--glass);
 }
 
 .chat-context-item.is-danger {
-    color: #ff7b7b;
+    color: var(--lux-danger);
 }
 
 .chat-dialog-overlay {
@@ -479,9 +481,9 @@
     max-width: 420px;
     padding: 24px;
     border-radius: 20px;
-    background: rgba(18, 18, 24, 0.99);
-    border: 1px solid rgba(212, 175, 55, 0.3);
-    color: #fff;
+    background: var(--lux-modal-bg);
+    border: 1px solid var(--lux-modal-border);
+    color: var(--white);
 }
 
 .chat-dialog-box h3 {
@@ -492,7 +494,7 @@
 
 .chat-dialog-box p {
     margin: 0 0 16px;
-    color: #ccc;
+    color: var(--gray);
     font-size: 0.9rem;
     line-height: 1.6;
 }
@@ -502,9 +504,9 @@
     margin-bottom: 16px;
     padding: 12px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.05);
-    color: #fff;
+    border: 1px solid var(--lux-card-border);
+    background: var(--glass);
+    color: var(--white);
     font-size: 1rem;
     resize: vertical;
     box-sizing: border-box;
@@ -525,19 +527,19 @@
 }
 
 .chat-dialog-cancel {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    color: #fff;
+    background: var(--glass);
+    border: 1px solid var(--lux-card-border);
+    color: var(--white);
 }
 
 .chat-dialog-ok {
     border: none;
-    background: linear-gradient(135deg, #d4af37, #f5d76e);
-    color: #000;
+    background: linear-gradient(135deg, var(--gold), var(--gold-secondary));
+    color: var(--black);
     font-weight: 700;
 }
 
 .chat-dialog-ok.is-danger {
-    background: #ff3b3b;
+    background: var(--lux-danger);
     color: #fff;
 }

@@ -728,3 +728,15 @@ define('AUTO_CLEAR_FINISHED_TRIP_HOURS', 2);
 | keep talking after move-in.
 */
 define('LANDLORD_CHAT_APPROVED_VISIBLE_DAYS', 30);
+
+
+/*
+| The landlord's Booking History page only shows entries answered
+| within this many hours (b.updated_at, not the original request
+| date) — after that they're auto-hidden from THIS PAGE so it never
+| piles up with stale requests. Nothing is deleted: the row, its
+| refund trail, and every notification still exist exactly as
+| before — this filter is presentation-only. The landlord sees a
+| standing notice about this on the page itself.
+*/
+define('LANDLORD_BOOKING_HISTORY_VISIBLE_HOURS', 48);

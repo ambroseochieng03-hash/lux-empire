@@ -23,13 +23,13 @@ sudden layout jump — no gap, no shake.
     const PHRASES = [
         'Where Luxury Finds Home.',
         'Elite Properties. Verified Landlords. Real Trust.',
-        'Moving Made Effortless — Track Every Mile.',
+        'Moving Made Effortless Track Every Mile.',
         'One Empire. Every Address. Every Journey.',
         'Experience the Future of Luxury Living.',
         'Your Next Home, Your Next Adventure.',
         'Where Every Move is a Masterpiece.',
         'Luxury Living, Redefined.',
-        'From Dream to Doorstep — Seamlessly.',
+        'From Dream to Doorstep Seamlessly.',
         'Elevate Your Lifestyle, One Address at a Time.'
     ];
 

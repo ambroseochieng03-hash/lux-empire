@@ -730,7 +730,11 @@ class Booking {
         $limit = max(1, min(100, $limit));
         $offset = max(0, $offset);
 
-        $where = "b.landlord_id = :landlord_id AND b.payment_status = 'paid' AND b.status <> 'pending'";
+        // Auto-hidden LANDLORD_BOOKING_HISTORY_VISIBLE_HOURS after being
+        // answered (b.updated_at) — the row itself is untouched, this is
+        // purely so the history page doesn't accumulate junk over time.
+        $where = "b.landlord_id = :landlord_id AND b.payment_status = 'paid' AND b.status <> 'pending'
+                  AND b.updated_at > (NOW() - INTERVAL " . (int) LANDLORD_BOOKING_HISTORY_VISIBLE_HOURS . " HOUR)";
         $params = [':landlord_id' => $landlordId];
 
         if ($days !== null) {
@@ -1101,6 +1105,32 @@ class Booking {
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return $row ?: null;
+    }
+
+    /**
+     * The id of this tenant's MOST RECENT approved booking with this
+     * landlord (any house). Used to detect when an older approved
+     * booking's conversation has been superseded by a newer one with
+     * the same landlord — nobody should end up with two simultaneously
+     * "active" chats with the same person just because they booked a
+     * second property from them.
+     */
+    public function getLatestApprovedBookingId(int $tenantId, int $landlordId): ?int
+    {
+        $stmt = $this->conn->prepare("
+            SELECT id FROM " . $this->table . "
+            WHERE tenant_id = :tenant_id
+            AND landlord_id = :landlord_id
+            AND payment_status = 'paid'
+            AND status = 'approved'
+            ORDER BY id DESC
+            LIMIT 1
+        ");
+        $stmt->execute([':tenant_id' => $tenantId, ':landlord_id' => $landlordId]);
+
+        $id = $stmt->fetchColumn();
+
+        return $id !== false ? (int) $id : null;
     }
 
 }

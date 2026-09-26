@@ -130,9 +130,31 @@ final class ChatGuard
             return true;
         }
 
-        if ($info['status'] === 'approved' && !empty($info['updated_at'])) {
-            $ageSeconds = time() - strtotime((string) $info['updated_at']);
-            return $ageSeconds > (LANDLORD_CHAT_APPROVED_VISIBLE_DAYS * 86400);
+        if ($info['status'] === 'approved') {
+
+            if (!empty($info['updated_at'])) {
+                $ageSeconds = time() - strtotime((string) $info['updated_at']);
+                if ($ageSeconds > (LANDLORD_CHAT_APPROVED_VISIBLE_DAYS * 86400)) {
+                    return true;
+                }
+            }
+
+            // Superseded: this tenant has since had a DIFFERENT, more
+            // recent booking with this same landlord approved (a
+            // different property). Only the newest one's conversation
+            // stays reachable — this is what makes an older approved
+            // chat disappear the moment a second booking with the
+            // same landlord gets accepted, exactly like a rejection
+            // already does for a still-pending one.
+            $bookingModel = new Booking();
+            $latestApprovedId = $bookingModel->getLatestApprovedBookingId(
+                (int) $conversation['tenant_id'],
+                (int) $conversation['other_user_id']
+            );
+
+            if ($latestApprovedId !== null && $latestApprovedId !== $bookingId) {
+                return true;
+            }
         }
 
         return false;

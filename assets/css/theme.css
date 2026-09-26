@@ -1,0 +1,182 @@
+/* ==========================================
+   LUX EMPIRE — THEME VARIABLES
+   SAVE AT: assets/css/theme.css (OVERWRITE the version
+   from before — this revision strengthens card/navbar/
+   footer distinctness per your feedback that everything
+   read as flat white).
+   LOAD THIS FIRST — before style.css and every
+   other stylesheet. See includes/header.php.
+
+   :root (no attribute)  = LIGHT theme = new default.
+   [data-theme="dark"]   = DARK theme = today's site,
+                            values copied verbatim from
+                            the old style.css :root block.
+
+   These 7 variable NAMES are unchanged from the old
+   style.css on purpose — everything already written as
+   var(--gold), var(--white), var(--gray), var(--black),
+   var(--dark), var(--glass), var(--shadow-gold) across
+   the codebase re-themes automatically from this file
+   alone, no edits needed in those files.
+   ========================================== */
+
+:root {
+    /* ---- LIGHT THEME (default) ---- */
+
+    /* Accent — was gold. Now Navy, used for headings, icons,
+       links, prices, borders — anywhere high-contrast TEXT-like
+       accent color is needed. Navy on white ≈ 9.7:1 contrast
+       (WCAG AAA). */
+    --gold: #2F4156;
+
+    /* Second gradient stop paired with --gold on buttons/lines.
+       Teal, from the approved palette. */
+    --gold-secondary: #567C8D;
+
+    /* Page background base (was near-black). Warm off-white,
+       not pure #FFFFFF — reduces glare for the older users this
+       theme exists for. */
+    --black: #F7F5F2;
+
+    /* Secondary background tone used inside gradients. */
+    --dark: #EDEAE5;
+
+    /* Primary foreground/text color (was pure white). */
+    --white: #26313C;
+
+    /* Secondary/muted text. Slate gray, ≈4.6:1 on light
+       backgrounds — passes WCAG AA for normal text. */
+    --gray: #5C6B75;
+
+    /* Card/surface tint. STRENGTHENED from the first draft —
+       was rgba(47,65,86,0.045), nearly invisible against the
+       light page. Now a mostly-opaque white so cards actually
+       read as raised surfaces, not just a faint texture change. */
+    --glass: rgba(255, 255, 255, 0.82);
+
+    /* Elevation shadow (was a gold neon glow in dark theme). A
+       soft cool shadow reads as "elevation" on a light page. */
+    --shadow-gold: 0 6px 24px rgba(47, 65, 86, 0.14);
+
+    /* ---- New tokens ---- */
+    --lux-danger: #C62828;
+    --lux-danger-bg: rgba(198, 40, 40, 0.08);
+    --lux-success: #2E7D32;
+    --lux-success-bg: rgba(46, 125, 50, 0.08);
+    --lux-warning: #B26A00;
+    --lux-warning-bg: rgba(178, 106, 0, 0.10);
+    --lux-info: #2F6FA8;
+    --lux-info-bg: rgba(47, 111, 168, 0.10);
+
+    /* Card border. STRENGTHENED — was 0.14 alpha, now 0.20 so it
+       reads as a real edge, not a hint of one. */
+    --lux-card-border: rgba(47, 65, 86, 0.20);
+
+    /* Sticky header bar. STRENGTHENED to near-opaque so it visibly
+       separates from page content scrolling underneath it. */
+    --lux-header-bg: rgba(255, 255, 255, 0.94);
+    --lux-header-border: rgba(47, 65, 86, 0.16);
+
+    /* Footer — now a DELIBERATE dark navy band, not a paler
+       version of the page. This is the brand anchor in light
+       theme, the same role gold plays as the one strong accent
+       in dark theme. Text inside .lux-footer is overridden
+       further down this file to stay legible on it. */
+    --lux-footer-bg: linear-gradient(135deg, #2F4156, #24313F);
+    --lux-footer-border: rgba(255, 255, 255, 0.10);
+
+    /* Solid modal/dropdown surfaces (several files hardcode
+       #101010 / rgba(15,15,20,0.97) for these — convert those to
+       these two vars as you touch each file). */
+    --lux-modal-bg: #FFFFFF;
+    --lux-modal-border: rgba(47, 65, 86, 0.18);
+
+    /* Alias — style.css's .lux-payment-modal and payment-modal.css's
+       .lux-limit-modal both already reference var(--bg-dark, #0a0a0a)
+       with a fallback, meaning --bg-dark was never actually defined
+       anywhere. Aliasing it here themes both files with zero edits
+       to either. */
+    --bg-dark: var(--lux-modal-bg);
+
+    /* Full multi-layer body background, one variable. */
+    --lux-body-bg:
+        radial-gradient(circle at top right, rgba(86, 124, 141, 0.07), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(47, 65, 86, 0.05), transparent 25%),
+        linear-gradient(135deg, #FFFFFF, #F7F5F2, #EDEAE5);
+}
+
+[data-theme="dark"] {
+    /* ---- DARK THEME — today's site, unchanged values ---- */
+
+    --gold: #D4AF37;
+    --gold-secondary: #8f6b00;
+    --black: #0A0A0A;
+    --dark: #121212;
+    --white: #FFFFFF;
+    --gray: #B8B8B8;
+    --glass: rgba(255, 255, 255, 0.08);
+    --shadow-gold: 0 0 25px rgba(212, 175, 55, 0.35);
+
+    --lux-danger: #ff3b3b;
+    --lux-danger-bg: rgba(255, 0, 0, 0.08);
+    --lux-success: #00e676;
+    --lux-success-bg: rgba(0, 255, 100, 0.08);
+    --lux-warning: #ffa500;
+    --lux-warning-bg: rgba(255, 165, 0, 0.10);
+    --lux-info: #42a5f5;
+    --lux-info-bg: rgba(66, 165, 245, 0.10);
+
+    --lux-card-border: rgba(212, 175, 55, 0.18);
+
+    --lux-header-bg: rgba(10, 10, 10, 0.75);
+    --lux-header-border: rgba(212, 175, 55, 0.25);
+
+    --lux-footer-bg: linear-gradient(to top, #000000, #0A0A0A);
+    --lux-footer-border: rgba(212, 175, 55, 0.2);
+
+    --lux-modal-bg: rgba(15, 15, 20, 0.97);
+    --lux-modal-border: rgba(212, 175, 55, 0.3);
+    --bg-dark: var(--lux-modal-bg);
+
+    --lux-body-bg:
+        radial-gradient(circle at top right, rgba(212, 175, 55, 0.08), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(212, 175, 55, 0.06), transparent 25%),
+        linear-gradient(135deg, #000000, #0A0A0A, #121212);
+}
+
+/* ==========================================
+   LIGHT-THEME-ONLY PATCHES
+   Footer text needs its own overrides because .lux-footer's
+   children (h3, p, links) use var(--gold)/var(--gray) same as
+   everywhere else — but the footer is now a dark navy band in
+   light theme, so those same tokens (now dark navy / slate) would
+   be near-invisible on it. This block only fires when
+   data-theme="light" and does not touch dark theme at all.
+   ========================================== */
+
+[data-theme="light"] .lux-footer h3 {
+    color: #9FC2D4;
+}
+
+[data-theme="light"] .lux-footer p,
+[data-theme="light"] .lux-footer-desc,
+[data-theme="light"] .lux-footer-quote,
+[data-theme="light"] .lux-footer-links a,
+[data-theme="light"] .lux-footer-copyright {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+[data-theme="light"] .lux-footer-links a:hover {
+    color: #FFFFFF;
+}
+
+[data-theme="light"] .gold-line {
+    background: linear-gradient(to right, transparent, #9FC2D4, transparent);
+}
+
+/* Smooth the transition instead of an abrupt flip when toggling
+   client-side (has no effect on the zero-flash server-rendered
+   initial load, since there's nothing to transition FROM yet). */
+body, .lux-card, .lux-header, .lux-footer, .lux-btn {
+    transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}

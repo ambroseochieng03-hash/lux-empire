@@ -6,7 +6,7 @@
     display:none;
     background:none;
     border:none;
-    color:white;
+    color:var(--gold);
     font-size:2rem;
     cursor:pointer;
 }

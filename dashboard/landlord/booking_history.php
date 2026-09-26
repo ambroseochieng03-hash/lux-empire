@@ -42,6 +42,11 @@ require_once '../../includes/sidebar.php';
                 Every request you have answered, plus requests the tenant cancelled or that expired.
             </p>
 
+            <div style="background:rgba(212,175,55,0.08); border:1px solid rgba(212,175,55,0.25); border-radius:14px; padding:14px 18px; color:var(--gray); font-size:0.9rem; line-height:1.6; margin-bottom:22px;">
+                <i class="fa-solid fa-circle-info" style="color:var(--gold); margin-right:6px;"></i>
+                Entries here disappear automatically <?php echo (int) LANDLORD_BOOKING_HISTORY_VISIBLE_HOURS; ?> hours after being answered, so this page doesn't pile up with old requests. Nothing is deleted — refunds, disputes and tenant records are completely unaffected.
+            </div>
+
         </div>
 
         <div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap;">

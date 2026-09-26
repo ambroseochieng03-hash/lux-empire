@@ -18,9 +18,21 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 require_once __DIR__ . '/../config/app.php';
+
+/*
+ * Theme resolution — the cookie is read here, server-side, before
+ * any HTML is sent, so the correct theme is known on the very
+ * first paint (no flash of the wrong theme). 'light' is the
+ * platform default (Sept 2026 decision — older users found the
+ * dark theme hard to read). assets/js/theme-toggle.js keeps this
+ * cookie in sync on every toggle click, and for logged-in users
+ * also pushes the choice to their account via
+ * api/user/set_theme.php, so a login on a new device restores it.
+ */
+$luxActiveTheme = (isset($_COOKIE['lux_theme']) && $_COOKIE['lux_theme'] === 'dark') ? 'dark' : 'light';
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="<?php echo $luxActiveTheme; ?>">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -43,6 +55,9 @@ require_once __DIR__ . '/../config/app.php';
     <meta name="twitter:image" content="<?php echo BASE_URL . '/' . APP_OG_IMAGE; ?>">
 
     <title><?php echo APP_NAME; ?> | <?php echo APP_TAGLINE; ?></title>
+
+    <!-- Theme variables — MUST load before every other stylesheet -->
+    <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/theme.css">
 
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/fontawesome/css/fontawesome.min.css">

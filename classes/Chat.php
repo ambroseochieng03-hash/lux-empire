@@ -197,6 +197,14 @@ class Chat
                     bk.id IS NULL
                     OR bk.status IN ('rejected', 'cancelled')
                     OR (bk.status = 'approved' AND bk.updated_at <= (NOW() - INTERVAL " . (int) LANDLORD_CHAT_APPROVED_VISIBLE_DAYS . " DAY))
+                    OR (bk.status = 'approved' AND EXISTS (
+                        SELECT 1 FROM bookings bk2
+                        WHERE bk2.tenant_id = bk.tenant_id
+                        AND bk2.landlord_id = bk.landlord_id
+                        AND bk2.payment_status = 'paid'
+                        AND bk2.status = 'approved'
+                        AND bk2.id > bk.id
+                    ))
                 )
             )
         ";

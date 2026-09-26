@@ -839,3 +839,20 @@ CREATE TABLE driver_active_trip_lock (
 
 ALTER TABLE bookings
     ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+-- LUX EMPIRE — account-level theme preference
+-- SAVE AT: database/migrations/2026_09_26_add_theme_preference.sql
+--
+-- Cookie/localStorage already persist the choice per-device with no
+-- backend involvement at all. This column is ONLY for the
+-- account-sync half of the "both" persistence decision: so that
+-- when a user logs into a NEW device, their saved preference (not
+-- the new device's default) is what gets applied.
+--
+-- Not run automatically — apply it the same way you apply the rest
+-- of database/migrations/ (I don't know your migration tooling; if
+-- you run these by hand via phpMyAdmin/CLI, this is plain SQL and
+-- needs no framework).
+
+ALTER TABLE users
+    ADD COLUMN theme_preference ENUM('light', 'dark') NOT NULL DEFAULT 'light';    

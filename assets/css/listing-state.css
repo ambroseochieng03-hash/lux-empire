@@ -44,9 +44,9 @@
 }
 
 .lux-confirm-modal .lux-booking-modal-cancel {
-    background: rgba(255, 255, 255, 0.06);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: var(--glass);
+    color: var(--white);
+    border: 1px solid var(--lux-card-border);
     border-radius: 14px;
     padding: 12px 26px;
     cursor: pointer;
@@ -71,9 +71,9 @@
     gap: 6px;
     padding: 4px 12px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #ddd;
+    background: var(--glass);
+    border: 1px solid var(--lux-card-border);
+    color: var(--white);
     font-size: 0.72rem;
     font-weight: 600;
     white-space: nowrap;
@@ -86,7 +86,7 @@
     border-radius: 14px;
     background: rgba(212, 175, 55, 0.07);
     border: 1px solid rgba(212, 175, 55, 0.25);
-    color: #ddd;
+    color: var(--white);
     font-size: 0.9rem;
     line-height: 1.7;
     word-break: break-word;

@@ -8,6 +8,9 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
 $isLoggedIn = Session::isAuthenticated();
 
+require_once __DIR__ . '/../config/csrf.php';
+$luxThemeCsrfToken = Csrf::token();
+
 /*
  * True only when the physically-requested script lives under
  * /dashboard/ — SCRIPT_FILENAME always reflects the top-level entry
@@ -131,6 +134,9 @@ if ($isLoggedIn) {
 </div>
 
 <div class="lux-nav-buttons" id="luxNavButtons">
+<button type="button" class="lux-theme-toggle-btn" data-theme-toggle-btn aria-pressed="false" title="Switch between light and dark mode">
+    <i class="fa-solid fa-moon" data-theme-toggle-icon></i>
+</button>
 <?php
         $navMenuTriggerLabel = 'Access Empire';
 require __DIR__ . '/nav_menu.php';
@@ -146,6 +152,10 @@ require __DIR__ . '/nav_menu.php';
 <a href="#" data-tour="m-about" data-open-info-modal="about">About</a>
 <a href="#" data-tour="m-contact" data-open-info-modal="contact">Contact</a>
 <a href="<?php echo BASE_URL; ?>/forgot-password" data-tour="m-recover">Recover Your Account</a>
+<a href="#" data-theme-toggle-btn aria-pressed="false">
+    <i class="fa-solid fa-moon" data-theme-toggle-icon></i>
+    <span data-theme-toggle-label>Dark Mode</span>
+</a>
 </div>
 
 <?php else: ?>
@@ -168,6 +178,10 @@ require __DIR__ . '/nav_menu.php';
 </small>
 </div>
 </div>
+
+<button type="button" class="lux-theme-toggle-btn lux-theme-toggle-btn-dashboard" data-theme-toggle-btn aria-pressed="false" title="Switch between light and dark mode">
+    <i class="fa-solid fa-moon" data-theme-toggle-icon></i>
+</button>
 
 <?php if ($navNotifLink): ?>
 <!-- NOTIFICATION BELL -->
@@ -227,3 +241,37 @@ require __DIR__ . '/nav_menu.php';
 <script src="<?php echo BASE_URL; ?>/assets/js/navbar-notif-init.js"></script>
 <script src="<?php echo BASE_URL; ?>/assets/js/notification-bell.js"></script>
 <?php endif; ?>
+
+
+<style>
+.lux-theme-toggle-btn{
+    width:44px;
+    height:44px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    background:rgba(255,255,255,0.04);
+    border:1px solid var(--lux-header-border, rgba(212,175,55,0.25));
+    color:var(--gold);
+    font-size:1.15rem;
+    transition:0.2s;
+    flex-shrink:0;
+}
+.lux-theme-toggle-btn:hover{
+    background:rgba(212,175,55,0.12);
+}
+.lux-theme-toggle-btn-dashboard{
+    margin-right:12px;
+}
+</style>
+
+<script>
+    window.LUX_THEME_CONFIG = {
+        baseUrl: "<?php echo BASE_URL; ?>",
+        isLoggedIn: <?php echo $isLoggedIn ? 'true' : 'false'; ?>,
+        csrfToken: "<?php echo htmlspecialchars($luxThemeCsrfToken, ENT_QUOTES); ?>"
+    };
+</script>
+<script src="<?php echo BASE_URL; ?>/assets/js/theme-toggle.js"></script>

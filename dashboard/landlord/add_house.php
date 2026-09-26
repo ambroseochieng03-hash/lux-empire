@@ -53,12 +53,12 @@ require_once '../../includes/sidebar.php';
 }
 
 .landlord-alert{
-    background:rgba(255,0,0,0.08);
-    border:1px solid rgba(255,0,0,0.25);
+    background:var(--lux-danger-bg);
+    border:1px solid var(--lux-danger);
     padding:14px 18px;
     border-radius:14px;
     margin-bottom:25px;
-    color:#ffb3b3;
+    color:var(--lux-danger);
     word-break:break-word;
 }
 
@@ -75,7 +75,7 @@ require_once '../../includes/sidebar.php';
 
 .landlord-label{
     display:block;
-    color:white;
+    color:var(--white);
     margin-bottom:10px;
     font-weight:600;
 }
@@ -85,18 +85,18 @@ require_once '../../includes/sidebar.php';
 .landlord-file{
     width:100%;
     padding:16px;
-    border:none;
+    border:1px solid var(--lux-card-border);
     border-radius:16px;
     box-sizing:border-box;
     outline:none;
-    background:rgba(255,255,255,0.06);
-    color:white;
+    background:var(--glass);
+    color:var(--white);
     font-size:1rem;
 }
 
 .landlord-input::placeholder,
 .landlord-textarea::placeholder{
-    color:#9f9f9f;
+    color:var(--gray);
 }
 
 .landlord-textarea{
@@ -256,12 +256,12 @@ require_once '../../includes/sidebar.php';
     margin-bottom: 14px;
 }
 
-.landlord-media-tab {
+.landlord-media-tab{
     flex: 1;
     padding: 12px;
     border-radius: 14px;
     border: 1px solid rgba(212,175,55,0.3);
-    background: rgba(255,255,255,0.04);
+    background: var(--glass);
     color: var(--gray);
     cursor: pointer;
     font-weight: 600;
@@ -278,7 +278,7 @@ require_once '../../includes/sidebar.php';
     display:inline-flex;
     align-items:center;
     gap:10px;
-    color:white;
+    color:var(--white);
     font-weight:600;
     cursor:pointer;
     user-select:none;
@@ -296,7 +296,7 @@ require_once '../../includes/sidebar.php';
     height:22px;
     border-radius:6px;
     border:2px solid rgba(212,175,55,0.5);
-    background:rgba(255,255,255,0.05);
+    background:var(--glass);
     position:relative;
     transition:0.2s;
     flex-shrink:0;
@@ -314,7 +314,7 @@ require_once '../../includes/sidebar.php';
     display:flex;
     align-items:center;
     justify-content:center;
-    color:black;
+    color:var(--black);
     font-size:0.85rem;
     font-weight:bold;
 }

@@ -113,20 +113,20 @@ require_once '../../includes/sidebar.php';
 .lux-input{
     width:100%;
     padding:16px;
-    border:none;
+    border:1px solid var(--lux-card-border);
     border-radius:16px;
-    background:rgba(255,255,255,0.05);
-    color:white;
+    background:var(--glass);
+    color:var(--white);
     outline:none;
 }
 
 .lux-textarea{
     width:100%;
     padding:16px;
-    border:none;
+    border:1px solid var(--lux-card-border);
     border-radius:16px;
-    background:rgba(255,255,255,0.05);
-    color:white;
+    background:var(--glass);
+    color:var(--white);
     resize:none;
     outline:none;
 }
@@ -148,15 +148,16 @@ require_once '../../includes/sidebar.php';
     padding:16px 22px;
     border-radius:16px;
     text-decoration:none;
-    background:rgba(255,255,255,0.05);
-    color:white;
+    background:var(--glass);
+    border:1px solid var(--lux-card-border);
+    color:var(--white);
 }
 
 .landlord-checkbox-label{
     display:inline-flex;
     align-items:center;
     gap:10px;
-    color:white;
+    color:var(--white);
     font-weight:600;
     cursor:pointer;
     user-select:none;
@@ -174,7 +175,7 @@ require_once '../../includes/sidebar.php';
     height:22px;
     border-radius:6px;
     border:2px solid rgba(212,175,55,0.5);
-    background:rgba(255,255,255,0.05);
+    background:var(--glass);
     position:relative;
     transition:0.2s;
     flex-shrink:0;
@@ -192,7 +193,7 @@ require_once '../../includes/sidebar.php';
     display:flex;
     align-items:center;
     justify-content:center;
-    color:black;
+    color:var(--black);
     font-size:0.85rem;
     font-weight:bold;
 }
@@ -533,7 +534,7 @@ require_once '../../includes/sidebar.php';
                     <label style="
                         display:block;
                         margin-bottom:10px;
-                        color:white;
+                        color:var(--white);
                     ">
                         Images
                     </label>
@@ -567,7 +568,7 @@ require_once '../../includes/sidebar.php';
                     <label style="
                         display:block;
                         margin-bottom:10px;
-                        color:white;
+                        color:var(--white);
                     ">
                         Video
                     </label>
@@ -627,7 +628,7 @@ require_once '../../includes/sidebar.php';
         ">
 
             <h2 style="
-                color:white;
+                color:var(--white);
                 margin-bottom:20px;
             ">
                 Property Preview
@@ -681,7 +682,8 @@ require_once '../../includes/sidebar.php';
                     display:flex;
                     align-items:center;
                     justify-content:center;
-                    background:rgba(255,255,255,0.05);
+                    background:var(--glass);
+                    border:1px solid var(--lux-card-border);
                     color:var(--gold);
                     font-size:1.2rem;
                 ">
@@ -943,7 +945,7 @@ editHouseForm.addEventListener(
                 item.remove();
 
                 if (grid && grid.children.length === 0) {
-                    grid.outerHTML = '<div id="mediaEmptyPlaceholder" style="height:280px;border-radius:24px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);color:var(--gold);font-size:1.2rem;">No media uploaded yet</div>';
+                    grid.outerHTML = '<div id="mediaEmptyPlaceholder" style="height:280px;border-radius:24px;display:flex;align-items:center;justify-content:center;background:var(--glass);border:1px solid var(--lux-card-border);color:var(--gold);font-size:1.2rem;">No media uploaded yet</div>';
                 }
 
             } catch (error) {

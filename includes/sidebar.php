@@ -12,6 +12,7 @@ $user = Session::user();
  */
 $bottomNavPrimary = [];
 $bottomNavMore = [];
+$bottomNavDesktopExtra = [];
 
 if ($user === null) {
     $userRole = 'guest';
@@ -147,6 +148,16 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
         <?php endif; ?>
 
+        <button type="button" data-theme-toggle-btn aria-pressed="false" style="
+            display:flex; align-items:center; gap:10px; width:100%; text-align:left;
+            background:rgba(255,255,255,0.04); border:1px solid rgba(212,175,55,0.25);
+            color:var(--gold); border-radius:12px; padding:12px 14px; margin:6px 0 2px;
+            cursor:pointer; font-size:0.85rem; font-weight:600;
+        ">
+            <i class="fa-solid fa-moon" data-theme-toggle-icon></i>
+            <span data-theme-toggle-label>Dark Mode</span>
+        </button>
+
         <?php if (in_array($userRole, ['tenant', 'landlord', 'driver'], true)): ?>
             <button type="button" class="lux-nav-mode-sidebar-toggle" data-nav-mode-toggle="bottom" style="
                 display:flex; align-items:center; gap:10px; width:100%; text-align:left;
@@ -154,7 +165,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 color:var(--gold); border-radius:12px; padding:12px 14px; margin:6px 0 2px;
                 cursor:pointer; font-size:0.85rem; font-weight:600;
             ">
-                <i class="fa-solid fa-mobile-screen-button"></i> Use Bottom Bar (Mobile)
+                <i class="fa-solid fa-mobile-screen-button"></i> Use Bottom Bar
             </button>
         <?php endif; ?>
 
@@ -226,12 +237,6 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     @keyframes luxRowGlow {
         0%, 100% { box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.35), 0 0 10px rgba(212, 175, 55, 0.15); }
         50%      { box-shadow: inset 0 0 0 1px rgba(212, 175, 55, 0.65), 0 0 22px rgba(212, 175, 55, 0.40); }
-    }
-
-    @media (min-width: 769px) {
-        .lux-nav-mode-sidebar-toggle {
-            display: none !important;
-        }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -458,6 +463,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         $bottomNavMore = [
             ['url' => BASE_URL . '/tenant/notifications', 'icon' => 'fa-bell', 'label' => 'Notifications', 'badge' => 'notif'],
         ];
+        $bottomNavDesktopExtra = [
+            ['url' => BASE_URL . '/tenant/notifications', 'icon' => 'fa-bell', 'label' => 'Notifications', 'color' => '#42a5f5', 'match' => 'notifications.php', 'badge' => 'notif'],
+        ];
     } elseif ($userRole === 'landlord') {
         $bottomNavPrimary = [
             ['url' => BASE_URL . '/landlord', 'icon' => 'fa-gauge-high', 'label' => 'Home', 'color' => '#D4AF37', 'match' => 'dashboard.php'],
@@ -482,10 +490,13 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         $bottomNavMore = [
             ['url' => BASE_URL . '/driver/notifications', 'icon' => 'fa-bell', 'label' => 'Notifications', 'badge' => 'notif'],
         ];
+        $bottomNavDesktopExtra = [
+            ['url' => BASE_URL . '/driver/notifications', 'icon' => 'fa-bell', 'label' => 'Notifications', 'color' => '#42a5f5', 'match' => 'notifications.php', 'badge' => 'notif'],
+        ];
     }
 ?>
 
-<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/bottom-nav.css">
+<link rel="stylesheet" href="<?php echo BASE_URL; ?>/assets/css/nav-preference_desktop.css">
 
 <nav class="lux-bottom-nav">
     <?php foreach ($bottomNavPrimary as $item): ?>
@@ -505,6 +516,15 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 <span><?php echo htmlspecialchars($item['label']); ?></span>
             </a>
         <?php endif; ?>
+    <?php endforeach; ?>
+    <?php foreach ($bottomNavDesktopExtra as $item): ?>
+        <a href="<?php echo htmlspecialchars($item['url']); ?>"
+           class="lux-bottom-nav-item lux-bottom-nav-desktop-only<?php echo $currentPage === $item['match'] ? ' is-active' : ''; ?>"
+           style="--lux-icon-color: <?php echo htmlspecialchars($item['color']); ?>;">
+            <i class="fa-solid <?php echo htmlspecialchars($item['icon']); ?>"></i>
+            <span class="lux-bottom-nav-badge" id="luxBottomPrimaryBadge_<?php echo htmlspecialchars($item['badge']); ?>"></span>
+            <span><?php echo htmlspecialchars($item['label']); ?></span>
+        </a>
     <?php endforeach; ?>
     <button type="button" class="lux-bottom-nav-more-btn" id="luxBottomNavMoreBtn">
         <i class="fa-solid fa-ellipsis"></i>
@@ -532,6 +552,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         </div>
         <?php endif; ?>
         <div class="lux-nav-mode-toggle-row">
+            <span data-theme-toggle-label>Dark Mode</span>
+            <button type="button" data-theme-toggle-btn aria-pressed="false">
+                <i class="fa-solid fa-moon" data-theme-toggle-icon></i>
+            </button>
+        </div>
+        <div class="lux-nav-mode-toggle-row">
             <span>Switch to sidebar navigation</span>
             <button type="button" data-nav-mode-toggle="sidebar">Use Sidebar</button>
         </div>
@@ -542,6 +568,6 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     </div>
 </div>
 
-<script src="<?php echo BASE_URL; ?>/assets/js/nav-preference.js"></script>
+<script src="<?php echo BASE_URL; ?>/assets/js/nav-preference_desktop.js"></script>
 
 <?php endif; ?>

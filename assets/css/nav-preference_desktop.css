@@ -6,7 +6,7 @@
 }
 
 .lux-bottom-nav-desktop-only {
-    display: none;
+    display: none !important;
 }
 
     body.lux-nav-bottom .lux-sidebar-toggle {
@@ -265,7 +265,7 @@
    the navigation switch and sign-out controls and never shows a badge. */
 @media (min-width: 769px) {
     body.lux-nav-bottom .lux-bottom-nav-desktop-only {
-        display: flex;
+        display: flex !important;
     }
 
     body.lux-nav-bottom .lux-bottom-nav-more-grid,
@@ -275,5 +275,16 @@
 
     body.lux-nav-bottom .lux-bottom-nav-more-btn.has-unread i {
         text-shadow: none;
+    }
+}
+
+/* Desktop only: anchor every primary counter to its own icon instead of
+   the far-right edge of its equal-width navigation slot. This covers
+   both Chats and Notifications for tenants, landlords and drivers. */
+@media (min-width: 769px) {
+    body.lux-nav-bottom .lux-bottom-nav-item > .lux-bottom-nav-badge {
+        top: 0;
+        right: auto;
+        left: calc(50% + 5px);
     }
 }

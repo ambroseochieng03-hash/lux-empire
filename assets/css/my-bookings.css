@@ -1,14 +1,17 @@
 /* =========================================================
    LUX EMPIRE — MY BOOKINGS PAGE (dashboard/tenant/my_bookings.php)
-   Values below are moved verbatim from the previous <style> block
-   and inline style="" attributes — no visual/color changes.
+   Theme-converted: every hardcoded white/rgba(255,255,255,x) and
+   status color now routes through the shared theme variables in
+   assets/css/theme.css, so this page reads correctly in both
+   light and dark theme instead of going invisible in light.
    Depends on assets/css/bookings.css being loaded first for the
-   shared .lb-star / .status-* / modal classes reused below.
+   shared .lb-star / .status-* / modal classes reused below (that
+   file hasn't been shared with me yet — send it and I'll convert
+   it the same way).
    ========================================================= */
 
 /* =========================================
    CONTROLS BAR (tabs / search / sort / status)
-   — moved verbatim from the previous <style> block, unchanged.
 ========================================= */
 
 .booking-controls-bar{
@@ -26,8 +29,8 @@
 }
 
 .booking-tab-btn{
-    background:rgba(255,255,255,0.06);
-    border:1px solid rgba(255,255,255,0.1);
+    background:var(--glass);
+    border:1px solid var(--lux-card-border);
     color:var(--gray);
     padding:12px 20px;
     border-radius:14px;
@@ -38,12 +41,12 @@
 
 .booking-tab-btn:hover{
     border-color:rgba(212,175,55,0.4);
-    color:white;
+    color:var(--white);
 }
 
 .booking-tab-btn.is-active{
-    background:linear-gradient(135deg,#d4af37,#f5d76e);
-    color:black;
+    background:linear-gradient(135deg, var(--gold), var(--gold-secondary));
+    color:var(--black);
     border-color:transparent;
 }
 
@@ -57,9 +60,9 @@
 .booking-search-input{
     padding:12px 16px;
     border-radius:14px;
-    border:1px solid rgba(255,255,255,0.1);
-    background:rgba(255,255,255,0.05);
-    color:white;
+    border:1px solid var(--lux-card-border);
+    background:var(--glass);
+    color:var(--white);
     min-width:220px;
 }
 
@@ -71,9 +74,9 @@
 .booking-status-select{
     padding:12px 16px;
     border-radius:14px;
-    border:1px solid rgba(255,255,255,0.1);
-    background:rgba(255,255,255,0.05);
-    color:white;
+    border:1px solid var(--lux-card-border);
+    background:var(--glass);
+    color:var(--white);
     cursor:pointer;
 }
 
@@ -128,12 +131,12 @@
 }
 
 .mb-success-alert{
-    background:rgba(0,255,100,0.08);
-    border:1px solid rgba(0,255,100,0.25);
+    background:var(--lux-success-bg);
+    border:1px solid var(--lux-success);
     padding:14px;
     border-radius:14px;
     margin-bottom:25px;
-    color:#b8ffd2;
+    color:var(--lux-success);
 }
 
 .mb-grid{
@@ -197,7 +200,7 @@
 }
 
 .mb-house-title{
-    color:white;
+    color:var(--white);
     margin-bottom:10px;
     line-height:1.5;
 }
@@ -224,7 +227,8 @@
 .mb-status-badge{
     padding:10px 14px;
     border-radius:12px;
-    background:rgba(255,255,255,0.05);
+    background:var(--glass);
+    border:1px solid var(--lux-card-border);
     display:inline-block;
     margin-bottom:20px;
     font-weight:bold;
@@ -252,15 +256,15 @@
 
 .mb-btn-cancel,
 .mb-btn-cancel-trip{
-    background:#ff3b3b;
-    color:white;
+    background:var(--lux-danger);
+    color:#fff;
 }
 
 .mb-btn-delete,
 .mb-btn-delete-trip{
-    background:rgba(255,80,80,0.12);
-    color:#ff5252;
-    border:1px solid rgba(255,0,0,0.25);
+    background:var(--lux-danger-bg);
+    color:var(--lux-danger);
+    border:1px solid var(--lux-danger);
 }
 
 .mb-btn-cancel-trip,
@@ -308,7 +312,7 @@
 }
 
 .mb-truck-title{
-    color:white;
+    color:var(--white);
     margin-bottom:8px;
     line-height:1.5;
 }
@@ -319,7 +323,8 @@
 }
 
 .mb-truck-status-badge{
-    background:rgba(255,255,255,0.05);
+    background:var(--glass);
+    border:1px solid var(--lux-card-border);
     padding:12px 16px;
     border-radius:14px;
     font-weight:bold;
@@ -329,11 +334,11 @@
    so they get their own color classes (kept distinct from the
    .status-* classes in bookings.css, which are house-booking only). */
 
-.truck-status-pending{ color:orange; }
-.truck-status-accepted{ color:#00c853; }
-.truck-status-in_transit{ color:#42a5f5; }
-.truck-status-completed{ color:lightgreen; }
-.truck-status-cancelled{ color:#ff5252; }
+.truck-status-pending{ color:var(--lux-warning); }
+.truck-status-accepted{ color:var(--lux-success); }
+.truck-status-in_transit{ color:var(--lux-info); }
+.truck-status-completed{ color:var(--lux-success); }
+.truck-status-cancelled{ color:var(--lux-danger); }
 
 .mb-truck-field{
     margin-bottom:20px;
@@ -349,7 +354,7 @@
 }
 
 .mb-truck-field-value{
-    color:white;
+    color:var(--white);
     line-height:1.7;
 }
 
@@ -361,7 +366,8 @@
 }
 
 .mb-driver-box{
-    background:rgba(255,255,255,0.04);
+    background:var(--glass);
+    border:1px solid var(--lux-card-border);
     padding:16px;
     border-radius:16px;
     margin-bottom:25px;
@@ -374,7 +380,7 @@
 
 .mb-message-driver-btn{
     text-decoration:none;
-    background:rgba(255,255,255,0.08);
+    background:var(--glass);
     color:var(--gold);
     border:1px solid var(--gold);
     padding:14px 20px;
@@ -387,18 +393,18 @@
 }
 
 .mb-driver-name{
-    color:white;
+    color:var(--white);
     margin-bottom:6px;
 }
 
 .mb-driver-phone{
-    color:white;
+    color:var(--white);
 }
 
 .mb-btn-track{
     text-decoration:none;
-    background:#42a5f5;
-    color:white;
+    background:var(--lux-info);
+    color:#fff;
     padding:14px 20px;
     border-radius:16px;
     font-weight:bold;
@@ -407,8 +413,9 @@
 
 .mb-btn-edit{
     text-decoration:none;
-    background:rgba(255,255,255,0.08);
-    color:white;
+    background:var(--glass);
+    border:1px solid var(--lux-card-border);
+    color:var(--white);
     padding:14px 20px;
     border-radius:16px;
     font-weight:bold;

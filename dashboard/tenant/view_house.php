@@ -236,7 +236,7 @@ require_once '../../includes/sidebar.php';
 
             <!-- PRICE -->
             <div class="house-price">
-                <i class="fa-solid fa-sack-dollar vh-gold-icon"></i> KES <?php echo number_format($house['price']); ?> / month
+                KES <?php echo number_format($house['price']); ?> / month
             </div>
 
             <!-- DESCRIPTION -->
@@ -253,22 +253,22 @@ require_once '../../includes/sidebar.php';
 
                 <?php if ($bedroomsCount > 0): ?>
                 <div class="house-box">
-                    <i class="fa-solid fa-bed vh-gold-icon"></i> Bedrooms: <?php echo $bedroomsCount; ?>
+                    Bedrooms: <?php echo $bedroomsCount; ?>
                 </div>
                 <?php endif; ?>
 
                 <?php if ($bathroomsCount > 0): ?>
                 <div class="house-box">
-                    <i class="fa-solid fa-bath vh-gold-icon"></i> Bathrooms: <?php echo $bathroomsCount; ?>
+                    Bathrooms: <?php echo $bathroomsCount; ?>
                 </div>
                 <?php endif; ?>
 
                 <div class="house-box">
-                    <i class="fa-solid fa-location-dot vh-gold-icon"></i> Location: <?php echo htmlspecialchars($house['location']); ?>
+                    Location: <?php echo htmlspecialchars($house['location']); ?>
                 </div>
 
                 <div class="house-box">
-                    <i class="fa-solid fa-star vh-gold-icon"></i> Rating:
+                    Rating:
                     <?php
                         $rating = (int)($house['rating'] ?? 0);
                         for ($i = 1; $i <= 5; $i++) {

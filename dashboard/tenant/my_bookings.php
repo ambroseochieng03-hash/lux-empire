@@ -37,6 +37,25 @@ $houseModel = new House();
 
 $bookings = $bookingModel->getBookingsByTenant($tenantId);
 
+/*
+ * A tenant can have more than one APPROVED booking with the SAME
+ * landlord (different properties, one after another) — only the
+ * MOST RECENT one's "Message Landlord" button stays available,
+ * mirroring ChatGuard::isFinishedLandlordConversation()'s "superseded"
+ * rule so the tenant never sees two live-looking chat entry points
+ * to the same person. Precomputed once per landlord here rather than
+ * per booking inside the render loop below.
+ */
+$landlordIdsWithApprovedBooking = array_values(array_unique(array_filter(array_map(
+    static fn ($b) => ($b['status'] === 'approved') ? (int) $b['landlord_id'] : null,
+    $bookings
+))));
+
+$latestApprovedBookingIdByLandlord = [];
+foreach ($landlordIdsWithApprovedBooking as $landlordIdForLookup) {
+    $latestApprovedBookingIdByLandlord[$landlordIdForLookup] = $bookingModel->getLatestApprovedBookingId($tenantId, $landlordIdForLookup);
+}
+
 $db = new Database();
 $pdo = $db->connect();
 
@@ -138,7 +157,7 @@ require_once '../../includes/sidebar.php';
         <div class="mb-header">
 
             <h1 class="tenant-title mb-title">
-                <i class="fa-solid fa-crown"></i> My Luxury Bookings
+                My Bookings
             </h1>
 
             <p class="mb-subtitle">
@@ -359,9 +378,16 @@ require_once '../../includes/sidebar.php';
                                 </div>
 
                                 <?php
-                                    $isPaid = ($booking['payment_status'] ?? 'unpaid') === 'paid';
-                                    $isLive = $isPaid && in_array($status, ['pending', 'approved'], true);
-                                    $showContact = $isLive && in_array($status, ListingState::contactRevealStatuses(), true);
+                                $isPaid = ($booking['payment_status'] ?? 'unpaid') === 'paid';
+                                $isLive = $isPaid && in_array($status, ['pending', 'approved'], true);
+                                $showContact = $isLive && in_array($status, ListingState::contactRevealStatuses(), true);
+
+                                // Only the tenant's MOST RECENT approved booking with this
+                                // landlord keeps a working "Message Landlord" entry point —
+                                // an older, superseded one no longer has a live conversation
+                                // behind it (see ChatGuard's superseded-booking rule).
+                                $canMessageLandlord = ($status !== 'approved')
+                                    || (($latestApprovedBookingIdByLandlord[(int) $booking['landlord_id']] ?? null) === (int) $booking['id']);
                                     $refundStatus = $booking['refund_status'] ?? null;
                                     $usedVoucher = !empty($booking['waiver_id']);
                                     $waiverStatus = $booking['waiver_status'] ?? null;
@@ -410,7 +436,7 @@ require_once '../../includes/sidebar.php';
                                 <!-- ACTIONS -->
                                 <div class="tenant-actions mb-actions">
 
-                                    <?php if ($isLive): ?>
+                                    <?php if ($isLive && $canMessageLandlord): ?>
 
                                         <button type="button"
                                                 class="lux-btn chat-starter-btn mb-message-driver-btn"

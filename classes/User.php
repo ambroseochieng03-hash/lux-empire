@@ -592,4 +592,48 @@ class User {
 
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    /**
+     * UPDATE THEME PREFERENCE — account-level sync for the
+     * light/dark toggle (assets/js/theme-toggle.js /
+     * api/user/set_theme.php). Requires the migration in
+     * database/migrations/2026_09_26_add_theme_preference.sql to
+     * have been applied (users.theme_preference column).
+     */
+    public function updateThemePreference(int $userId, string $theme): bool
+    {
+        if (!in_array($theme, ['light', 'dark'], true)) {
+            return false;
+        }
+
+        $stmt = $this->conn->prepare("
+            UPDATE " . $this->table . "
+            SET theme_preference = :theme
+            WHERE id = :id
+        ");
+
+        $stmt->execute([
+            ':theme' => $theme,
+            ':id' => $userId
+        ]);
+
+        return true;
+    }
+
+    /**
+     * GET THEME PREFERENCE — used by includes/header.php on login
+     * / first request from a new device (no cookie yet) to restore
+     * the account's saved theme instead of falling back to the
+     * global 'light' default.
+     */
+    public function getThemePreference(int $userId): ?string
+    {
+        $stmt = $this->conn->prepare("
+            SELECT theme_preference FROM " . $this->table . " WHERE id = :id LIMIT 1
+        ");
+        $stmt->execute([':id' => $userId]);
+        $value = $stmt->fetchColumn();
+
+        return $value !== false ? (string) $value : null;
+    }
 }

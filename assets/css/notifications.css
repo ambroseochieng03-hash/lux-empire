@@ -31,7 +31,8 @@
     padding: 18px;
     border-radius: 16px;
     margin-bottom: 12px;
-    background: rgba(255,255,255,0.03);
+    background: var(--glass);
+    border: 1px solid var(--lux-card-border);
     cursor: pointer;
 }
 
@@ -45,7 +46,7 @@
     font-size: 1.2rem;
 }
 
-.notif-title { color: white; font-weight: 600; margin-bottom: 4px; }
+.notif-title { color: var(--white); font-weight: 600; margin-bottom: 4px; }
 .notif-message { color: var(--gray); font-size: 0.9rem; }
 .notif-time { color: var(--gray); font-size: 0.75rem; margin-top: 6px; }
 
@@ -73,6 +74,6 @@
 }
 
 .notif-clear-btn:hover {
-    color: #ff5252;
-    background: rgba(255,82,82,0.1);
+    color: var(--lux-danger);
+    background: var(--lux-danger-bg);
 }

@@ -75,7 +75,7 @@ $csrfToken = Csrf::token();
     }
 
     .house-title{
-        color:white;
+        color:var(--white);
         margin-bottom:10px;
         font-size:1.5rem;
         line-height:1.4;
@@ -125,8 +125,8 @@ $csrfToken = Csrf::token();
     }
 
     .edit-btn{
-        background:linear-gradient(135deg,#d4af37,#f5d76e);
-        color:black;
+        background:linear-gradient(135deg, var(--gold), var(--gold-secondary));
+        color:var(--black);
     }
 
     .edit-btn:hover{
@@ -134,8 +134,8 @@ $csrfToken = Csrf::token();
     }
 
     .delete-btn{
-        background:#ff3b3b;
-        color:white;
+        background:var(--lux-danger);
+        color:#fff;
     }
 
     .delete-btn:hover{
@@ -246,12 +246,12 @@ $csrfToken = Csrf::token();
         <?php if (isset($_GET['success'])): ?>
 
             <div style="
-                background: rgba(0,255,100,0.08);
-                border: 1px solid rgba(0,255,100,0.25);
+                background: var(--lux-success-bg);
+                border: 1px solid var(--lux-success);
                 padding: 14px;
                 border-radius: 14px;
                 margin-bottom: 25px;
-                color: #b8ffd2;
+                color: var(--lux-success);
             ">
                 <?php echo htmlspecialchars($_GET['success']); ?>
             </div>
@@ -262,12 +262,12 @@ $csrfToken = Csrf::token();
         <?php if (isset($_GET['error'])): ?>
 
             <div style="
-                background: rgba(255,0,0,0.08);
-                border: 1px solid rgba(255,0,0,0.25);
+                background: var(--lux-danger-bg);
+                border: 1px solid var(--lux-danger);
                 padding: 14px;
                 border-radius: 14px;
                 margin-bottom: 25px;
-                color: #ffb3b3;
+                color: var(--lux-danger);
             ">
                 <?php echo htmlspecialchars($_GET['error']); ?>
             </div>
@@ -434,7 +434,7 @@ $csrfToken = Csrf::token();
                                     <?php for($i = 1; $i <= 5; $i++): ?>
 
                                         <span style="
-                                            color: <?php echo ($i <= $rating) ? '#d4af37' : 'rgba(255,255,255,0.2)'; ?>;
+                                            color: <?php echo ($i <= $rating) ? '#d4af37' : 'var(--lux-card-border)'; ?>;
                                             text-shadow: <?php echo ($i <= $rating) ? '0 0 8px rgba(212,175,55,0.4)' : 'none'; ?>;
                                             transition:0.3s;
                                         ">
