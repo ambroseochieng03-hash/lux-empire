@@ -79,9 +79,9 @@
     padding:14px 18px;
     border-radius:14px;
     text-decoration:none;
-    color:white;
+    color:var(--white);
     margin-bottom:10px;
-    background:rgba(255,255,255,0.04);
+    background:var(--glass);
     transition:0.3s;
 }
 
@@ -100,7 +100,7 @@
 
 .lux-activity-item{
     padding:15px;
-    border-bottom:1px solid rgba(255,255,255,0.05);
+    border-bottom:1px solid var(--lux-card-border);
     color:var(--gray);
 }
 
@@ -180,7 +180,7 @@
 ========================================= */
 
 .lux-tenant-action-title{
-    color:white;
+    color:var(--white);
     margin-bottom:10px;
 }
 
@@ -193,7 +193,7 @@
 ========================================= */
 
 .lux-activity-title{
-    color:white;
+    color:var(--white);
     margin-bottom:20px;
 }
 

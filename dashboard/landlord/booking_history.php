@@ -50,7 +50,7 @@ require_once '../../includes/sidebar.php';
         </div>
 
         <div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap;">
-            <a class="lux-btn" style="background:rgba(255,255,255,0.06); color:#fff;" href="<?php echo BASE_URL; ?>/booking-requests">Pending Requests</a>
+            <a class="lux-btn" style="background:var(--glass); color:var(--white);" href="<?php echo BASE_URL; ?>/booking-requests">Pending Requests</a>
             <a class="lux-btn" href="<?php echo BASE_URL; ?>/dashboard/landlord/booking_history.php">History</a>
         </div>
 

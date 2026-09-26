@@ -32,8 +32,8 @@
     margin: 6vh auto;
     max-height: 88vh;
     overflow-y: auto;
-    background: var(--BRAND_DARK, #0a0a0a);
-    border: 1px solid rgba(212, 175, 55, 0.3);
+    background: var(--lux-modal-bg);
+    border: 1px solid var(--lux-modal-border);
     border-radius: 12px;
     padding: 28px;
 }
@@ -44,7 +44,7 @@
     right: 16px;
     background: none;
     border: none;
-    color: #fff;
+    color: var(--white);
     font-size: 22px;
     cursor: pointer;
 }
@@ -57,7 +57,7 @@
     display: block;
     margin-bottom: 6px;
     font-size: 14px;
-    color: #ccc;
+    color: var(--gray);
 }
 
 .hf-field select,
@@ -65,9 +65,9 @@
     width: 100%;
     padding: 10px 12px;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: #141414;
-    color: #fff;
+    border: 1px solid var(--lux-card-border);
+    background: var(--glass);
+    color: var(--white);
 }
 
 .hf-field select:disabled,
@@ -118,7 +118,7 @@
     top: 14px;
     height: 4px;
     border-radius: 2px;
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--lux-card-border);
     width: 100%;
 }
 
@@ -135,7 +135,7 @@
     justify-content: space-between;
     margin-top: 10px;
     font-size: 13px;
-    color: #D4AF37;
+    color: var(--gold);
 }
 
 .hf-modal-actions {
@@ -156,7 +156,7 @@
     border-radius: 10px;
     padding: 14px 18px;
     margin-bottom: 18px;
-    color: #D4AF37;
+    color: var(--gold);
     font-size: 14px;
 }
 
@@ -172,5 +172,5 @@
     grid-column: 1 / -1;
     text-align: center;
     padding: 40px 0;
-    color: #999;
+    color: var(--gray);
 }

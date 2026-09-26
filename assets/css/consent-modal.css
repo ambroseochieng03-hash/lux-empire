@@ -7,11 +7,6 @@
 .consent-modal{
     position:fixed;
     inset:0;
-    /*
-     * Was 3000 — bumped very high because assets/css/navbar.css
-     * hasn't been shared with me, so its actual z-index is unknown.
-     * This guarantees the modal renders above the navbar regardless.
-     */
     z-index:999999;
     display:flex;
     align-items:center;
@@ -36,11 +31,11 @@
     width:100%;
     max-height:85vh;
     overflow-y:auto;
-    background:#0f0f0f;
-    border:1px solid rgba(212,175,55,0.3);
+    background:var(--lux-modal-bg);
+    border:1px solid var(--lux-modal-border);
     border-radius:24px;
     padding:35px;
-    box-shadow:0 25px 70px rgba(0,0,0,0.6);
+    box-shadow:0 25px 70px rgba(0,0,0,0.35);
 }
 
 .consent-modal-title{
@@ -51,7 +46,7 @@
 }
 
 .consent-modal-body{
-    color:rgba(255,255,255,0.85);
+    color:var(--white);
     line-height:1.8;
     font-size:0.95rem;
 }
@@ -74,8 +69,8 @@
     gap:12px;
     margin-top:24px;
     padding-top:20px;
-    border-top:1px solid rgba(255,255,255,0.1);
-    color:white;
+    border-top:1px solid var(--lux-card-border);
+    color:var(--white);
     font-size:0.9rem;
     line-height:1.6;
     cursor:pointer;
@@ -95,14 +90,14 @@
     margin:16px auto 0;
     background:transparent;
     border:none;
-    color:rgba(255,255,255,0.5);
+    color:var(--gray);
     text-decoration:underline;
     cursor:pointer;
     font-size:0.85rem;
 }
 
 .consent-modal-decline-btn:hover{
-    color:#ff5252;
+    color:var(--lux-danger);
 }
 
 /*

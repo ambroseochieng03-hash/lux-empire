@@ -109,14 +109,13 @@ if ((int)$reset['used'] === 1) {
         <?php if (isset($_GET['error'])): ?>
 
             <div style="
-                background:rgba(255,77,77,0.08);
-                border:1px solid rgba(255,77,77,0.25);
-                color:#ffb3b3;
+                background:var(--lux-danger-bg);
+                border:1px solid var(--lux-danger);
+                color:var(--lux-danger);
                 padding:16px;
                 border-radius:16px;
                 margin-bottom:25px;
                 text-align:center;
-                box-shadow:0 10px 30px rgba(255,0,0,0.08);
             ">
 
                 <i class="fa-solid fa-triangle-exclamation"></i>
@@ -148,7 +147,10 @@ if ((int)$reset['used'] === 1) {
                         padding:14px;
                         margin-top:8px;
                         border-radius:14px;
-                        border:none;
+                        border:1px solid var(--lux-card-border);
+                        background:var(--glass);
+                        color:var(--white);
+                        box-sizing:border-box;
                     ">
             </div>
 
@@ -162,7 +164,10 @@ if ((int)$reset['used'] === 1) {
                         padding:14px;
                         margin-top:8px;
                         border-radius:14px;
-                        border:none;
+                        border:1px solid var(--lux-card-border);
+                        background:var(--glass);
+                        color:var(--white);
+                        box-sizing:border-box;
                     ">
             </div>
 

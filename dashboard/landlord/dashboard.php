@@ -96,7 +96,7 @@ require_once '../../includes/sidebar.php';
 
             <div>
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
-                    <h3 style="color:white; margin:0;">
+                    <h3 style="color:var(--white); margin:0;">
                         <?php echo $isPro ? 'Pro Landlord' : 'Free Plan'; ?>
                     </h3>
                     <?php if ($isPro): ?>
@@ -199,7 +199,7 @@ require_once '../../includes/sidebar.php';
             </div>
 
             <h2 style="
-                color:orange;
+                color:var(--lux-warning);
                 font-size:2.2rem;
             ">
                 <?php echo $pendingBookings; ?>
@@ -222,7 +222,7 @@ require_once '../../includes/sidebar.php';
             </div>
 
             <h2 style="
-                color:lightgreen;
+                color:var(--lux-success);
                 font-size:2.2rem;
             ">
                 <?php echo $approvedBookings; ?>
@@ -255,7 +255,7 @@ require_once '../../includes/sidebar.php';
            ">
 
             <h3 style="
-                color:white;
+                color:var(--white);
                 margin-bottom:10px;
             ">
                 Add Property
@@ -278,7 +278,7 @@ require_once '../../includes/sidebar.php';
            ">
 
             <h3 style="
-                color:white;
+                color:var(--white);
                 margin-bottom:10px;
             ">
                 Manage Properties
@@ -301,7 +301,7 @@ require_once '../../includes/sidebar.php';
            ">
 
             <h3 style="
-                color:white;
+                color:var(--white);
                 margin-bottom:10px;
             ">
                 Booking Requests
@@ -331,7 +331,7 @@ require_once '../../includes/sidebar.php';
         ">
 
             <h2 style="
-                color:white;
+                color:var(--white);
                 font-size:1.8rem;
             ">
                 Recent Booking Activity
@@ -353,7 +353,7 @@ require_once '../../includes/sidebar.php';
 
                 <div class="tenant-flex" style="
                     padding:18px;
-                    border-bottom:1px solid rgba(255,255,255,0.05);
+                    border-bottom:1px solid var(--lux-card-border);
                     display:flex;
                     justify-content:space-between;
                     align-items:center;
@@ -364,7 +364,7 @@ require_once '../../includes/sidebar.php';
                     <div>
 
                         <div style="
-                            color:white;
+                            color:var(--white);
                             margin-bottom:5px;
                         ">
                             Booking #<?php echo $booking['id']; ?>
@@ -380,11 +380,11 @@ require_once '../../includes/sidebar.php';
                         color:
                         <?php
                             if ($booking['status'] == 'approved') {
-                                echo 'lightgreen';
+                                echo 'var(--lux-success)';
                             } elseif ($booking['status'] == 'rejected') {
-                                echo 'red';
+                                echo 'var(--lux-danger)';
                             } else {
-                                echo 'orange';
+                                echo 'var(--lux-warning)';
                             }
                         ?>;
                         font-weight:bold;

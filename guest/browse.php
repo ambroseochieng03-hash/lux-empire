@@ -276,17 +276,17 @@ require_once __DIR__ . '/../includes/navbar.php';
                 .request-input {
                     width:100%;
                     padding:16px;
-                    border:none;
+                    border:1px solid var(--lux-card-border);
                     border-radius:16px;
-                    background:rgba(255,255,255,0.05);
-                    color:white;
+                    background:var(--glass);
+                    color:var(--white);
                     outline:none;
                     font-size:1rem;
                 }
-                .request-input::placeholder { color:#999; }
+                .request-input::placeholder { color:var(--gray); }
                 .trip-type-btn.is-active {
-                    background: linear-gradient(135deg, gold, #8f6b00) !important;
-                    color: black !important;
+                    background: linear-gradient(135deg, var(--gold), var(--gold-secondary)) !important;
+                    color: var(--black) !important;
                 }
                 @media (max-width: 768px) {
                     .request-card { padding:22px; border-radius:24px; }
@@ -298,7 +298,7 @@ require_once __DIR__ . '/../includes/navbar.php';
 
                 <div class="lux-card request-card">
 
-                    <h2 style="color:white; margin-bottom:25px; font-size:1.8rem;">
+                    <h2 style="color:var(--white); margin-bottom:25px; font-size:1.8rem;">
                         Request Truck
                     </h2>
 
@@ -365,7 +365,7 @@ require_once __DIR__ . '/../includes/navbar.php';
 
                         <!-- ITEMS -->
                         <div style="margin-bottom:22px;">
-                            <button type="button" id="openItemsModalBtn" class="lux-btn" style="width:100%; padding:14px; background:rgba(255,255,255,0.06); color:white;">
+                            <button type="button" id="openItemsModalBtn" class="lux-btn" style="width:100%; padding:14px; background:var(--glass); color:var(--white);">
                                 <i class="fa-solid fa-list-check"></i> List Your Items <span id="itemsCountBadge" style="color:var(--gold);"></span>
                             </button>
                         </div>
@@ -412,9 +412,9 @@ require_once __DIR__ . '/../includes/navbar.php';
         <div id="itemsModal" style="display:none; position:fixed; inset:0; z-index:2000; align-items:center; justify-content:center; padding:20px;">
             <div id="itemsModalOverlay" style="position:absolute; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px);"></div>
 
-            <div style="position:relative; max-width:480px; width:100%; max-height:80vh; overflow-y:auto; background:rgba(15,15,20,0.97); border:1px solid rgba(212,175,55,0.3); border-radius:22px; padding:28px;">
+            <div style="position:relative; max-width:480px; width:100%; max-height:80vh; overflow-y:auto; background:var(--lux-modal-bg); border:1px solid var(--lux-modal-border); border-radius:22px; padding:28px;">
 
-                <h2 style="color:gold; font-family:'Cinzel', serif; font-size:1.3rem; margin-bottom:8px;">
+                <h2 style="color:var(--gold); font-family:'Cinzel', serif; font-size:1.3rem; margin-bottom:8px;">
                     What are you moving?
                 </h2>
                 <p style="color:var(--gray); font-size:0.9rem; margin-bottom:20px;">
@@ -423,13 +423,13 @@ require_once __DIR__ . '/../includes/navbar.php';
 
                 <div id="itemsRowsContainer" style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;"></div>
 
-                <button type="button" id="addItemRowBtn" class="lux-btn" style="width:100%; background:rgba(255,255,255,0.06); color:white; padding:12px; margin-bottom:20px;">
+                <button type="button" id="addItemRowBtn" class="lux-btn" style="width:100%; background:var(--glass); color:var(--white); padding:12px; margin-bottom:20px;">
                     <i class="fa-solid fa-plus"></i> Add Another Item
                 </button>
 
                 <div style="display:flex; gap:12px;">
                     <button type="button" id="saveItemsBtn" class="lux-btn" style="flex:1; padding:14px;">Save</button>
-                    <button type="button" id="closeItemsModalBtn" style="flex:1; padding:14px; background:rgba(255,255,255,0.06); color:white; border:1px solid rgba(255,255,255,0.15); border-radius:14px; cursor:pointer;">Cancel</button>
+                    <button type="button" id="closeItemsModalBtn" style="flex:1; padding:14px; background:var(--glass); color:var(--white); border:1px solid var(--lux-card-border); border-radius:14px; cursor:pointer;">Cancel</button>
                 </div>
 
             </div>

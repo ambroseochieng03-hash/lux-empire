@@ -1,5 +1,5 @@
 /* =========================================================
-   LUX EMPIRE — AUTH FORMS (register_landlord.php, register_driver.php)
+   LUX EMPIRE — AUTH FORMS (login.php, register_landlord.php, register_driver.php)
    SAVE AT: assets/css/auth-forms.css
    ========================================================= */
 
@@ -43,15 +43,15 @@
 }
 
 .auth-alert-error{
-    background:rgba(255,0,0,0.08);
-    border:1px solid rgba(255,0,0,0.25);
-    color:#ffb3b3;
+    background:var(--lux-danger-bg);
+    border:1px solid var(--lux-danger);
+    color:var(--lux-danger);
 }
 
 .auth-alert-success{
-    background:rgba(0,255,100,0.08);
-    border:1px solid rgba(0,255,100,0.25);
-    color:#b8ffd2;
+    background:var(--lux-success-bg);
+    border:1px solid var(--lux-success);
+    color:var(--lux-success);
 }
 
 .auth-field{
@@ -59,7 +59,7 @@
 }
 
 .auth-field label{
-    color:rgba(255,255,255,0.85);
+    color:var(--white);
     font-size:0.9rem;
     display:block;
 }
@@ -69,15 +69,15 @@
     padding:14px;
     margin-top:8px;
     border-radius:14px;
-    border:1px solid rgba(255,255,255,0.08);
-    background:rgba(255,255,255,0.05);
-    color:white;
+    border:1px solid var(--lux-card-border);
+    background:var(--glass);
+    color:var(--white);
     font-size:1rem;
     box-sizing:border-box;
 }
 
 .auth-field input::placeholder{
-    color:rgba(255,255,255,0.35);
+    color:var(--gray);
 }
 
 .auth-field input:focus{
@@ -119,7 +119,7 @@
 }
 
 /* =========================================
-   OTP STEP (shared by register_landlord.php / register_driver.php)
+   OTP STEP (shared by register_landlord.php / register_driver.php / login.php)
 ========================================= */
 
 .auth-otp-title{
@@ -154,7 +154,8 @@
 }
 
 .auth-resend-row button:disabled{
-    color:rgba(255,255,255,0.3);
+    color:var(--gray);
+    opacity:0.5;
     cursor:not-allowed;
     text-decoration:none;
 }
@@ -173,7 +174,7 @@
     display:flex;
     align-items:center;
     gap:8px;
-    color:white;
+    color:var(--white);
     font-weight:normal;
     cursor:pointer;
 }

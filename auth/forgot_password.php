@@ -34,12 +34,12 @@ require_once '../includes/navbar.php';
         <!-- Info -->
         <?php if (isset($_GET['success'])): ?>
             <div style="
-                background: rgba(0,255,100,0.08);
-                border: 1px solid rgba(0,255,100,0.25);
+                background: var(--lux-success-bg);
+                border: 1px solid var(--lux-success);
                 padding: 12px;
                 border-radius: 12px;
                 margin-bottom: 20px;
-                color: #b8ffd2;
+                color: var(--lux-success);
                 text-align:center;
             ">
                 <?php echo htmlspecialchars($_GET['success']); ?>
@@ -58,7 +58,10 @@ require_once '../includes/navbar.php';
                         padding:14px;
                         margin-top:8px;
                         border-radius:14px;
-                        border:none;
+                        border:1px solid var(--lux-card-border);
+                        background:var(--glass);
+                        color:var(--white);
+                        box-sizing:border-box;
                     ">
             </div>
 

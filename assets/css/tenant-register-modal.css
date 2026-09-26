@@ -30,11 +30,11 @@
     width:100%;
     max-height:90vh;
     overflow-y:auto;
-    background:#0f0f0f;
-    border:1px solid rgba(212,175,55,0.3);
+    background:var(--lux-modal-bg);
+    border:1px solid var(--lux-modal-border);
     border-radius:24px;
     padding:35px;
-    box-shadow:0 25px 70px rgba(0,0,0,0.6);
+    box-shadow:0 25px 70px rgba(0,0,0,0.35);
 }
 
 .tenant-register-modal-close{
@@ -43,14 +43,14 @@
     right:16px;
     background:transparent;
     border:none;
-    color:rgba(255,255,255,0.5);
+    color:var(--gray);
     font-size:1.5rem;
     cursor:pointer;
     line-height:1;
 }
 
 .tenant-register-modal-close:hover{
-    color:white;
+    color:var(--white);
 }
 
 .tenant-register-modal-title{
@@ -87,7 +87,7 @@
     content:"";
     flex:1;
     height:1px;
-    background:rgba(255,255,255,0.1);
+    background:var(--lux-card-border);
 }
 
 .tr-divider span{
@@ -99,7 +99,7 @@
 }
 
 .tenant-register-modal-field label{
-    color:rgba(255,255,255,0.85);
+    color:var(--white);
     font-size:0.85rem;
     display:block;
     margin-bottom:6px;
@@ -109,9 +109,9 @@
     width:100%;
     padding:12px 14px;
     border-radius:12px;
-    border:1px solid rgba(255,255,255,0.08);
-    background:rgba(255,255,255,0.05);
-    color:white;
+    border:1px solid var(--lux-card-border);
+    background:var(--glass);
+    color:var(--white);
     font-size:1rem;
     box-sizing:border-box;
 }
@@ -137,9 +137,9 @@
 }
 
 .tr-error{
-    background:rgba(255,0,0,0.08);
-    border:1px solid rgba(255,0,0,0.25);
-    color:#ffb3b3;
+    background:var(--lux-danger-bg);
+    border:1px solid var(--lux-danger);
+    color:var(--lux-danger);
     padding:10px 12px;
     border-radius:10px;
     font-size:0.85rem;
@@ -165,7 +165,8 @@
 }
 
 .tr-resend-row button:disabled{
-    color:rgba(255,255,255,0.3);
+    color:var(--gray);
+    opacity:0.5;
     cursor:not-allowed;
     text-decoration:none;
 }
