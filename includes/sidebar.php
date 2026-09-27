@@ -151,7 +151,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         <button type="button" data-theme-toggle-btn aria-pressed="false" style="
             display:flex; align-items:center; gap:10px; width:100%; text-align:left;
             background:rgba(255,255,255,0.04); border:1px solid rgba(212,175,55,0.25);
-            color:var(--gold); border-radius:12px; padding:12px 14px; margin:6px 0 2px;
+            color:#d4af37; border-radius:12px; padding:12px 14px; margin:6px 0 2px;
             cursor:pointer; font-size:0.85rem; font-weight:600;
         ">
             <i class="fa-solid fa-moon" data-theme-toggle-icon></i>
@@ -162,7 +162,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
             <button type="button" class="lux-nav-mode-sidebar-toggle" data-nav-mode-toggle="bottom" style="
                 display:flex; align-items:center; gap:10px; width:100%; text-align:left;
                 background:rgba(255,255,255,0.04); border:1px solid rgba(212,175,55,0.25);
-                color:var(--gold); border-radius:12px; padding:12px 14px; margin:6px 0 2px;
+                color:#d4af37; border-radius:12px; padding:12px 14px; margin:6px 0 2px;
                 cursor:pointer; font-size:0.85rem; font-weight:600;
             ">
                 <i class="fa-solid fa-mobile-screen-button"></i> Use Bottom Bar
@@ -181,8 +181,12 @@ $currentPage = basename($_SERVER['PHP_SELF']);
        else in the app (navbar bell, chat icons, etc.), with the
        emergency button's icon kept red since that one is
        deliberately an alarm color, not a brand accent. */
+    /* Literal gold, not var(--gold) — this sidebar is always a dark
+       surface regardless of site theme, and var(--gold) becomes
+       navy text in light theme, which is invisible on a dark
+       background. */
     .sidebar-nav a i {
-        color: var(--gold);
+        color: #d4af37;
         width: 20px;
         text-align: center;
         margin-right: 4px;

@@ -44,7 +44,7 @@ $csrfToken = Csrf::token();
         </p>
     </div>
 
-    <h2 style="color:white; margin:30px 0 15px;">Needs Manual Review (<?php echo count($needingReview); ?>)</h2>
+    <h2 style="color:var(--white); margin:30px 0 15px;">Needs Manual Review (<?php echo count($needingReview); ?>)</h2>
 
     <div class="lux-card-grid" id="luxReviewGrid">
 
@@ -56,7 +56,7 @@ $csrfToken = Csrf::token();
             <div class="lux-entity-card" data-payment-card="<?php echo (int) $p['id']; ?>">
                 <div class="lux-entity-card-header">
                     <div>
-                        <div class="lux-entity-name"><?php echo ucwords(str_replace('_', ' ', $p['purpose'])); ?> — KES <?php echo number_format((float) $p['amount']); ?></div>
+                        <div class="lux-entity-name"><?php echo ucwords(str_replace('_', ' ', $p['purpose'])); ?>  KES <?php echo number_format((float) $p['amount']); ?></div>
                         <div class="lux-entity-meta">Payment #<?php echo (int) $p['id']; ?></div>
                     </div>
                     <span class="lux-badge lux-badge-pending">Pending</span>
@@ -66,7 +66,7 @@ $csrfToken = Csrf::token();
                     <?php echo htmlspecialchars($p['full_name']); ?> (<?php echo htmlspecialchars($p['email']); ?>)<br>
                     Phone: <?php echo htmlspecialchars($p['phone']); ?><br>
                     User-submitted code: <strong><?php echo htmlspecialchars($p['user_submitted_receipt'] ?? '—'); ?></strong><br>
-                    <span style="color:#ffb84d;">Approve only after confirming in your M-Pesa portal that KES <?php echo number_format((float) $p['amount']); ?> was received under this code.</span><br>
+                    <span style="color:var(--lux-warning);">Approve only after confirming in your M-Pesa portal that KES <?php echo number_format((float) $p['amount']); ?> was received under this code.</span><br>
                     <?php echo date('d M Y H:i', strtotime($p['created_at'])); ?>
                 </div>
 
@@ -74,7 +74,7 @@ $csrfToken = Csrf::token();
                     <div style="margin:12px 0;">
                         <label style="color:var(--gray); display:block; margin-bottom:6px; font-size:0.85rem;">Amount to credit (KES)</label>
                         <input type="number" class="lux-payment-amount-override" value="<?php echo htmlspecialchars((string) $p['amount']); ?>"
-                               style="width:140px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:white; padding:8px 10px; border-radius:8px;">
+                               style="width:140px; background:var(--glass); border:1px solid var(--lux-card-border); color:var(--white); padding:8px 10px; border-radius:8px;">
                     </div>
                 <?php endif; ?>
 
@@ -87,7 +87,7 @@ $csrfToken = Csrf::token();
 
     </div>
 
-    <h2 style="color:white; margin:40px 0 15px;">Refunds Needing Attention (<?php echo count($refundQueue); ?>)</h2>
+    <h2 style="color:var(--white); margin:40px 0 15px;">Refunds Needing Attention (<?php echo count($refundQueue); ?>)</h2>
 
     <div class="lux-card-grid" id="luxRefundGrid">
 
@@ -99,7 +99,7 @@ $csrfToken = Csrf::token();
             <div class="lux-entity-card" data-refund-card="<?php echo (int) $r['id']; ?>">
                 <div class="lux-entity-card-header">
                     <div>
-                        <div class="lux-entity-name">KES <?php echo number_format((float) $r['amount']); ?> — <?php echo htmlspecialchars($r['reason']); ?></div>
+                        <div class="lux-entity-name">KES <?php echo number_format((float) $r['amount']); ?>  <?php echo htmlspecialchars($r['reason']); ?></div>
                         <div class="lux-entity-meta"><?php echo htmlspecialchars($r['refund_reference']); ?></div>
                     </div>
                     <span class="lux-badge <?php echo $r['status'] === 'failed' ? 'lux-badge-suspended' : 'lux-badge-pending'; ?>">
@@ -124,7 +124,7 @@ $csrfToken = Csrf::token();
 
     </div>
 
-    <h2 style="color:white; margin:40px 0 15px;">Recent Payments</h2>
+    <h2 style="color:var(--white); margin:40px 0 15px;">Recent Payments</h2>
 
     <div class="lux-card-grid">
         <?php foreach ($recent as $p): ?>
@@ -138,7 +138,7 @@ $csrfToken = Csrf::token();
             <div class="lux-entity-card">
                 <div class="lux-entity-card-header">
                     <div>
-                        <div class="lux-entity-name"><?php echo ucwords(str_replace('_', ' ', $p['purpose'])); ?> — KES <?php echo number_format((float) $p['amount']); ?></div>
+                        <div class="lux-entity-name"><?php echo ucwords(str_replace('_', ' ', $p['purpose'])); ?>  KES <?php echo number_format((float) $p['amount']); ?></div>
                         <div class="lux-entity-meta"><?php echo htmlspecialchars($p['full_name']); ?></div>
                     </div>
                     <span class="lux-badge <?php echo $badgeClass; ?>"><?php echo ucfirst($p['status']); ?></span>
@@ -162,7 +162,7 @@ $csrfToken = Csrf::token();
         <div class="lux-confirm-ref-wrap" hidden>
             <input type="text" class="lux-confirm-ref-input" data-validate="mpesa_ref"
                    placeholder="M-Pesa reference (10 characters)" maxlength="10" autocomplete="off" spellcheck="false"
-                   style="width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:white; padding:10px 12px; border-radius:8px; margin-bottom:10px; text-transform:uppercase;">
+                   style="width:100%; background:var(--glass); border:1px solid var(--lux-card-border); color:var(--white); padding:10px 12px; border-radius:8px; margin-bottom:10px; text-transform:uppercase;">
         </div>
         <div class="lux-confirm-reason-wrap" hidden>
             <textarea class="lux-confirm-reason-input" placeholder="Notes (required for reject)"></textarea>

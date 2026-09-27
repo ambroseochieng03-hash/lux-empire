@@ -54,14 +54,14 @@
 
 .lux-table th{
     padding:18px;
-    color:gold;
+    color:var(--gold);
     text-align:left;
-    border-bottom:1px solid rgba(255,255,255,0.1);
+    border-bottom:1px solid var(--lux-card-border);
 }
 
 .lux-table td{
     padding:20px;
-    border-bottom:1px solid rgba(255,255,255,0.05);
+    border-bottom:1px solid var(--lux-card-border);
 }
 
 /* =========================================
@@ -118,7 +118,7 @@
 
     .lux-table tr{
         margin-bottom:20px;
-        background:rgba(255,255,255,0.03);
+        background:var(--glass);
         border-radius:20px;
         padding:15px;
     }
@@ -128,7 +128,7 @@
         padding:14px 12px;
         position:relative;
         border:none;
-        border-bottom:1px solid rgba(255,255,255,0.05);
+        border-bottom:1px solid var(--lux-card-border);
     }
 
     .lux-table td:last-child{
@@ -140,7 +140,7 @@
         position:absolute;
         left:12px;
         font-weight:bold;
-        color:gold;
+        color:var(--gold);
         text-align:left;
     }
 
@@ -241,10 +241,6 @@
    EMERGENCY CENTER
 ========================================= */
 
-.lux-emergency-main{
-    background:#0a0f1c;
-}
-
 .lux-emergency-stats{
     display:flex;
     gap:15px;
@@ -259,18 +255,18 @@
 }
 
 .lux-emergency-card{
-    background:rgba(255,255,255,0.04);
-    border:1px solid rgba(255,255,255,0.08);
+    background:var(--glass);
+    border:1px solid var(--lux-card-border);
     border-radius:20px;
     padding:20px;
-    box-shadow:0 10px 30px rgba(0,0,0,0.3);
+    box-shadow:0 10px 30px rgba(0,0,0,0.15);
     overflow:hidden;
 }
 
 .lux-intelligence-box{
     margin-top:15px;
     padding:15px;
-    background:rgba(255,255,255,0.03);
+    background:var(--glass);
     border-radius:14px;
     overflow-wrap:anywhere;
 }

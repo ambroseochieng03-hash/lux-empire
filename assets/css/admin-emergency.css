@@ -16,12 +16,12 @@
 .lux-emergency-status-resolved{ background:#00cc6622; color:#00cc66; }
 .lux-emergency-status-dismissed{ background:#99999922; color:#999; }
 
-.lux-intelligence-box{ margin:15px 0; padding:15px; background:rgba(255,255,255,0.03); border-radius:14px; overflow-wrap:anywhere; }
-.lux-intelligence-heading{ color:gold; font-weight:bold; margin-bottom:10px; }
+.lux-intelligence-box{ margin:15px 0; padding:15px; background:var(--glass); border-radius:14px; overflow-wrap:anywhere; }
+.lux-intelligence-heading{ color:var(--gold); font-weight:bold; margin-bottom:10px; }
 .lux-intelligence-subheading{ font-weight:bold; margin-bottom:8px; }
 .lux-intelligence-tenant{ color:#00cc66; }
 .lux-intelligence-driver{ color:#4da6ff; }
-.lux-intelligence-divider{ border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0; }
+.lux-intelligence-divider{ border:none; border-top:1px solid var(--lux-card-border); margin:12px 0; }
 
 @media (max-width:768px){
     .lux-emergency-stats-bar{ flex-direction:column; }

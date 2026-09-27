@@ -83,9 +83,21 @@ $csrfToken = Csrf::token();
     var shell = document.getElementById('chatShell');
     if (!shell) { return; }
 
+    /*
+     * The bottom nav only needs to duck out of the way on the
+     * MOBILE single-pane layout — that's the only place a thread's
+     * message input sits where the bar would cover it. Above
+     * chat.css's own 900px breakpoint, list and thread panes show
+     * side by side and nothing ever slides, so the bottom nav (when
+     * the person has switched to that nav mode on desktop) should
+     * just stay put and stay usable.
+     */
+    var MOBILE_LAYOUT_QUERY = '(max-width: 900px)';
+
     function syncNavForThread() {
         var inThread = shell.classList.contains('thread-open');
-        document.body.classList.toggle('lux-nav-hidden-temp', inThread);
+        var isMobileLayout = window.matchMedia(MOBILE_LAYOUT_QUERY).matches;
+        document.body.classList.toggle('lux-nav-hidden-temp', inThread && isMobileLayout);
     }
 
     syncNavForThread();
@@ -94,5 +106,10 @@ $csrfToken = Csrf::token();
         attributes: true,
         attributeFilter: ['class']
     });
+
+    // Resizing across the breakpoint while a thread is open (window
+    // resize, tablet rotation) re-syncs immediately instead of
+    // waiting for the next thread open/close to notice.
+    window.addEventListener('resize', syncNavForThread);
 }());
 </script>

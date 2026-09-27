@@ -77,7 +77,7 @@ $csrfToken = Csrf::token();
             <div style="margin-bottom:20px;" id="luxWaiverEmailWrap">
                 <label style="color:var(--gray); display:block; margin-bottom:8px;">Email</label>
                 <input type="email" id="luxWaiverEmail"
-                       style="width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:white; padding:12px 14px; border-radius:12px;">
+                       style="width:100%; background:var(--glass); border:1px solid var(--lux-card-border); color:var(--white); padding:12px 14px; border-radius:12px;">
                 <small style="color:var(--gray);">The voucher type follows the account: tenants get a free booking, landlords get a free Pro plan.</small>
             </div>
 
@@ -85,7 +85,7 @@ $csrfToken = Csrf::token();
                 <div style="flex:1;">
                     <label style="color:var(--gray); display:block; margin-bottom:8px;">Valid for</label>
                     <input type="number" id="luxWaiverAmount" value="30" min="1" max="720"
-                           style="width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:white; padding:12px 14px; border-radius:12px;">
+                           style="width:100%; background:var(--glass); border:1px solid var(--lux-card-border); color:var(--white); padding:12px 14px; border-radius:12px;">
                 </div>
                 <div style="flex:1;">
                     <label style="color:var(--gray); display:block; margin-bottom:8px;">Unit</label>
@@ -100,7 +100,7 @@ $csrfToken = Csrf::token();
             <div style="margin-bottom:24px;">
                 <label style="color:var(--gray); display:block; margin-bottom:8px;">Reason (required)</label>
                 <textarea id="luxWaiverReason" maxlength="500"
-                          style="width:100%; min-height:80px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:white; padding:12px 14px; border-radius:12px; resize:vertical;"></textarea>
+                          style="width:100%; min-height:80px; background:var(--glass); border:1px solid var(--lux-card-border); color:var(--white); padding:12px 14px; border-radius:12px; resize:vertical;"></textarea>
             </div>
 
             <button type="submit" class="lux-btn lux-btn-success">Grant Voucher</button>

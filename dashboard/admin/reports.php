@@ -111,20 +111,20 @@ $actionTypeLabels = [
     <div class="lux-analytics-grid">
 
         <div class="lux-card" style="padding:30px; border-radius:30px;">
-            <h2 style="color:white; margin-bottom:20px;">Users by Role</h2>
+            <h2 style="color:var(--white); margin-bottom:20px;">Users by Role</h2>
             <?php foreach ($roles as $r): ?>
                 <div style="margin-bottom:15px;">
-                    <div style="color:white; font-weight:bold;"><?= ucfirst($r['role']) ?></div>
+                    <div style="color:var(--white); font-weight:bold;"><?= ucfirst($r['role']) ?></div>
                     <div style="color:var(--gray);"><?= $r['total'] ?> users</div>
                 </div>
             <?php endforeach; ?>
         </div>
 
         <div class="lux-card" style="padding:30px; border-radius:30px;">
-            <h2 style="color:white; margin-bottom:20px;">House Status</h2>
+            <h2 style="color:var(--white); margin-bottom:20px;">House Status</h2>
             <?php foreach ($houseStatuses as $h): ?>
                 <div style="margin-bottom:15px;">
-                    <div style="color:white; font-weight:bold;"><?= ucfirst($h['status']) ?></div>
+                    <div style="color:var(--white); font-weight:bold;"><?= ucfirst($h['status']) ?></div>
                     <div style="color:var(--gray);"><?= $h['total'] ?> listings</div>
                 </div>
             <?php endforeach; ?>
@@ -134,7 +134,7 @@ $actionTypeLabels = [
 
     <!-- LOGISTICS BREAKDOWN -->
     <div class="lux-card lux-logistics-card">
-        <h2 style="color:white; margin-bottom:25px;">Logistics Overview</h2>
+        <h2 style="color:var(--white); margin-bottom:25px;">Logistics Overview</h2>
         <div class="lux-logistics-grid">
             <div>
                 <div style="color:var(--gray);">Pending</div>
@@ -153,14 +153,14 @@ $actionTypeLabels = [
 
     <!-- RECENT ADMIN ACTIONS -->
     <div class="lux-card" style="padding:30px; border-radius:30px; margin-top:30px;">
-        <h2 style="color:white; margin-bottom:20px;">Recent Administrative Actions</h2>
+        <h2 style="color:var(--white); margin-bottom:20px;">Recent Administrative Actions</h2>
 
         <?php if (empty($recentActions)): ?>
             <p style="color:var(--gray);">No recorded actions yet.</p>
         <?php else: ?>
             <?php foreach ($recentActions as $action): ?>
-                <div style="padding:16px 0; border-bottom:1px solid rgba(255,255,255,0.08);">
-                    <div style="color:white; font-weight:bold;">
+                <div style="padding:16px 0; border-bottom:1px solid var(--lux-card-border);">
+                    <div style="color:var(--white); font-weight:bold;">
                         <?= htmlspecialchars($actionTypeLabels[$action['action_type']] ?? $action['action_type']) ?>
                         <span style="color:var(--gray); font-weight:normal;">
                             (<?= htmlspecialchars($action['target_table']) ?> #<?= (int) $action['target_id'] ?>)

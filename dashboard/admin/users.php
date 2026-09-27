@@ -227,9 +227,9 @@ $csrfToken = Csrf::token();
     <div class="lux-modal-box">
         <h3 class="lux-confirm-title">Send a message</h3>
         <input type="text" id="luxDmSubject" placeholder="Subject" maxlength="150"
-               style="width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:white; padding:12px 14px; border-radius:12px; margin-bottom:14px;">
+               style="width:100%; background:var(--glass); border:1px solid var(--lux-card-border); color:var(--white); padding:12px 14px; border-radius:12px; margin-bottom:14px;">
         <textarea id="luxDmBody" placeholder="Message" maxlength="5000"
-                  style="width:100%; min-height:140px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:white; padding:12px 14px; border-radius:12px; resize:vertical; margin-bottom:18px;"></textarea>
+                  style="width:100%; min-height:140px; background:var(--glass); border:1px solid var(--lux-card-border); color:var(--white); padding:12px 14px; border-radius:12px; resize:vertical; margin-bottom:18px;"></textarea>
         <div class="lux-modal-actions">
             <button class="lux-btn lux-btn-ghost" data-dm-close>Cancel</button>
             <button class="lux-btn lux-btn-success" id="luxDmSend">Send</button>

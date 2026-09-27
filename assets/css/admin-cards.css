@@ -1,16 +1,22 @@
 .lux-admin-toolbar{ display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-bottom:30px; }
-.lux-admin-filter-select{ background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:white; padding:10px 16px; border-radius:12px; font-size:0.9rem; }
+.lux-admin-filter-select{ background:var(--glass); border:1px solid var(--lux-card-border); color:var(--white); padding:10px 16px; border-radius:12px; font-size:0.9rem; }
 
 .lux-card-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:22px; }
 
-.lux-entity-card{ background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:22px; padding:24px; display:flex; flex-direction:column; gap:12px; transition:0.3s; }
+.lux-entity-card{ background:var(--glass); border:1px solid var(--lux-card-border); border-radius:22px; padding:24px; display:flex; flex-direction:column; gap:12px; transition:0.3s; }
 .lux-entity-card.is-flagged{ border-color:rgba(255,77,77,0.5); }
 .lux-entity-card.is-hidden{ opacity:0.6; }
 
 .lux-entity-card-header{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
-.lux-entity-name{ color:white; font-weight:bold; font-size:1.1rem; }
+.lux-entity-name{ color:var(--white); font-weight:bold; font-size:1.1rem; }
 .lux-entity-meta{ color:var(--gray); font-size:0.88rem; line-height:1.6; }
 
+/* Badge colors kept as literal hex on purpose — this is a self-
+   contained status-color system (active/suspended/pending/flagged/
+   verified/role) used consistently across every admin list. Keeping
+   it literal means it reads identically whether the surrounding
+   page is light or dark, the same way a badge in any product
+   doesn't usually re-tint itself with the OS theme. */
 .lux-badge{ display:inline-block; padding:6px 12px; border-radius:12px; font-size:0.78rem; font-weight:bold; white-space:nowrap; }
 .lux-badge-active{ background:#00cc6622; color:#00cc66; }
 .lux-badge-suspended{ background:#ff4d4d22; color:#ff4d4d; }
@@ -25,29 +31,29 @@
 .lux-btn:disabled{ opacity:0.4; cursor:not-allowed; }
 .lux-btn-success{ background:#00cc66; color:white; }
 .lux-btn-danger{ background:#ff4d4d; color:white; }
-.lux-btn-outline-danger{ background:#222; color:#ff4d4d; border:1px solid #ff4d4d; }
+.lux-btn-outline-danger{ background:var(--glass); color:#ff4d4d; border:1px solid #ff4d4d; }
 .lux-btn-warning{ background:#ffae42; color:#111; }
 .lux-btn-info{ background:#4da6ff; color:white; }
-.lux-btn-ghost{ background:rgba(255,255,255,0.08); color:white; }
+.lux-btn-ghost{ background:var(--glass); border:1px solid var(--lux-card-border); color:var(--white); }
 
 .lux-modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.75); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; z-index:9998; padding:20px; }
 .lux-modal-overlay.is-open{ display:flex; }
-.lux-modal-box{ background:#111214; border:1px solid rgba(255,255,255,0.1); border-radius:24px; padding:30px; width:min(480px, 100%); max-height:85vh; overflow-y:auto; }
+.lux-modal-box{ background:var(--lux-modal-bg); border:1px solid var(--lux-modal-border); border-radius:24px; padding:30px; width:min(480px, 100%); max-height:85vh; overflow-y:auto; }
 .lux-modal-box.lux-modal-wide{ width:min(900px, 100%); }
 
-.lux-confirm-title{ color:white; font-size:1.3rem; margin-bottom:12px; }
+.lux-confirm-title{ color:var(--white); font-size:1.3rem; margin-bottom:12px; }
 .lux-confirm-message{ color:var(--gray); line-height:1.7; margin-bottom:18px; }
-.lux-confirm-reason-input{ width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); color:white; padding:12px 14px; border-radius:12px; margin-bottom:18px; resize:vertical; min-height:80px; }
+.lux-confirm-reason-input{ width:100%; background:var(--glass); border:1px solid var(--lux-card-border); color:var(--white); padding:12px 14px; border-radius:12px; margin-bottom:18px; resize:vertical; min-height:80px; }
 .lux-modal-actions{ display:flex; justify-content:flex-end; gap:10px; }
 
 .lux-toast-stack{ position:fixed; bottom:24px; right:24px; display:flex; flex-direction:column; gap:10px; z-index:10000; }
-.lux-toast{ background:#111214; border:1px solid rgba(255,255,255,0.15); color:white; padding:14px 18px; border-radius:14px; font-size:0.9rem; opacity:0; transform:translateY(10px); transition:0.3s; box-shadow:0 10px 30px rgba(0,0,0,0.4); }
+.lux-toast{ background:var(--lux-modal-bg); border:1px solid var(--lux-modal-border); color:var(--white); padding:14px 18px; border-radius:14px; font-size:0.9rem; opacity:0; transform:translateY(10px); transition:0.3s; box-shadow:0 10px 30px rgba(0,0,0,0.25); }
 .lux-toast.is-visible{ opacity:1; transform:translateY(0); }
 .lux-toast-success{ border-color:#00cc66; }
 .lux-toast-error{ border-color:#ff4d4d; }
 
 .lux-landlord-listings-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:18px; margin-top:10px; }
-.lux-listing-card-media{ height:180px; border-radius:16px; overflow:hidden; position:relative; background:rgba(255,255,255,0.04); margin-bottom:12px; }
+.lux-listing-card-media{ height:180px; border-radius:16px; overflow:hidden; position:relative; background:var(--glass); margin-bottom:12px; }
 
 @media (max-width:768px){
     .lux-card-grid{ grid-template-columns:1fr; }
@@ -72,7 +78,7 @@
 }
 
 .lux-identity-panel-value{
-    color:white;
+    color:var(--white);
     font-size:1rem;
     font-family:monospace;
     letter-spacing:1px;

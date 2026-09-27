@@ -150,7 +150,7 @@ $recentTrips = $recentTripsStmt->fetchAll();
             </h3>
 
             <div style="
-                color:white;
+                color:var(--white);
                 font-size:2.5rem;
                 margin-top:15px;
                 font-weight:bold;
@@ -169,7 +169,7 @@ $recentTrips = $recentTripsStmt->fetchAll();
             </h3>
 
             <div style="
-                color:white;
+                color:var(--white);
                 font-size:2.5rem;
                 margin-top:15px;
                 font-weight:bold;
@@ -188,7 +188,7 @@ $recentTrips = $recentTripsStmt->fetchAll();
             </h3>
 
             <div style="
-                color:white;
+                color:var(--white);
                 font-size:2.5rem;
                 margin-top:15px;
                 font-weight:bold;
@@ -207,7 +207,7 @@ $recentTrips = $recentTripsStmt->fetchAll();
             </h3>
 
             <div style="
-                color:white;
+                color:var(--white);
                 font-size:2.5rem;
                 margin-top:15px;
                 font-weight:bold;
@@ -236,7 +236,7 @@ $recentTrips = $recentTripsStmt->fetchAll();
             </h3>
 
             <div style="
-                color:gold;
+                color:var(--gold);
                 font-size:2rem;
                 margin-top:12px;
                 font-weight:bold;
@@ -255,7 +255,7 @@ $recentTrips = $recentTripsStmt->fetchAll();
             </h3>
 
             <div style="
-                color:gold;
+                color:var(--gold);
                 font-size:2rem;
                 margin-top:12px;
                 font-weight:bold;
@@ -274,7 +274,7 @@ $recentTrips = $recentTripsStmt->fetchAll();
             </h3>
 
             <div style="
-                color:gold;
+                color:var(--gold);
                 font-size:2rem;
                 margin-top:12px;
                 font-weight:bold;
@@ -295,7 +295,7 @@ $recentTrips = $recentTripsStmt->fetchAll();
         ">
 
             <h2 style="
-                color:white;
+                color:var(--white);
                 margin-bottom:25px;
             ">
                 Recent Users
@@ -305,11 +305,11 @@ $recentTrips = $recentTripsStmt->fetchAll();
 
                 <div style="
                     padding:18px 0;
-                    border-bottom:1px solid rgba(255,255,255,0.08);
+                    border-bottom:1px solid var(--lux-card-border);
                 ">
 
                     <div style="
-                        color:white;
+                        color:var(--white);
                         font-weight:bold;
                     ">
                         <?= htmlspecialchars($user['full_name']) ?>
@@ -323,7 +323,7 @@ $recentTrips = $recentTripsStmt->fetchAll();
                     </div>
 
                     <div style="
-                        color:gold;
+                        color:var(--gold);
                         margin-top:6px;
                         font-size:0.9rem;
                     ">
@@ -350,7 +350,7 @@ $recentTrips = $recentTripsStmt->fetchAll();
         ">
 
             <h2 style="
-                color:white;
+                color:var(--white);
                 margin-bottom:25px;
             ">
                 Recent Logistics Activity
@@ -360,11 +360,11 @@ $recentTrips = $recentTripsStmt->fetchAll();
 
                 <div style="
                     padding:18px 0;
-                    border-bottom:1px solid rgba(255,255,255,0.08);
+                    border-bottom:1px solid var(--lux-card-border);
                 ">
 
                     <div style="
-                        color:white;
+                        color:var(--white);
                         font-weight:bold;
                     ">
                         <?= htmlspecialchars($trip['pickup_location']) ?>
@@ -378,7 +378,7 @@ $recentTrips = $recentTripsStmt->fetchAll();
                     </div>
 
                     <div style="
-                        color:gold;
+                        color:var(--gold);
                         margin-top:6px;
                     ">
                         <?= ucfirst($trip['status']) ?>
